@@ -154,7 +154,7 @@ export class AtlasModel {
   noteTier(n) { return n.tier != null && n.tier !== '' ? +n.tier : (n.gm ? TIER.SECRET : TIER.FULL); }
   /* ----- secrets: callouts and relations that are revealed one by one ----- */
   /** A secret is hidden from players until revealed to everyone or to them. Older data: gm notes or tier 4+. */
-  isSecret(n) { if (!n || n.st) return false; if (n.secret !== undefined) return !!n.secret; return !!n.gm || (n.tier != null && n.tier !== '' && +n.tier > TIER.FULL); }
+  isSecret(n) { if (!n) return false; if (n.secret !== undefined) return !!n.secret; return !!n.gm || (n.tier != null && n.tier !== '' && +n.tier > TIER.FULL); }
   /** Revealed to this viewer? reveal = {all: 0|1, users: {userId: 0|1}}. */
   secretKnown(n, it, coll, st) {
     if (st.storyteller) return true;
@@ -172,7 +172,6 @@ export class AtlasModel {
   /** Ordinary callouts show with full knowledge; secrets show once revealed (to anyone who knows the entry exists). */
   noteVisible(n, it, coll, st) {
     if (st.storyteller) return true;
-    if (n.st) return false;
     const t = this.tier(it, coll, st);
     if (this.isSecret(n)) return t >= TIER.EXIST && this.secretKnown(n, it, coll, st);
     return t >= TIER.FULL;
@@ -317,7 +316,7 @@ export class AtlasModel {
     for (const c of ['places', 'zones', 'routes', 'people']) for (const it of Object.values(this.atlas[c])) {
       if (it.decor || it.hidden) continue;
       const cat = c === 'places' ? this.atlas.categories[it.cat] : null, f = this.atlas.factions[it.faction];
-      out.push({id: it.id, coll: c, it, name: it.name || '', text: [it.name, it.sub, it.kicker, it.tag, cat && cat.name, f && f.name, stripHtml(it.brief), stripHtml(it.html)].filter(Boolean).join(' ').toLowerCase()});
+      out.push({id: it.id, coll: c, it, name: it.name || '', text: [it.name, it.sub, it.kicker, it.tag, cat && cat.name, f && f.name, stripHtml(it.html)].filter(Boolean).join(' ').toLowerCase()});
     }
     return (this._searchIdx = out);
   }

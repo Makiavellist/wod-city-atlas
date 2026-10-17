@@ -1,8 +1,8 @@
 {
   "id": "wod-city-atlas",
   "title": "World of Darkness City Atlas",
-  "description": "An interactive, editable city map for World of Darkness chronicles: realms (Waking, Dreaming, Shadowlands, Umbra…) with levels such as Street and Underground, domains, routes, places, characters and chronicle pages. Ships with the full Milwaukee by Night (1991) map as a ready-made atlas.",
-  "version": "1.4.0",
+  "description": "An interactive, editable city map for World of Darkness chronicles: realms (Waking, Dreaming, Shadowlands, Umbra\u2026) with levels such as Street and Underground, domains, routes, places, characters and chronicle pages. Ships with the full Milwaukee by Night (1991) map as a ready-made atlas.",
+  "version": "1.4.1",
   "compatibility": {
     "minimum": "13",
     "verified": "13.351"

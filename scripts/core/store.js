@@ -8,12 +8,6 @@ export class BaseStore {
   emit(info = {}) { for (const cb of this.listeners) { try { cb(info); } catch (e) { console.error('wod-city-atlas | listener', e); } } }
   /** Apply a change locally (optimistic), then persist. */
   async setItem(coll, id, data) { if (!COLLECTIONS.includes(coll)) throw new Error('Unknown collection ' + coll); const d = clone(data); d.id = id; this.atlas[coll][id] = d; this.emit({coll, id}); await this._persistItem(coll, id, d); }
-  /** Many items at once (preset updates): one redraw, persisted in chunks. list = [{coll, id, data}] */
-  async setItems(list, onProgress) {
-    for (const {coll, id, data} of list) { if (!COLLECTIONS.includes(coll)) throw new Error('Unknown collection ' + coll); const d = clone(data); d.id = id; this.atlas[coll][id] = d; }
-    this.emit({all: true}); await this._persistMany(list.map(x => ({coll: x.coll, id: x.id, data: this.atlas[x.coll][x.id]})), onProgress);
-  }
-  async _persistMany(list, onProgress) { let i = 0; for (const x of list) { await this._persistItem(x.coll, x.id, x.data); onProgress?.(++i, list.length); } }
   async deleteItem(coll, id) { delete this.atlas[coll][id]; this.emit({coll, id, deleted: true}); await this._persistDelete(coll, id); }
   async setMeta(patch) { for (const [k, v] of Object.entries(patch)) { if (!META_KEYS.includes(k)) continue; if (v === undefined || v === null) delete this.atlas[k]; else this.atlas[k] = clone(v); } normalize(this.atlas); this.emit({meta: true}); await this._persistMeta(); }
   async replaceAll(atlas, basemap) { this.atlas = normalize(clone(atlas)); if (basemap !== undefined) this.basemap = basemap; this.emit({all: true, basemap: basemap !== undefined}); await this._persistAll(); }
@@ -45,7 +39,6 @@ export function rebasePaths(atlas, base) {
     if (it.img) it.img = fix(it.img);
     if (it.fillImage && it.fillImage.src) it.fillImage.src = fix(it.fillImage.src);
     if (it.html) it.html = fixHtml(it.html);
-    if (it.brief) it.brief = fixHtml(it.brief);
     for (const n of it.notes || []) n.html = fixHtml(n.html);
   }
   return atlas;

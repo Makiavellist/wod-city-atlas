@@ -34,8 +34,6 @@ export function makeAdapter(app) {
     share: game.user.isGM ? state => shareView(app.entry, state) : null,
     saveFile: (name, text) => foundry.utils.saveDataToFile(text, 'application/json', name),
     loadJSON: async path => (await fetch(resolveUrl(path))).json(),
-    presets: game.user.isGM ? () => loadPresets() : null,
-    loadPreset: async id => { const p = (await loadPresets()).find(x => x.id === id); if (!p) return null; return rebasePaths(await (await fetch(resolveUrl(`modules/${MOD}/${p.atlas}`))).json(), `modules/${MOD}/` + p.atlas.replace(/[^/]+$/, '')); },
     pickActors: () => pickActors(),
     players: () => game.users.filter(u => !u.isGM).map(u => ({id: u.id, name: u.name, color: u.color?.css ?? String(u.color || '')})),
     notifyReveal: game.user.isGM ? ({ids, name}) => game.socket.emit(`module.${MOD}`, {action: 'reveal', entryId: app.entry.id, ids, name}) : null,

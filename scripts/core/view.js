@@ -209,8 +209,8 @@ export class AtlasView {
     this.el.realms.onclick = e => { const b = e.target.closest('[data-realm]'); if (b) this.setRealm(b.dataset.realm); };
     this.el.levels.onclick = e => { const b = e.target.closest('[data-level]'); if (b) this.setLevel(b.dataset.level); };
     // legend & credit
-    this.el.legend.innerHTML = this.legendShown(v).map(l => `<span><i class="k-${esc(l.kind || 'fill')}" style="--c:${esc(l.color)}"></i>${esc(l.label)}</span>`).join('');
-    this.el.legend.hidden = !this.legendShown(v).length;
+    this.el.legend.innerHTML = (v.legend || []).map(l => `<span><i class="k-${esc(l.kind || 'fill')}" style="--c:${esc(l.color)}"></i>${esc(l.label)}</span>`).join('');
+    this.el.legend.hidden = !(v.legend || []).length;
     this.el.credit.textContent = v.credit || ''; this.el.credit.hidden = !v.credit;
     this.renderLayersPanel(); this.renderHotLayers(); this.renderGmButtons();
     this.el.empty.hidden = this.st.storyteller || this.model.realmVisible(this.st.realm, this.st);
@@ -258,15 +258,6 @@ export class AtlasView {
   }
   setLayer(id, on) { const L = this.model.atlas.layers[id]; this.layerState.set((L && L.realm == null ? '*' : this.st.realm) + ':' + id, !!on); this.persist(); this.renderLayersPanel(); this.renderHotLayers(); this.buildMarkers(); this.dirty(); if (this.tab === 'zones' && !this.detailId) this.render(true); }
   isHiddenItem(id) { return this.hiddenItems.has(id); }
-  /** Legend entries; entries marked Storyteller only are hidden from players. */
-  legendShown(v) { return (v.legend || []).filter(l => this.st.storyteller || !l.gm); }
-  /** Category chips: the Storyteller sees all; a player only sees categories with at least one place they know of here. */
-  catsShown() {
-    const st = this.st, cats = this.model.categoriesFor(st.realm, st.level);
-    if (st.storyteller) return cats;
-    const has = new Set(Object.values(this.model.atlas.places).filter(p => p.cat && this.tierOf(p, 'places') >= TIER.BASIC && this.model.visible(p, 'places', st, {ignoreLayer: true, ignoreCat: true})).map(p => p.cat));
-    return cats.filter(c => this.tierOf(c, 'categories') >= 1 && has.has(c.id));
-  }
   layersShown() { return this.model.layersFor(this.st.realm, this.st.level).filter(L => this.st.storyteller || this.model.layerVisible(L.id, this.st)); }
   renderLayersPanel() {
     const ls = this.layersShown();
@@ -580,7 +571,7 @@ export class AtlasView {
     }
   }
   markMatches() { const q = this.q.trim().toLowerCase(); for (const m of this.markers || []) m.match = !q || !!m.note || this.matches(m.p, q); }
-  matches(it, q) { if (!q) return true; if (this.tierOf(it) < TIER.BASIC) return this.nameOf(it).toLowerCase().includes(q); if (this.tierOf(it) < TIER.FULL) return [it.name, it.sub, it.kicker, it.tag, stripHtml(it.brief)].filter(Boolean).join(' ').toLowerCase().includes(q); const cat = this.model.category(it.cat), f = this.model.faction(it.faction); return [it.name, it.sub, it.kicker, it.tag, stripHtml(it.brief), stripHtml(it.html), cat && cat.name, f && f.name, ...(this.model.peopleAt(it).map(p => p.name))].filter(Boolean).join(' ').toLowerCase().includes(q); }
+  matches(it, q) { if (!q) return true; if (this.tierOf(it) < TIER.BASIC) return this.nameOf(it).toLowerCase().includes(q); if (this.tierOf(it) < TIER.FULL) return [it.name, it.sub, it.kicker, it.tag].filter(Boolean).join(' ').toLowerCase().includes(q); const cat = this.model.category(it.cat), f = this.model.faction(it.faction); return [it.name, it.sub, it.kicker, it.tag, stripHtml(it.html), cat && cat.name, f && f.name, ...(this.model.peopleAt(it).map(p => p.name))].filter(Boolean).join(' ').toLowerCase().includes(q); }
 
   /* ================= selection & navigation ================= */
   setSel(id) { this.sel = id; this.dirty(); }
@@ -710,7 +701,7 @@ export class AtlasView {
       (unknown.length ? `<div class="grp">Unknown <span class="n">${unknown.length}</span></div>` + unknown.map(p => this.refRow(p.id)).join('') : '');
   }
   renderPlaces() {
-    const cats = this.catsShown();
+    const cats = this.model.categoriesFor(this.st.realm, this.st.level).filter(c => this.st.storyteller || this.tierOf(c, 'categories') >= 1);
     return this.searchBox(`Search ${this.rv.terms.places.toLowerCase()}…`) +
       (cats.length ? `<div class="chips" role="group" aria-label="Categories">${cats.map(c => `<button type="button" class="chip" data-cat="${esc(c.id)}" aria-pressed="${!this.catsOff.has(c.id)}" style="--c:${esc(c.color || 'var(--wca-bone)')}">${svg(c.icon || 'pin', 1.7)}${esc(c.name)}</button>`).join('')}</div>` : '') +
       `<div class="wca-list">${this.placesBody()}</div>` + this.pageNotes('places');
@@ -784,7 +775,7 @@ export class AtlasView {
     const locked = !this.isGM && !!this.sc?.locked?.();
     const rl = st.storyteller ? m.realmList : m.visibleRealms(st), lv = st.storyteller ? m.realm(st.realm).levels : m.visibleLevels(st.realm, st);
     const ls = this.layersShown();
-    const cats = this.catsShown();
+    const cats = m.categoriesFor(st.realm, st.level).filter(c => st.storyteller || this.tierOf(c, 'categories') >= 1);
     let h = '';
     if (rl.length > 1 || lv.length > 1) {
       h += `<div class="grp">Realm${lv.length > 1 ? ' & level' : ''}</div>`;
@@ -799,7 +790,7 @@ export class AtlasView {
     if (this.adapter.notes) h += `<div class="grp">Notes</div><div class="mt-list"><label>${svg('note', 1.7)}<span>Notes others share</span><input class="tog" type="checkbox" data-notes="shared" ${this.notesShared ? 'checked' : ''}></label>${this.isGM ? `<label>${svg('eyeoff', 1.7)}<span>Players' private notes</span><input class="tog" type="checkbox" data-notes="private" ${this.notesPrivate ? 'checked' : ''}></label>` : ''}</div><button type="button" class="btn small" data-act="note-new">${svg('note')} Add a note to the map</button>`;
     h += `<div class="grp">View</div><div class="mt-btns"><button type="button" class="btn small" data-act="mt-home">${svg('home')} Whole map</button><button type="button" class="btn small" data-act="mt-find">${svg('search')} Search</button>${this.sc ? `<button type="button" class="btn small" data-act="mt-hide" aria-pressed="${!!this.atlasHidden}">${svg(this.atlasHidden ? 'eyeoff' : 'scene')} ${this.atlasHidden ? 'Show the atlas' : 'Hide the atlas'}</button>` : ''}</div>`;
     if (this.isGM) h += `<div class="grp">Storyteller</div><label class="mt-row">View as<select data-viewas>${this.viewAsOptions().map(([val, n]) => `<option value="${esc(val)}" ${val === (st.storyteller ? 'gm' : st.as) ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></label>` + (this.sc?.setLocked ? `<label class="mt-row">Players follow my realm<input class="tog" type="checkbox" data-mt-lock ${this.sc.locked() ? 'checked' : ''}></label>` : '');
-    if (this.legendShown(v).length) h += `<div class="grp">Legend</div><div class="mt-legend">${this.legendShown(v).map(l => `<span><i class="k-${esc(l.kind || 'fill')}" style="--c:${esc(l.color)}"></i>${esc(l.label)}</span>`).join('')}</div>`;
+    if ((v.legend || []).length) h += `<div class="grp">Legend</div><div class="mt-legend">${v.legend.map(l => `<span><i class="k-${esc(l.kind || 'fill')}" style="--c:${esc(l.color)}"></i>${esc(l.label)}</span>`).join('')}</div>`;
     return `<div class="maptab">${h}</div>`;
   }
   /* ----- notes made by players (and the Storyteller) on the map ----- */
@@ -896,7 +887,6 @@ export class AtlasView {
       const tierTag = n => this.secretTag(n);
       if (full) {
         if (it.facts && it.facts.length && coll === 'people') H.push(`<div class="mien">${it.facts.map(f2 => `<div><b>${esc(f2.k)}</b>${f2.v || ''}</div>`).join('')}</div>`);
-        if (it.brief) H.push(`<div class="body brief enrich">${it.brief}</div>`);
         notes.filter(n => n.kind === 'law').forEach(n => H.push(this.noteHtml(n, tierTag(n))));
         if (it.html) H.push(`<div class="body enrich">${it.html}</div>`);
         if (it.facts && it.facts.length && coll !== 'people') { const fs = it.facts.filter(f2 => !(it.tags || []).some(tg => tg.text === `${f2.k} ${stripHtml(f2.v)}`)); if (fs.length) H.push(`<dl class="facts">${fs.map(f2 => `<dt>${esc(f2.k)}</dt><dd>${f2.v || ''}</dd>`).join('')}</dl>`); }
@@ -924,15 +914,7 @@ export class AtlasView {
           H.push(this.relationsHtml(it));
         }
         if (it.links && it.links.length) H.push(section('See also', it.links.map(l => l.id).filter(i => !(it.anchor === i))));
-      } else {
-        if (it.brief) H.push(`<div class="body brief enrich">${it.brief}</div>`);
-        notes.filter(n => m.isSecret(n)).forEach(n => H.push(this.noteHtml(n, tierTag(n))));
-        // with Basic knowledge only links to entries the viewer also knows at Basic: a rumour does not tie two things together
-        const section = (title, ids) => { const rows = [...new Set(ids)].filter(i => { const r = m.get(i); return r && this.tierOf(r.item, r.coll) >= TIER.BASIC; }).map(i => this.refRow(i)).filter(Boolean); return rows.length ? `<h3>${esc(title)}</h3>${rows.join('')}` : ''; };
-        if (coll === 'people') H.push(section('Where to find them', it.at || []));
-        else if (coll === 'places') H.push(section('Figures here', m.peopleAt(it).map(p => p.id)));
-        H.push(`<p class="lead unknown-note">${it.brief ? 'That is all you know for now.' : 'Nothing more is known yet.'}</p>`);
-      }
+      } else { H.push(`<p class="lead unknown-note">Nothing more is known yet.</p>`); notes.filter(n => m.isSecret(n)).forEach(n => H.push(this.noteHtml(n, tierTag(n)))); }
     }
     if (!known) (it.notes || []).filter(n => m.isSecret(n) && m.noteVisible(n, it, coll, st)).forEach(n => H.push(this.noteHtml(n, this.secretTag(n))));
     if (coll !== 'people' && coll !== 'pages') H.push(`<button type="button" class="btn" data-act="center">${svg('target')} Centre on map</button>`);
@@ -968,7 +950,7 @@ export class AtlasView {
     return id ? this.model.item(id) : null;
   }
   /** "Secret" tag on callouts and relations; the Storyteller also sees who knows it. */
-  secretTag(n) { if (n && n.st) return 'Storyteller only'; if (!this.model.isSecret(n)) return ''; return this.isGM && this.st.storyteller ? `Secret · known to ${this.model.secretAudience(n, this.players())}` : 'Secret'; }
+  secretTag(n) { if (!this.model.isSecret(n)) return ''; return this.isGM && this.st.storyteller ? `Secret · known to ${this.model.secretAudience(n, this.players())}` : 'Secret'; }
   /** Relations: this person's view of others, others' view of them, and (Storyteller) inline editing. */
   relationsHtml(p) {
     const m = this.model, st = this.st, gm = this.isGM && st.storyteller && (this.opts.canEdit ?? this.isGM);
@@ -1014,7 +996,7 @@ export class AtlasView {
     const del = gm && !Array.isArray(r) ? `<button type="button" class="rdel" data-act="rel-del" data-person="${esc(owner.id)}" data-idx="${r.i}" title="Remove this relation">${svg('x', 2)}</button>` : '';
     return `<span>${nm}${sheet}</span><span>${esc(a)}${tag}${del}</span>`;
   }
-  noteHtml(n, tierTag) { return `<div class="scene${n.kind ? ' ' + esc(n.kind) : ''}${this.model.isSecret(n) ? ' secret' : ''}${n.st ? ' stnote' : ''}">${n.title || tierTag ? `<b>${esc(n.title || '')}${tierTag ? `<span class="tiertag">${esc(tierTag)}</span>` : ''}</b>` : ''}<div class="enrich">${n.html || ''}</div></div>`; }
+  noteHtml(n, tierTag) { return `<div class="scene${n.kind ? ' ' + esc(n.kind) : ''}${this.model.isSecret(n) ? ' secret' : ''}">${n.title || tierTag ? `<b>${esc(n.title || '')}${tierTag ? `<span class="tiertag">${esc(tierTag)}</span>` : ''}</b>` : ''}<div class="enrich">${n.html || ''}</div></div>`; }
   domainHtml(p) {
     const m = this.model, L = m.domainLayer();
     const ds = m.domainsOf(p.id).filter(z => m.known(z, 'zones', this.st));
@@ -1132,7 +1114,7 @@ export class AtlasView {
     const q = this.el.fq.value.trim().toLowerCase(), m = this.model;
     if (!q) { this.el.fres.innerHTML = `<div class="fhint">Type to search every realm and level: places, zones, routes and people.</div>`; return; }
     const words = q.split(/\s+/);
-    const hits = m.searchIndex().filter(h => m.known(h.it, h.coll, this.st)).map(h => { const t = this.tierOf(h.it, h.coll); const name = this.nameOf(h.it, h.coll); const text = t >= TIER.FULL ? h.text : t >= TIER.BASIC ? [h.it.name, h.it.sub, h.it.kicker, h.it.tag, stripHtml(h.it.brief)].filter(Boolean).join(' ').toLowerCase() : name.toLowerCase(); return {h, name, text}; })
+    const hits = m.searchIndex().filter(h => m.known(h.it, h.coll, this.st)).map(h => { const t = this.tierOf(h.it, h.coll); const name = this.nameOf(h.it, h.coll); const text = t >= TIER.FULL ? h.text : t >= TIER.BASIC ? [h.it.name, h.it.sub, h.it.kicker, h.it.tag].filter(Boolean).join(' ').toLowerCase() : name.toLowerCase(); return {h, name, text}; })
       .filter(x => words.every(w => x.text.includes(w)))
       .map(x => Object.assign(x, {score: (x.name.toLowerCase().startsWith(q) ? 3 : 0) + (x.name.toLowerCase().includes(q) ? 2 : 0) + (x.h.it.realm === this.st.realm ? 0.5 : 0)}))
       .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name)).slice(0, 40);

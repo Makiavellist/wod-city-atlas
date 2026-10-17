@@ -67,14 +67,6 @@ export class JournalStore extends BaseStore {
     return page;
   }
   async _persistItem(coll, id, d) { const page = await this._ensurePage(coll); await page.update({[`flags.${MOD}.items.${id}`]: JSON.stringify(d)}); }
-  async _persistMany(list, onProgress) {
-    const by = new Map(); for (const x of list) { if (!by.has(x.coll)) by.set(x.coll, []); by.get(x.coll).push(x); }
-    let done = 0;
-    for (const [coll, xs] of by) {
-      const page = await this._ensurePage(coll);
-      for (let i = 0; i < xs.length; i += CHUNK) { const upd = {}; for (const x of xs.slice(i, i + CHUNK)) upd[`flags.${MOD}.items.${x.id}`] = JSON.stringify(x.data); await page.update(upd); done += Math.min(CHUNK, xs.length - i); onProgress?.(done, list.length); }
-    }
-  }
   async _persistDelete(coll, id) { const page = this.pageFor(coll); if (page) await page.update({[`flags.${MOD}.items.-=${id}`]: null}); }
   async _persistMeta() {
     const meta = metaOf(this.atlas);

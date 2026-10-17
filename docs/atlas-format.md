@@ -42,7 +42,7 @@ Effect types: `gradient` (linear/radial), `fog`, `vignette`, `stars` and `waves`
 
 ## Map items
 
-All map items take `realm`, `level` (or `levels: []`), `layer`, `gm` (Storyteller only), `name`, `sub`, `kicker`, `alias` and `aliasText` (name and rumour while players only know it exists), `brief` (common knowledge, shown from Basic), `html` (full description, shown with Full), `img`, `reveal: {all, users: {userId: tier}}`, `notes: [{title, html, kind: scene|law|secret|play|st, secret, reveal, st}]` (`secret` callouts are revealed one by one; `st` callouts are Storyteller only), `facts: [{k, v}]`, `tags: [{text, color}]`, `people: [ids]`, `anchor` (twin in another realm), `links: [{id, label}]`, `uuid` (Foundry document) and `src`.
+All map items take `realm`, `level` (or `levels: []`), `layer`, `gm` (Storyteller only), `name`, `sub`, `kicker`, `html`, `img`, `notes: [{title, html, kind: scene|law|secret|play, gm}]`, `facts: [{k, v}]`, `tags: [{text, color}]`, `people: [ids]`, `anchor` (twin in another realm), `links: [{id, label}]`, `uuid` (Foundry document) and `src`.
 
 - **place**: `at`, `cat`, `faction`, `color`, `icon`, `precision`, `zone`, `hidden` (no pin), `zoom`, `pin: {border, glow, bg: [c1, c2], anim: "pulse"}`.
 - **zone**: `rings: [[pt…], …]` (even-odd), `style` (name or object), `owners`, `container`, `rating: {label, value, max, text}`, `label: {text, sub, at, minZoom}`, `noLabel`, `fillImage: {src, minZoom, alpha}`, `ref` (clicking opens another entry), `order`.
@@ -63,7 +63,7 @@ Colours may be `auto` or `auto:0.3`, meaning the item's own colour (from its fac
 
 ## People and pages
 
-- **person**: `name`, `kicker`, `sub`, `tag`, `faction`, `group: {realmId: factionId}`, `status`, `icon`, `img`, `alias`, `aliasText`, `brief`, `html`, `notes`, `facts`, `relations: {title, rows: [{a: who, b: attitude, ref: personId, secret, reveal}]}`, `at: [ids]`, `realms: ["waking", "waking:underground", …]`, `uuid`.
+- **person**: `name`, `kicker`, `sub`, `tag`, `faction`, `group: {realmId: factionId}`, `status`, `icon`, `img`, `html`, `notes`, `facts`, `relations: {title, rows: [[who, attitude]]}`, `at: [ids]`, `realms: ["waking", "waking:underground", …]`, `uuid`.
 - **page**: `title`, `realm`, `level`/`levels`, `tab` (pages|places|people|zones), `order`, `gm`, `html`. Inside `html`, `.gm-only` and `.player-only` hide text from players or from the Storyteller, `data-link="id"` makes a link to an entry, and the classes `tl`, `hook`, `lead`, `note` and `council` give the timeline, hook and table looks.
 
 ## Base map
