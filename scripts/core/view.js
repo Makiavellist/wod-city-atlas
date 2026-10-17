@@ -6,6 +6,26 @@ import {Renderer} from './renderer.js';
 const PREF_KEY = 'wod-city-atlas:prefs:';
 const reduceMotion = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+/** The pin's body: a shape drawn in SVG, outlined in the pin colour (--c). */
+const SHAPES = {
+  circle: '<circle cx="16" cy="16" r="13"/>',
+  square: '<rect x="3.5" y="3.5" width="25" height="25" rx="5"/>',
+  diamond: '<path d="M16 2 30 16 16 30 2 16z"/>',
+  hex: '<path d="M16 2.5l11.7 6.75v13.5L16 29.5 4.3 22.75V9.25z"/>',
+  shield: '<path d="M16 2.5l12 4v8.5c0 7-5 12-12 14.5C9 27 4 22 4 15V6.5z"/>',
+  octagon: '<path d="M10.6 3h10.8L29 10.6v10.8L21.4 29H10.6L3 21.4V10.6z"/>',
+  marker: '<path d="M16 30C9 22 4.5 17 4.5 12a11.5 11.5 0 0 1 23 0c0 5-4.5 10-11.5 18z"/>',
+  note: '<path d="M4 4h24v17l-7 7H4z"/><path d="M21 28v-7h7" fill="none"/>'
+};
+export const PIN_SHAPES = Object.keys(SHAPES).filter(k => k !== 'note');
+function pinBody(shape, border = 'solid', width, bg) {
+  const d = SHAPES[shape] || SHAPES.circle, w = width ? Math.max(1, +width) * 1.1 : 2.2;
+  const dash = border === 'dashed' ? 'stroke-dasharray:4.5 3;' : border === 'dotted' ? 'stroke-dasharray:.1 3.6;stroke-linecap:round;' : '';
+  const fill = Array.isArray(bg) && bg[1] ? bg[1] : 'var(--wca-pin-b)', hi = Array.isArray(bg) && bg[0] ? bg[0] : 'var(--wca-pin-a)';
+  const dbl = border === 'double' ? `<g style="fill:none;stroke:${fill};stroke-width:1.2">${d}</g>` : '';
+  return `<svg class="pbg" viewBox="0 0 32 32" aria-hidden="true"><g style="fill:${fill};stroke:var(--c);stroke-width:${border === 'double' ? w + 1.6 : w};${dash}">${d}</g><g style="fill:${hi};opacity:.55;stroke:none;transform:scale(.62);transform-origin:16px 13px">${d}</g>${dbl}</svg>`;
+}
+
 export class AtlasView {
   /**
    * @param {HTMLElement} root
@@ -32,8 +52,10 @@ export class AtlasView {
     this.catsOff = new Set(this.prefs.catsOff || []);
     this.hiddenItems = new Set(this.prefs.hidden || []);
     this.showFaded = this.prefs.showFaded !== false;
+    this.notesShared = this.prefs.notesShared !== false; this.notesPrivate = !!this.prefs.notesPrivate;
     this.build();
     this.unsub = this.store.onChange?.(info => this.onStoreChange(info));
+    this.unsubNotes = this.adapter.onNotes?.(() => this.notesChanged());
     this.applyView(true);
     if (!this.sc) { this.home(true); if (this.prefs.view && this.prefs.view.z) { Object.assign(this.cam, this.prefs.view); this.clampView(); } }
     this.render();
@@ -43,7 +65,7 @@ export class AtlasView {
   get atlasKey() { return this.opts.atlasKey || this.store.key || 'default'; }
   loadPrefs() { try { return JSON.parse(localStorage.getItem(PREF_KEY + this.atlasKey) || '{}'); } catch (e) { return {}; } }
   savePrefs() {
-    try { localStorage.setItem(PREF_KEY + this.atlasKey, JSON.stringify({realm: this.st.realm, level: this.st.level, layers: Object.fromEntries(this.layerState), catsOff: [...this.catsOff], hidden: [...this.hiddenItems], showFaded: this.showFaded, viewAs: this.isGM ? (this.st.storyteller ? 'gm' : this.st.as) : undefined, view: {cx: this.cam.cx, cy: this.cam.cy, z: this.cam.z}, side: this.root.classList.contains('side-min')})); } catch (e) {}
+    try { localStorage.setItem(PREF_KEY + this.atlasKey, JSON.stringify({realm: this.st.realm, level: this.st.level, layers: Object.fromEntries(this.layerState), catsOff: [...this.catsOff], hidden: [...this.hiddenItems], showFaded: this.showFaded, viewAs: this.isGM ? (this.st.storyteller ? 'gm' : this.st.as) : undefined, view: {cx: this.cam.cx, cy: this.cam.cy, z: this.cam.z}, side: this.root.classList.contains('side-min'), atlasHidden: !!this.atlasHidden, notesShared: this.notesShared !== false, notesPrivate: !!this.notesPrivate})); } catch (e) {}
   }
   persist = debounce(() => this.savePrefs(), 400);
 
@@ -59,7 +81,7 @@ export class AtlasView {
           <div class="banner"><i></i><span></span></div>
         </header>
         <nav class="wca-tabs" role="tablist">
-          <button type="button" role="tab" data-tab="places"></button><button type="button" role="tab" data-tab="people"></button><button type="button" role="tab" data-tab="zones"></button><button type="button" role="tab" data-tab="pages"></button>
+          <button type="button" role="tab" data-tab="places"></button><button type="button" role="tab" data-tab="people"></button><button type="button" role="tab" data-tab="zones"></button><button type="button" role="tab" data-tab="pages"></button><button type="button" role="tab" data-tab="map"></button><button type="button" role="tab" data-tab="notes"></button>
         </nav>
         <div class="wca-pane"></div>
       </aside>
@@ -76,6 +98,8 @@ export class AtlasView {
           <button type="button" class="mbtn" data-act="out" title="Zoom out">${svg('minus', 2)}</button>
           <button type="button" class="mbtn" data-act="home" title="Show the whole map">${svg('home')}</button>
           <button type="button" class="mbtn" data-act="find" title="Search every layer ( / )">${svg('search')}</button>
+          <button type="button" class="mbtn" data-act="note" title="Add a note to the map" hidden>${svg('note')}</button>
+          <button type="button" class="mbtn" data-act="hideatlas" title="Hide or show the atlas on the scene" hidden>${svg('scene')}</button>
           <span class="hotlayers"></span>
           <span class="gmbtns"></span>
           <div class="wca-layers" hidden></div>
@@ -98,10 +122,14 @@ export class AtlasView {
     this.el.bar.addEventListener('click', e => this.onBar(e));
     this.el.fq.addEventListener('input', () => this.runFinder());
     this.el.fq.addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); this.closeFinder(); } else if (e.key === 'Enter') { const b = this.el.fres.querySelector('[data-id]'); if (b) b.click(); } else if (e.key === 'ArrowDown') { e.preventDefault(); const b = this.el.fres.querySelector('[data-id]'); if (b) b.focus(); } });
-    R.querySelector('.wca-finder .fx').addEventListener('click', () => this.closeFinder());
+    this.el.finder.querySelector('.fx').addEventListener('click', () => this.closeFinder());
     this.el.fres.addEventListener('click', e => { const b = e.target.closest('[data-id]'); if (b) { this.closeFinder(); this.open(b.dataset.id); } });
     this.el.pane.addEventListener('click', e => this.onPaneClick(e));
-    this.el.pane.addEventListener('change', e => { const sel = e.target.closest('.reveal select[data-rv]'); if (sel) { const p = sel.closest('.reveal'); this.setReveal(p.dataset.revealId, sel.dataset.rv, sel.value); } });
+    this.el.pane.addEventListener('change', e => {
+      const sel = e.target.closest('.reveal select[data-rv]'); if (sel) { const p = sel.closest('.reveal'); this.setReveal(p.dataset.revealId, sel.dataset.rv, sel.value); return; }
+      const va = e.target.closest('.maptab select[data-viewas]'); if (va) { this.setViewAs(va.value); return; }
+      const sw = e.target.closest('.secrow select[data-sw]'); if (sw) { const p = sw.closest('.reveal'); this.setSecret(p.dataset.revealId, sw.closest('.secrow').dataset.sec, sw.dataset.sw, sw.value); }
+    });
     R.addEventListener('keydown', e => this.onKey(e));
     this.bindMap();
     this.ro = new ResizeObserver(() => this.resize()); this.ro.observe(this.el.map);
@@ -111,19 +139,27 @@ export class AtlasView {
   mountScene() {
     const R = this.root, L = this.sc.layer;
     R.classList.add('scene-hud');
-    const hud = document.createElement('div'); hud.className = 'wca-hud';
-    hud.append(R.querySelector('.wca-modebar'), this.el.bar, this.el.legend, this.el.finder);
-    R.prepend(hud);
+    // realm & level switches, layers, search and the note tool sit in a toolbar on the scene itself
+    const bar = document.createElement('div'); bar.className = 'wca-scenebar';
+    bar.append(R.querySelector('.wca-modebar'), this.el.bar, this.el.finder);
+    this.el.map.appendChild(bar);
+    this.el.legend.remove();
     L.classList.add('wca', 'scene-map'); L.appendChild(this.el.map);
-    this.el.hud = hud; this.layerRoot = L;
+    this.el.scenebar = bar; this.layerRoot = L;
+    this.atlasHidden = !!this.prefs.atlasHidden; L.classList.toggle('atlas-off', this.atlasHidden);
     // the wheel over a pin still zooms the scene
     L.addEventListener('wheel', e => this.sc.forwardWheel?.(e), {passive: true});
   }
   /** Scene mode: the scene picture already shows this realm's plain map, so the layer stays transparent there. */
   get clearBase() { return !!(this.sc && this.sc.baseShown && this.sc.baseShown(this.st.realm, this.st.level)); }
+  setAtlasHidden(on) {
+    this.atlasHidden = !!on; this.layerRoot?.classList.toggle('atlas-off', this.atlasHidden);
+    const b = this.el.bar.querySelector('[data-act="hideatlas"]'); if (b) { b.setAttribute('aria-pressed', String(this.atlasHidden)); b.innerHTML = svg(this.atlasHidden ? 'eyeoff' : 'scene'); }
+    this.persist(); if (this.tab === 'map' && !this.detailId) this.render(true);
+  }
   roots() { return this.layerRoot ? [this.root, this.layerRoot] : [this.root]; }
   destroy() {
-    this.dead = true; this.ro?.disconnect(); this.unsub?.(); cancelAnimationFrame(this.raf); cancelAnimationFrame(this.loopRaf); this.savePrefs();
+    this.dead = true; this.ro?.disconnect(); this.unsub?.(); this.unsubNotes?.(); cancelAnimationFrame(this.raf); cancelAnimationFrame(this.loopRaf); this.savePrefs();
     this.editor?.destroy?.(); this.root.innerHTML = ''; if (this.layerRoot) this.layerRoot.innerHTML = '';
   }
   resolveUrl(src) { return this.adapter.resolveUrl ? this.adapter.resolveUrl(src) : src; }
@@ -158,7 +194,7 @@ export class AtlasView {
     m.querySelector('.ttl').innerHTML = a.titleHtml || esc(a.title);
     m.querySelector('.date').textContent = v.date || '';
     const bn = m.querySelector('.banner'); bn.hidden = !v.banner; bn.querySelector('span').textContent = v.banner || '';
-    this.root.querySelectorAll('.wca-tabs button').forEach(b => { b.textContent = v.terms[b.dataset.tab] || b.dataset.tab; b.setAttribute('aria-selected', String(b.dataset.tab === this.tab)); });
+    this.root.querySelectorAll('.wca-tabs button').forEach(b => { b.textContent = ({map: 'Map', notes: 'Notes'})[b.dataset.tab] || v.terms[b.dataset.tab] || b.dataset.tab; b.setAttribute('aria-selected', String(b.dataset.tab === this.tab)); b.hidden = b.dataset.tab === 'notes' && !this.adapter.notes; });
     // realm & level switches
     const rl = this.st.storyteller ? this.model.realmList : this.model.visibleRealms(this.st);
     const locked = !this.isGM && !!this.sc?.locked?.();
@@ -238,6 +274,8 @@ export class AtlasView {
   }
   renderGmButtons() {
     const canEdit = this.opts.canEdit ?? this.isGM;
+    const nb = this.el.bar.querySelector('[data-act="note"]'); if (nb) { nb.hidden = !this.adapter.notes; nb.setAttribute('aria-pressed', String(!!this.placing)); }
+    const hb = this.el.bar.querySelector('[data-act="hideatlas"]'); if (hb) { hb.hidden = !this.sc; hb.setAttribute('aria-pressed', String(!!this.atlasHidden)); hb.innerHTML = svg(this.atlasHidden ? 'eyeoff' : 'scene'); }
     if (this.sc) {
       const lk = this.sc.locked?.();
       this.el.gmb.innerHTML = (this.adapter.openFull ? `<button type="button" class="mbtn" data-act="full" title="${canEdit ? 'Open the full atlas window (to edit)' : 'Open the atlas in a window'}">${svg(canEdit ? 'pen' : 'window')}</button>` : '') +
@@ -274,6 +312,9 @@ export class AtlasView {
     else if (a === 'find') this.openFinder();
     else if (a === 'side') { if (this.sc) this.sc.toggleHud?.(); else { this.root.classList.toggle('side-min'); this.persist(); } }
     else if (a === 'full') this.adapter.openFull?.(this.getState());
+    else if (a === 'note') this.startNote(!this.placing);
+    else if (a === 'hideatlas') this.setAtlasHidden(!this.atlasHidden);
+    else if (a === 'maptab') { this.tab = 'map'; this.detailId = null; this.render(); this.sc?.showHud?.(); }
     else if (a === 'lock') { this.sc?.setLocked?.(!this.sc.locked()); }
     else if (a === 'edit') this.toggleEdit();
     else if (a === 'share') this.adapter.share?.(this.getState());
@@ -391,10 +432,11 @@ export class AtlasView {
   hoverAt(sx, sy) {
     const h = this.renderer.hitTest(sx, sy); const id = h ? (h.zone || h.id) : null;
     if (id !== this.hover) { this.hover = id; this.dirty(); }
-    if (h) { const it = this.model.item(h.id); const coll = this.model.collOf(h.id); const t = this.tierOf(it, coll); this.showTip(`${esc(this.nameOf(it, coll))}<small>${esc(t >= TIER.BASIC ? this.kindLabel(coll, it) : '?')}${this.st.storyteller ? this.revealBadgeText(it, coll) : ''}</small>`, null, sx, sy); this.el.map.style.cursor = 'pointer'; }
+    if (h) { const it = this.model.item(h.id); const coll = this.model.collOf(h.id); this.showTip(this.tipHtml(it, coll), null, sx, sy); this.el.map.style.cursor = 'pointer'; }
     else { this.hideTip(); this.el.map.style.cursor = ''; }
   }
   clickAt(sx, sy, e) {
+    if (this.placing) { this.placeNote(this.toWorld(sx, sy)); return; }
     if (this.editor && this.editor.click(sx, sy, e)) return;
     const h = this.renderer.hitTest(sx, sy);
     if (h) this.open(h.id, {fromMap: true}); else if (this.detailId) { /* keep */ }
@@ -405,7 +447,7 @@ export class AtlasView {
     const k = e.key;
     let done = true;
     if (k === '/' || (k === 'k' && (e.ctrlKey || e.metaKey))) this.openFinder();
-    else if (k === 'Escape') { if (!this.el.finder.hidden) this.closeFinder(); else if (this.editor && this.editor.escape()) {} else if (this.detailId) { this.detailId = null; this.setSel(null); this.render(); } else done = false; }
+    else if (k === 'Escape') { if (this.placing) this.startNote(false); else if (!this.el.finder.hidden) this.closeFinder(); else if (this.editor && this.editor.escape()) {} else if (this.detailId) { this.detailId = null; this.setSel(null); this.render(); } else done = false; }
     else if (/^[1-9]$/.test(k) && !e.ctrlKey && !e.metaKey && !e.altKey) { const r = (this.st.storyteller ? this.model.realmList : this.model.visibleRealms(this.st))[+k - 1]; if (r) this.setRealm(r.id); else done = false; }
     else if (k === '[' || k === ']') { const lv = this.st.storyteller ? this.model.realm(this.st.realm).levels : this.model.visibleLevels(this.st.realm, this.st); const i = lv.findIndex(l => l.id === this.st.level); const n = lv[clamp(i + (k === ']' ? 1 : -1), 0, lv.length - 1)]; if (n) this.setLevel(n.id); }
     else if (k === '+' || k === '=') this.animateTo([this.cam.cx, this.cam.cy], this.cam.z + 1, 200);
@@ -418,9 +460,23 @@ export class AtlasView {
   showTip(html, anchor, x, y) {
     const t = this.el.tip; t.innerHTML = html; t.hidden = false;
     let px = x, py = y; if (anchor) { const r = anchor.getBoundingClientRect(), m = this.el.map.getBoundingClientRect(); px = r.left - m.left + r.width / 2; py = r.top - m.top; }
+    t.classList.toggle('pic', !!t.querySelector('.tipimg'));
     const w = t.offsetWidth; t.style.left = clamp(px - w / 2, 6, this.cam.W - w - 6) + 'px'; t.style.top = Math.max(6, py - t.offsetHeight - 14) + 'px';
   }
   hideTip() { this.el.tip.hidden = true; }
+  /** The picture for an entry: its own, its linked Actor's or Scene's, or (places, domains) a known person's there. */
+  pictureOf(it, coll) {
+    if (!it || this.tierOf(it, coll) < TIER.BASIC) return null;
+    const own = it.img || this.docInfo(it.uuid)?.img; if (own) return own;
+    const ppl = coll === 'zones' ? (it.owners || []).map(i => this.model.item(i)).filter(Boolean) : coll === 'places' ? this.model.peopleAt(it) : [];
+    for (const q of ppl) { if (this.tierOf(q, 'people') < TIER.BASIC) continue; const pic = q.img || this.docInfo(q.uuid)?.img; if (pic) return pic; }
+    return null;
+  }
+  tipHtml(it, coll) {
+    const t = this.tierOf(it, coll), pic = this.pictureOf(it, coll);
+    const sub = t >= TIER.BASIC ? this.kindLabel(coll, it) : '?';
+    return `${pic ? `<img class="tipimg" src="${esc(this.resolveUrl(pic))}" alt="">` : ''}<span class="tiptx">${esc(this.nameOf(it, coll))}<small>${esc(sub)}${this.st.storyteller ? esc(this.revealBadgeText(it, coll)) : ''}</small></span>`;
+  }
 
   /* ================= drawing loop ================= */
   dirty() { if (this.sc) { this.needs = true; return; } if (!this.needs && !this.dead) { this.needs = true; this.raf = requestAnimationFrame(() => this.frame()); } }
@@ -465,16 +521,30 @@ export class AtlasView {
       el.style.setProperty('--c', color);
       if (pin.glow) el.style.setProperty('--g', pin.glow === true ? color : pin.glow);
       const border = pin.border || (prec && prec.border) || 'solid';
-      const bg = pin.bg ? `radial-gradient(circle at 50% 40%,${pin.bg[0]},${pin.bg[1]})` : '';
       const nm = this.nameOf(p, 'places');
-      el.innerHTML = `<span class="pin${pin.glow ? ' glow' : ''}" style="border-style:${esc(border)};${pin.width ? `border-width:${+pin.width}px;` : ''}${bg ? `background:${bg};` : ''}">${svg(known ? this.model.iconOf(p, 'places') : 'unknown', 1.7)}</span><span class="lbl">${esc(nm)}</span>`;
+      const photo = known && pin.photo ? this.pictureOf(p, 'places') : null;
+      const shape = photo ? 'circle' : (known ? pin.shape : 'circle') || 'circle';
+      el.classList.add('s-' + shape);
+      el.innerHTML = `<span class="pin${pin.glow ? ' glow' : ''}${photo ? ' photo' : ''}">${pinBody(shape, border, pin.width, pin.bg)}${photo ? `<img class="pphoto" src="${esc(this.resolveUrl(photo))}" alt="">` : svg(known ? this.model.iconOf(p, 'places') : 'unknown', 1.7)}</span><span class="lbl">${esc(nm)}</span>`;
       el.setAttribute('aria-label', `${nm}, ${cat.name || ''}`); el.dataset.id = p.id;
       el.addEventListener('click', e => { e.stopPropagation(); if (this.editor && this.editor.markerClick(p.id, e)) return; this.open(p.id, {fromMap: true}); });
       el.addEventListener('pointerdown', e => { e.stopPropagation(); if (this.editor) this.editor.markerDown(p.id, e); });
-      el.addEventListener('pointerenter', () => { this.showTip(`${esc(nm)}<small>${esc(cat.name || '')}${this.st.storyteller ? this.revealBadgeText(p, 'places') : ''}</small>`, el); });
+      el.addEventListener('pointerenter', () => { this.showTip(this.tipHtml(p, 'places'), el); });
       el.addEventListener('pointerleave', () => this.hideTip());
       O.appendChild(el);
       this.markers.push({p, el, nm, w: this.model.proj.toWorld(p.at), sx: 0, sy: 0, vis: false, canon: !p.precision || p.precision === 'canon'});
+    }
+    for (const n of this.visibleNotes()) {
+      if (!n.at || n.realm !== st.realm || (n.level && n.level !== st.level)) continue;
+      const el = document.createElement('button'); el.type = 'button'; el.className = 'wca-pin pnote s-note' + (n.shared ? ' shared' : ' private'); el.dataset.id = 'note:' + n.id;
+      el.style.setProperty('--c', n.color || n.authorColor || '#e8d27a');
+      el.innerHTML = `<span class="pin">${pinBody('note', 'solid')}${svg(n.icon || 'note', 1.7)}</span><span class="lbl">${esc(n.title || 'Note')}</span>`;
+      el.addEventListener('click', e => { e.stopPropagation(); this.openNote(n.id); });
+      el.addEventListener('pointerdown', e => e.stopPropagation());
+      el.addEventListener('pointerenter', () => this.showTip(`<span class="tiptx">${esc(n.title || 'Note')}<small>${esc(n.mine ? (n.shared ? 'Your note · everyone sees it' : 'Your note · only you') : `${n.authorName || 'Someone'}'s note${n.shared ? '' : ' (private)'}`)}</small></span>`, el));
+      el.addEventListener('pointerleave', () => this.hideTip());
+      O.appendChild(el);
+      this.markers.push({p: {id: 'note:' + n.id}, note: n, el, nm: n.title || 'Note', w: this.model.proj.toWorld(n.at), sx: 0, sy: 0, vis: false, canon: true});
     }
     this.markMatches(); this.dirty();
   }
@@ -500,7 +570,7 @@ export class AtlasView {
       for (const m of vis) { const w = (m.nm || '').length * 6.4 + 6, bx = [m.sx + 17, m.sy - 8, m.sx + 17 + w, m.sy + 8]; const hit = boxes.some(o => !(bx[2] < o[0] || bx[0] > o[2] || bx[3] < o[1] || bx[1] > o[3]) && !(o[0] === m.sx - 14 && o[1] === m.sy - 14)); m.el.classList.toggle('nolbl', hit && m.p.id !== this.sel); if (!hit || m.p.id === this.sel) boxes.push(bx); }
     }
   }
-  markMatches() { const q = this.q.trim().toLowerCase(); for (const m of this.markers || []) m.match = !q || this.matches(m.p, q); }
+  markMatches() { const q = this.q.trim().toLowerCase(); for (const m of this.markers || []) m.match = !q || !!m.note || this.matches(m.p, q); }
   matches(it, q) { if (!q) return true; if (this.tierOf(it) < TIER.BASIC) return this.nameOf(it).toLowerCase().includes(q); if (this.tierOf(it) < TIER.FULL) return [it.name, it.sub, it.kicker, it.tag].filter(Boolean).join(' ').toLowerCase().includes(q); const cat = this.model.category(it.cat), f = this.model.faction(it.faction); return [it.name, it.sub, it.kicker, it.tag, stripHtml(it.html), cat && cat.name, f && f.name, ...(this.model.peopleAt(it).map(p => p.name))].filter(Boolean).join(' ').toLowerCase().includes(q); }
 
   /* ================= selection & navigation ================= */
@@ -513,6 +583,7 @@ export class AtlasView {
   }
   /** Open any item by id: switch realm/level as needed, focus the map and show its dossier. */
   open(id, o = {}) {
+    if (String(id).startsWith('note:')) return this.openNote(id.slice(5));
     const ref = this.model.get(id); if (!ref) return;
     const {coll, item: it} = ref;
     if (!this.model.known(it, coll, this.st)) return;
@@ -575,7 +646,7 @@ export class AtlasView {
   }
   renderTab() {
     this._lastTab = this.tab;
-    const fn = {places: () => this.renderPlaces(), people: () => this.renderPeople(), zones: () => this.renderZones(), pages: () => this.renderPages()}[this.tab] || (() => this.renderPlaces());
+    const fn = {places: () => this.renderPlaces(), people: () => this.renderPeople(), zones: () => this.renderZones(), pages: () => this.renderPages(), map: () => this.renderMapTab(), notes: () => this.renderNotesTab()}[this.tab] || (() => this.renderPlaces());
     const scroll = this.el.pane.scrollTop; this.el.pane.innerHTML = fn(); if (this._keepScroll) this.el.pane.scrollTop = scroll; this._keepScroll = false;
     const q = this.el.pane.querySelector('.wca-q');
     if (q) q.addEventListener('input', () => { this.q = q.value; this.markMatches(); this.placeMarkers(); this.renderListOnly(); });
@@ -698,8 +769,92 @@ export class AtlasView {
     return pages.map(pg => `<section class="wca-page${this.veiled(pg, 'pages') ? ' gm-only' : ''}" data-page="${esc(pg.id)}"><div class="grp">${esc(pg.title || '')}${this.isGM && this.st.storyteller ? `<button type="button" class="eye" data-reveal-page="${esc(pg.id)}" title="Who can read this page">${svg('share')}</button>` : ''}</div>${pg.html || ''}</section>`).join('');
   }
 
+  /* ----- the Map tab: every switch for the map in one place ----- */
+  renderMapTab() {
+    const st = this.st, m = this.model, v = this.rv;
+    const locked = !this.isGM && !!this.sc?.locked?.();
+    const rl = st.storyteller ? m.realmList : m.visibleRealms(st), lv = st.storyteller ? m.realm(st.realm).levels : m.visibleLevels(st.realm, st);
+    const ls = this.layersShown();
+    const cats = m.categoriesFor(st.realm, st.level).filter(c => st.storyteller || this.tierOf(c, 'categories') >= 1);
+    let h = '';
+    if (rl.length > 1 || lv.length > 1) {
+      h += `<div class="grp">Realm${lv.length > 1 ? ' & level' : ''}</div>`;
+      if (locked) h += `<p class="hint">${svg('lock')} The Storyteller chooses the realm on this scene: ${esc(v.name)}${lv.length > 1 ? ' · ' + esc((lv.find(l => l.id === st.level) || {}).name || '') : ''}.</p>`;
+      else {
+        if (rl.length > 1) h += `<div class="mt-seg">${rl.map(r => `<button type="button" class="chip" data-mt-realm="${esc(r.id)}" aria-pressed="${r.id === st.realm}">${svg(r.icon || 'sun', 1.7)}${esc(r.name)}</button>`).join('')}</div>`;
+        if (lv.length > 1) h += `<div class="mt-seg">${lv.map(l => `<button type="button" class="chip" data-mt-level="${esc(l.id)}" aria-pressed="${l.id === st.level}">${esc(l.name || l.id)}</button>`).join('')}</div>`;
+      }
+    }
+    h += `<div class="grp">Layers <span class="n">${ls.length}</span></div>` + (ls.length ? `<div class="mt-list">${ls.map(L => `<label>${L.icon ? svg(L.icon, 1.7) : '<i></i>'}<span>${esc(L.name || L.id)}</span><input class="tog" type="checkbox" data-layer="${esc(L.id)}" ${this.layerOn(L.id) ? 'checked' : ''}></label>`).join('')}</div>` : '<p class="hint">No layers here.</p>');
+    if (cats.length) h += `<div class="grp">Places shown</div><div class="chips" role="group">${cats.map(c => `<button type="button" class="chip" data-cat="${esc(c.id)}" aria-pressed="${!this.catsOff.has(c.id)}" style="--c:${esc(c.color || 'var(--wca-bone)')}">${svg(c.icon || 'pin', 1.7)}${esc(c.name)}</button>`).join('')}</div>`;
+    if (this.adapter.notes) h += `<div class="grp">Notes</div><div class="mt-list"><label>${svg('note', 1.7)}<span>Notes others share</span><input class="tog" type="checkbox" data-notes="shared" ${this.notesShared ? 'checked' : ''}></label>${this.isGM ? `<label>${svg('eyeoff', 1.7)}<span>Players' private notes</span><input class="tog" type="checkbox" data-notes="private" ${this.notesPrivate ? 'checked' : ''}></label>` : ''}</div><button type="button" class="btn small" data-act="note-new">${svg('note')} Add a note to the map</button>`;
+    h += `<div class="grp">View</div><div class="mt-btns"><button type="button" class="btn small" data-act="mt-home">${svg('home')} Whole map</button><button type="button" class="btn small" data-act="mt-find">${svg('search')} Search</button>${this.sc ? `<button type="button" class="btn small" data-act="mt-hide" aria-pressed="${!!this.atlasHidden}">${svg(this.atlasHidden ? 'eyeoff' : 'scene')} ${this.atlasHidden ? 'Show the atlas' : 'Hide the atlas'}</button>` : ''}</div>`;
+    if (this.isGM) h += `<div class="grp">Storyteller</div><label class="mt-row">View as<select data-viewas>${this.viewAsOptions().map(([val, n]) => `<option value="${esc(val)}" ${val === (st.storyteller ? 'gm' : st.as) ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></label>` + (this.sc?.setLocked ? `<label class="mt-row">Players follow my realm<input class="tog" type="checkbox" data-mt-lock ${this.sc.locked() ? 'checked' : ''}></label>` : '');
+    if ((v.legend || []).length) h += `<div class="grp">Legend</div><div class="mt-legend">${v.legend.map(l => `<span><i class="k-${esc(l.kind || 'fill')}" style="--c:${esc(l.color)}"></i>${esc(l.label)}</span>`).join('')}</div>`;
+    return `<div class="maptab">${h}</div>`;
+  }
+  /* ----- notes made by players (and the Storyteller) on the map ----- */
+  visibleNotes() {
+    const N = this.adapter.notes; if (!N) return [];
+    let list = []; try { list = N.list() || []; } catch (e) { return []; }
+    return list.filter(n => n.mine || (n.shared ? this.notesShared : (this.isGM && this.notesPrivate)));
+  }
+  notesChanged() { this.buildMarkers(); if (this.tab === 'notes' && !this.detailId) this.render(true); else if (String(this.detailId || '').startsWith('note:') && !this._noteDraft) this.renderDetail(); }
+  startNote(on) {
+    this.placing = !!on; this.root.classList.toggle('placing', this.placing); this.layerRoot?.classList.toggle('placing', this.placing);
+    this.renderGmButtons();
+    if (this.placing) { this.adapter.notify?.('Click on the map where the note goes (Esc to cancel).'); this.sc?.showHud?.(); }
+  }
+  placeNote(w) {
+    this.startNote(false);
+    const at = this.model.proj.toLL(w).map(this.model.proj.round);
+    const id = Math.random().toString(36).slice(2, 10);
+    this._noteDraft = {id, at, realm: this.st.realm, level: this.st.level, title: '', html: '', icon: 'note', shared: false, mine: true, isNew: true};
+    this.detailId = 'note:' + id; this.renderNote(id); this.sc?.showHud?.();
+  }
+  openNote(id) {
+    const n = this.visibleNotes().find(x => x.id === id); if (!n) return;
+    if (n.realm && n.realm !== this.st.realm) this.setRealm(n.realm, true); if (n.level && n.level !== this.st.level) this.setLevel(n.level, true);
+    this._noteDraft = null; this.detailId = 'note:' + id; this.setSel('note:' + id); this.renderNote(id); this.sc?.showHud?.();
+  }
+  renderNote(id) {
+    const n = this._noteDraft && this._noteDraft.id === id ? this._noteDraft : this.visibleNotes().find(x => x.id === id);
+    if (!n) { this.detailId = null; return this.renderTab(); }
+    const edit = n.mine, icons = ['note', 'pin', 'star', 'eye', 'skull', 'drop', 'crown', 'key', 'swords', 'haven', 'flame', 'raven', 'church', 'glass', 'coin', 'grave'];
+    const back = `<div class="detbar"><button type="button" class="back" data-act="back">${svg('back', 2)} Back</button></div>`;
+    if (!edit) {
+      this.el.pane.innerHTML = `<div class="det" style="--c:${esc(n.color || n.authorColor || '#e8d27a')}">${back}<div class="dsub">Note by ${esc(n.authorName || 'someone')}${n.shared ? '' : ' · private'}</div><h2>${esc(n.title || 'Note')}</h2><div class="body notebody">${esc(n.html || '').replace(/\n/g, '<br>')}</div><button type="button" class="btn" data-act="center">${svg('target')} Centre on map</button>${this.isGM ? `<button type="button" class="btn" data-act="note-del">${svg('trash')} Delete this note</button>` : ''}</div>`;
+      return;
+    }
+    this.el.pane.innerHTML = `<div class="det notef" style="--c:${esc(n.color || '#e8d27a')}">${back}<div class="dsub">${n.isNew ? 'New note' : 'Your note'}</div>
+      <form class="ed-form" autocomplete="off"><div class="ef wide"><label>Title</label><input type="text" name="title" value="${esc(n.title || '')}" placeholder="What is here?"></div>
+      <div class="ef wide"><label>Text</label><textarea name="html" rows="5" placeholder="Your notes…">${esc(n.html || '')}</textarea></div>
+      <div class="ef"><label>Icon</label><select name="icon">${icons.map(i => `<option value="${i}" ${i === (n.icon || 'note') ? 'selected' : ''}>${i}</option>`).join('')}</select></div>
+      <div class="ef"><label>Colour</label><input type="color" name="color" value="${esc(n.color || '#e8d27a')}"></div>
+      <div class="ef wide notevis"><label><input type="radio" name="shared" value="0" ${n.shared ? '' : 'checked'}> Only me</label><label><input type="radio" name="shared" value="1" ${n.shared ? 'checked' : ''}> Everyone</label></div>
+      <div class="ed-actions"><button type="submit" class="btn primary">${svg('check', 2)} Save</button>${n.isNew ? '' : `<button type="button" class="btn" data-act="note-del">${svg('trash')} Delete</button>`}<button type="button" class="btn" data-act="center">${svg('target')}</button></div></form></div>`;
+    const form = this.el.pane.querySelector('form');
+    form.querySelector('[name=title]').focus();
+    form.onsubmit = async e => {
+      e.preventDefault(); const f = form.elements;
+      const out = {id: n.id, at: n.at, realm: n.realm, level: n.level, title: f.title.value.trim() || 'Note', html: f.html.value, icon: f.icon.value, color: f.color.value, shared: f.shared.value === '1', t: Date.now()};
+      try { await this.adapter.notes.save(out); } catch (err) { this.adapter.notify?.('Could not save the note: ' + err.message, 'error'); return; }
+      this._noteDraft = null; this.detailId = null; this.tab = 'notes'; this.render(); this.buildMarkers();
+    };
+  }
+  renderNotesTab() {
+    const N = this.adapter.notes; if (!N) return '<div class="empty">Notes are not available here.</div>';
+    const all = this.visibleNotes(), mine = all.filter(n => n.mine), others = all.filter(n => !n.mine);
+    const realmName = n => { const r = this.model.atlas.realms[n.realm]; return r ? r.name : ''; };
+    const row = n => this.itemRow({id: 'note:' + n.id, c: n.color || n.authorColor || '#e8d27a', g: n.icon || 'note', n: n.title || 'Note', s: (n.mine ? (n.shared ? 'shared with everyone' : 'only you') : `${n.authorName || ''}${n.shared ? '' : ' · private'}`) + (n.realm !== this.st.realm ? ' · ' + realmName(n) : ''), tag: ''});
+    return `<button type="button" class="btn" data-act="note-new">${svg('note')} Add a note to the map</button><p class="hint">Notes are yours: the Storyteller's map stays as it is. Choose “Everyone” to share a note with the group.</p>` +
+      `<div class="grp">My notes <span class="n">${mine.length}</span></div>${mine.map(row).join('') || '<div class="empty-s">None yet.</div>'}` +
+      `<div class="grp">Shared by others <span class="n">${others.length}</span></div>${others.map(row).join('') || `<div class="empty-s">${this.notesShared ? 'None yet.' : 'Hidden (see the Map tab).'}</div>`}`;
+  }
+
   /* ----- detail ----- */
   renderDetail() {
+    if (String(this.detailId || '').startsWith('note:')) return this.renderNote(this.detailId.slice(5));
     const ref = this.model.get(this.detailId); if (!ref) { this.detailId = null; return this.renderTab(); }
     const {coll, item: it} = ref, m = this.model, st = this.st, A = m.atlas;
     if (!m.known(it, coll, st)) { this.detailId = null; return this.renderTab(); }
@@ -728,8 +883,8 @@ export class AtlasView {
       if (pic) H.push(`<figure class="portrait${coll === 'people' ? '' : ' wide'}"><img src="${esc(this.resolveUrl(pic))}" alt="${esc(it.name)}" loading="lazy"></figure>`);
       if (coll === 'people') H.push(this.sheetButton(it));
       if (coll === 'auras' && it.rating && full) H.push(`<div class="bigrating"><b>${esc(it.rating.label || 'Rating')}</b><span>${it.rating.value}</span><small>of ${it.rating.max || 10}</small>${this.ratingBar(Object.assign({warn: false}, it.rating))}</div>`);
-      const notes = (it.notes || []).filter(n => m.noteTier(n) <= t);
-      const tierTag = n => this.isGM && st.storyteller && m.noteTier(n) > TIER.FULL ? m.tierName(m.noteTier(n)) : '';
+      const notes = (it.notes || []).filter(n => m.noteVisible(n, it, coll, st));
+      const tierTag = n => this.secretTag(n);
       if (full) {
         if (it.facts && it.facts.length && coll === 'people') H.push(`<div class="mien">${it.facts.map(f2 => `<div><b>${esc(f2.k)}</b>${f2.v || ''}</div>`).join('')}</div>`);
         notes.filter(n => n.kind === 'law').forEach(n => H.push(this.noteHtml(n, tierTag(n))));
@@ -756,11 +911,12 @@ export class AtlasView {
         } else if (coll === 'people') {
           H.push(section('Where to find them', it.at || []));
           H.push(this.domainHtml(it));
-          if (it.relations && it.relations.rows && it.relations.rows.length) H.push(`<h3>${esc(it.relations.title || 'Connections')}</h3><div class="rel">${it.relations.rows.map(r => this.relationRow(r, it)).join('')}</div>`);
+          H.push(this.relationsHtml(it));
         }
         if (it.links && it.links.length) H.push(section('See also', it.links.map(l => l.id).filter(i => !(it.anchor === i))));
-      } else H.push(`<p class="lead unknown-note">Nothing more is known yet.</p>`);
+      } else { H.push(`<p class="lead unknown-note">Nothing more is known yet.</p>`); notes.filter(n => m.isSecret(n)).forEach(n => H.push(this.noteHtml(n, tierTag(n)))); }
     }
+    if (!known) (it.notes || []).filter(n => m.isSecret(n) && m.noteVisible(n, it, coll, st)).forEach(n => H.push(this.noteHtml(n, this.secretTag(n))));
     if (coll !== 'people' && coll !== 'pages') H.push(`<button type="button" class="btn" data-act="center">${svg('target')} Centre on map</button>`);
     if (this.isGM && st.storyteller) H.push(this.revealPanel(it, coll));
     if (it.src && full) H.push(`<div class="src">${/^(Improvised|From the|Domains)/.test(it.src) ? '' : 'Source: '}${it.src}</div>`);
@@ -793,7 +949,41 @@ export class AtlasView {
     const id = this._nameIdx.exact.get(q) ?? this._nameIdx.word.get(q);
     return id ? this.model.item(id) : null;
   }
-  relationRow(r, owner) {
+  /** "Secret" tag on callouts and relations; the Storyteller also sees who knows it. */
+  secretTag(n) { if (!this.model.isSecret(n)) return ''; return this.isGM && this.st.storyteller ? `Secret · known to ${this.model.secretAudience(n, this.players())}` : 'Secret'; }
+  /** Relations: this person's view of others, others' view of them, and (Storyteller) inline editing. */
+  relationsHtml(p) {
+    const m = this.model, st = this.st, gm = this.isGM && st.storyteller && (this.opts.canEdit ?? this.isGM);
+    const own = m.relRows(p).filter(r => m.noteVisible(r, p, 'people', st));
+    const theirs = [];
+    for (const q of Object.values(m.atlas.people)) {
+      if (q.id === p.id || !m.known(q, 'people', st)) continue;
+      for (const r of m.relRows(q)) { const tid = r.ref && !/^Actor\./.test(r.ref) ? r.ref : this.personByName(r.a)?.id; if (tid === p.id && m.noteVisible(r, q, 'people', st)) theirs.push({q, r}); }
+    }
+    if (!own.length && !theirs.length && !gm) return '';
+    let h = `<h3>${esc(p.relations?.title || 'Relations')}</h3>`;
+    h += own.length ? `<div class="rel">${own.map(r => this.relationRow(r, p, gm)).join('')}</div>` : (gm ? '<p class="hint">No relations yet.</p>' : '');
+    if (gm) {
+      const ppl = sortBy(Object.values(m.atlas.people).filter(q => q.id !== p.id), q => q.name || '');
+      h += `<div class="reladd" data-person="${esc(p.id)}"><select data-rel="ref"><option value="">Who…</option>${ppl.map(q => `<option value="${esc(q.id)}">${esc(q.name || q.id)}</option>`).join('')}</select><input data-rel="b" type="text" placeholder="Attitude (e.g. Hatred, Ally)"><label title="Hidden from players until you reveal it"><input data-rel="secret" type="checkbox"> Secret</label><button type="button" class="mini" data-act="rel-add">${svg('plus', 2)} Add</button></div>`;
+    }
+    if (theirs.length) h += `<h3>How others see them</h3><div class="rel">${theirs.map(({q, r}) => `<span><button type="button" class="rlink" data-go="${esc(q.id)}">${esc(this.nameOf(q, 'people'))}</button></span><span>${esc(r.b || '')}${m.isSecret(r) ? `<span class="tiertag">${esc(this.secretTag(r))}</span>` : ''}</span>`).join('')}</div>`;
+    return h;
+  }
+  async addRelation(pid, ref, b, secret) {
+    const p = this.store.atlas.people[pid]; if (!p || !ref) return;
+    const d = JSON.parse(JSON.stringify(p)); const t = this.model.item(ref);
+    const rows = this.model.relRows(d).map(({i, ...r}) => r);
+    rows.push(Object.assign({a: (t && t.name) || '', b: b || '', ref}, secret ? {secret: true, reveal: {all: 0}} : {}));
+    d.relations = Object.assign({}, d.relations || {}, {rows}); await this.store.setItem('people', pid, d);
+  }
+  async removeRelation(pid, idx) {
+    const p = this.store.atlas.people[pid]; if (!p) return;
+    const d = JSON.parse(JSON.stringify(p)); const rows = this.model.relRows(d).map(({i, ...r}) => r); rows.splice(idx, 1);
+    if (rows.length) d.relations.rows = rows; else if (d.relations) { delete d.relations.rows; if (!Object.keys(d.relations).length) delete d.relations; }
+    await this.store.setItem('people', pid, d);
+  }
+  relationRow(r, owner, gm) {
     const [w, a, ref] = Array.isArray(r) ? r : [r.a, r.b, r.ref];
     let target = null, actor = null;
     if (ref && /^Actor\./.test(ref)) actor = ref; else if (ref) target = this.model.item(ref); else target = this.personByName(w);
@@ -802,9 +992,11 @@ export class AtlasView {
     const ai = actor ? this.docInfo(actor) : null;
     const nm = target ? `<button type="button" class="rlink" data-go="${esc(target.id)}" title="Open ${esc(this.nameOf(target, 'people'))}">${esc(w || this.nameOf(target, 'people'))}</button>` : esc(w);
     const sheet = ai && ai.canOpen ? `<button type="button" class="rsheet" data-uuid="${esc(actor)}" title="Character sheet: ${esc(ai.name)}">${svg('sheet')}</button>` : '';
-    return `<span>${nm}${sheet}</span><span>${esc(a)}</span>`;
+    const tag = !Array.isArray(r) && this.model.isSecret(r) ? `<span class="tiertag">${esc(this.secretTag(r))}</span>` : '';
+    const del = gm && !Array.isArray(r) ? `<button type="button" class="rdel" data-act="rel-del" data-person="${esc(owner.id)}" data-idx="${r.i}" title="Remove this relation">${svg('x', 2)}</button>` : '';
+    return `<span>${nm}${sheet}</span><span>${esc(a)}${tag}${del}</span>`;
   }
-  noteHtml(n, tierTag) { return `<div class="scene${n.kind ? ' ' + esc(n.kind) : ''}${this.model.noteTier(n) > TIER.FULL ? ' secret' : ''}">${n.title || tierTag ? `<b>${esc(n.title || '')}${tierTag ? `<span class="tiertag">${esc(tierTag)}</span>` : ''}</b>` : ''}<div class="enrich">${n.html || ''}</div></div>`; }
+  noteHtml(n, tierTag) { return `<div class="scene${n.kind ? ' ' + esc(n.kind) : ''}${this.model.isSecret(n) ? ' secret' : ''}">${n.title || tierTag ? `<b>${esc(n.title || '')}${tierTag ? `<span class="tiertag">${esc(tierTag)}</span>` : ''}</b>` : ''}<div class="enrich">${n.html || ''}</div></div>`; }
   domainHtml(p) {
     const m = this.model, L = m.domainLayer();
     const ds = m.domainsOf(p.id).filter(z => m.known(z, 'zones', this.st));
@@ -823,7 +1015,31 @@ export class AtlasView {
       <label><span>Everyone</span><select data-rv="*"><option value="" ${allVal === '' ? 'selected' : ''}>default (${esc(m.tierName(def))})</option>${opt(allVal, false)}</select></label>
       ${ps.map(p => `<label><span style="color:${esc(p.color || 'inherit')}">${esc(p.name)}</span><select data-rv="${esc(p.id)}">${opt((r.users || {})[p.id] ?? '', true)}</select></label>`).join('') || '<p class="hint">No player accounts yet.</p>'}
       <div class="rv-quick"><button type="button" class="mini" data-rvq="0">Hide from all</button><button type="button" class="mini" data-rvq="1">Existence</button><button type="button" class="mini" data-rvq="2">Basic</button><button type="button" class="mini" data-rvq="3">Full</button></div>
-      <p class="hint">0 hidden · 1 only that it exists · 2 name &amp; picture · 3 full description · 4+ also the callouts marked with that tier.</p></div>`;
+      <p class="hint">0 hidden · 1 only that it exists · 2 name &amp; picture · 3 full description and ordinary callouts. Secrets below are revealed one by one.</p>${this.secretsPanel(it, coll)}</div>`;
+  }
+  /** Storyteller: reveal each secret (callout or relation) to everyone or to particular players. */
+  secretsPanel(it, coll) {
+    const m = this.model, ps = this.players(), list = [];
+    (it.notes || []).forEach((n, i) => { if (m.isSecret(n)) list.push({key: `notes:${i}`, n, label: n.title || stripHtml(n.html || '').slice(0, 60) || 'Callout'}); });
+    if (coll === 'people') m.relRows(it).forEach(r => { if (m.isSecret(r)) list.push({key: `rel:${r.i}`, n: r, label: `Relation: ${r.a || '?'} — ${r.b || ''}`}); });
+    if (!list.length) return '';
+    const known = (n, who) => { const rv = n.reveal || {}; if (who === '*') return rv.all != null && rv.all !== '' ? String(+rv.all) : (n.secret === undefined ? '' : '0'); const u = (rv.users || {})[who]; return u == null || u === '' ? '' : String(+u); };
+    return `<h3>${svg('eye')} Secrets</h3>` + list.map(({key, n, label}) => `<div class="secrow" data-sec="${esc(key)}"><b>${esc(label)}</b>
+      <label><span>Everyone</span><select data-sw="*"><option value="0" ${known(n, '*') !== '1' ? 'selected' : ''}>hidden</option><option value="1" ${known(n, '*') === '1' ? 'selected' : ''}>revealed to all</option></select></label>
+      ${ps.map(p => `<label><span style="color:${esc(p.color || 'inherit')}">${esc(p.name)}</span><select data-sw="${esc(p.id)}"><option value="" ${known(n, p.id) === '' ? 'selected' : ''}>as everyone</option><option value="1" ${known(n, p.id) === '1' ? 'selected' : ''}>knows it</option><option value="0" ${known(n, p.id) === '0' ? 'selected' : ''}>doesn't know</option></select></label>`).join('')}</div>`).join('');
+  }
+  async setSecret(id, key, who, val) {
+    const r = this.model.get(id); if (!r) return;
+    const it = JSON.parse(JSON.stringify(this.store.atlas[r.coll][id]));
+    const [kind, idxs] = key.split(':'), idx = +idxs; let n;
+    if (kind === 'notes') n = (it.notes || [])[idx];
+    else { const rows = this.model.relRows(it).map(({i, ...x}) => x); it.relations.rows = rows; n = rows[idx]; }
+    if (!n) return;
+    n.secret = true; delete n.tier; delete n.gm; const rv = n.reveal || {}; rv.users ||= {};
+    if (who === '*') rv.all = +val || 0; else if (val === '' || val == null) delete rv.users[who]; else rv.users[who] = +val;
+    if (!Object.keys(rv.users).length) delete rv.users; n.reveal = rv;
+    await this.store.setItem(r.coll, id, it);
+    if (+val === 1) this.adapter.notifyReveal?.({ids: who === '*' ? null : [who], name: `${it.name || it.title || ''}: ${n.title || n.a || 'a secret'}`});
   }
   async setReveal(id, who, val) {
     const r = this.model.get(id); if (!r) return;
@@ -866,6 +1082,17 @@ export class AtlasView {
     const hide = t.closest('[data-hide]'); if (hide) { const id = hide.dataset.hide; if (this.hiddenItems.has(id)) this.hiddenItems.delete(id); else { this.hiddenItems.add(id); } const z = this.model.item(id); if (!this.hiddenItems.has(id) && z && z.layer && !this.layerOn(z.layer)) this.setLayer(z.layer, true); this.persist(); this.dirty(); hide.setAttribute('aria-pressed', String(!this.hiddenItems.has(id))); hide.innerHTML = svg(this.hiddenItems.has(id) ? 'eyeoff' : 'share'); return; }
     const rp = t.closest('[data-reveal-page]'); if (rp) { this.detailId = rp.dataset.revealPage; this.renderDetail(); return; }
     const act0 = t.closest('[data-act]');
+    if (act0 && act0.dataset.act === 'note-new') { this.startNote(true); return; }
+    if (act0 && act0.dataset.act === 'note-del') { const id = String(this.detailId || '').slice(5); const n = this.visibleNotes().find(x => x.id === id); if (n) Promise.resolve(this.adapter.confirm ? this.adapter.confirm('Delete note', `Delete “${n.title || 'Note'}”?`) : true).then(ok => { if (ok) this.adapter.notes.remove(n).then(() => { this.detailId = null; this.render(); this.buildMarkers(); }); }); return; }
+    if (act0 && act0.dataset.act === 'mt-home') { this.home(); return; }
+    if (act0 && act0.dataset.act === 'mt-find') { this.openFinder(); return; }
+    if (act0 && act0.dataset.act === 'mt-hide') { this.setAtlasHidden(!this.atlasHidden); return; }
+    const mr = t.closest('[data-mt-realm]'); if (mr) { this.setRealm(mr.dataset.mtRealm, true); this.applyView(); this.render(true); this.focusRealm(); return; }
+    const ml = t.closest('[data-mt-level]'); if (ml) { this.setLevel(ml.dataset.mtLevel, true); this.render(true); return; }
+    const nt = t.closest('input[data-notes]'); if (nt) { if (nt.dataset.notes === 'shared') this.notesShared = nt.checked; else this.notesPrivate = nt.checked; this.persist(); this.buildMarkers(); return; }
+    const lk = t.closest('input[data-mt-lock]'); if (lk) { this.sc?.setLocked?.(lk.checked); return; }
+    if (act0 && act0.dataset.act === 'rel-add') { const box = act0.closest('.reladd'); const ref = box.querySelector('[data-rel="ref"]').value; if (!ref) return; this.addRelation(box.dataset.person, ref, box.querySelector('[data-rel="b"]').value.trim(), box.querySelector('[data-rel="secret"]').checked); return; }
+    if (act0 && act0.dataset.act === 'rel-del') { this.removeRelation(act0.dataset.person, +act0.dataset.idx); return; }
     if (act0 && act0.dataset.act === 'new-domain') { if (this.sc) return this.toggleEdit(true, {newDomain: act0.dataset.person}); if (!this.editMode) this.toggleEdit(true); this.editor?.startDomain(act0.dataset.person); return; }
     if (act0 && act0.dataset.act === 'edit-domain') { if (this.sc) return this.toggleEdit(true, {editItem: act0.dataset.zone}); if (!this.editMode) this.toggleEdit(true); this.editor?.edit(act0.dataset.zone); return; }
     const go = t.closest('[data-go]'); if (go) { this.open(go.dataset.go); return; }
@@ -873,7 +1100,8 @@ export class AtlasView {
     const uu = t.closest('[data-uuid]'); if (uu) { this.adapter.openUuid?.(uu.dataset.uuid); return; }
     const act = act0; if (!act) return;
     const a = act.dataset.act, it = this.model.item(this.detailId);
-    if (a === 'back') { this.detailId = null; this.setSel(null); this.render(); }
+    if (a === 'back') { this.detailId = null; this._noteDraft = null; this.setSel(null); this.render(); }
+    else if (a === 'center' && String(this.detailId || '').startsWith('note:')) { const id = this.detailId.slice(5); const n = (this._noteDraft && this._noteDraft.id === id) ? this._noteDraft : this.visibleNotes().find(x => x.id === id); if (n) this.focusAt(n.at); }
     else if (a === 'center' && it) this.focusItem(it, this.model.collOf(it.id));
     else if (a === 'edit-item' && it) { if (this.sc) return this.toggleEdit(true, {editItem: it.id}); if (!this.editMode) this.toggleEdit(true); this.editor?.edit(it.id); }
     else if (a === 'share-item' && it) this.adapter.share?.(this.getState());

@@ -50,6 +50,10 @@
     "Dossier": "City Atlas dossier",
     "ShowInAtlas": "Show in City Atlas",
     "AtlasShort": "Atlas",
-    "ActorFolder": "City Atlas characters"
+    "ActorFolder": "City Atlas characters",
+    "SettingPlayerWindow": "Players may open atlases outside scenes",
+    "SettingPlayerWindowHint": "Off: players only use an atlas through its scene; atlas journal entries are hidden from them. On: players can also open the atlas window and its journal entry.",
+    "UseScene": "This atlas is used through its scene. Ask your Storyteller to show it to you.",
+    "AtlasScenes": "Atlas scenes"
   }
 }

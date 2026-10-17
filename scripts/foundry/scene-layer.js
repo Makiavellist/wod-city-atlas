@@ -47,7 +47,7 @@ export class SceneAtlas {
     if (this.current) { this.current.flagChanged(f); return this.current; }
     const entry = game.journal.get(f.entry);
     if (!entry) { if (game.user.isGM) ui.notifications.warn(`City Atlas: the atlas behind the scene “${scene.name}” no longer exists.`); return null; }
-    if (!entry.testUserPermission(game.user, 'OBSERVER')) return null; // this player only sees the plain map picture
+    if (!entry.testUserPermission(game.user, 'LIMITED')) return null; // this player only sees the plain map picture
     const sa = new SceneAtlas(scene, entry); this.current = sa;
     try { await sa.mount(); } catch (err) { console.error(`${MOD} | could not draw the atlas on the scene`, err); sa.destroy(); if (this.current === sa) this.current = null; ui.notifications.error(`City Atlas: could not draw the atlas on this scene (${err.message}).`); }
     return this.current;
@@ -73,7 +73,7 @@ export class SceneAtlas {
     this._onWin = () => this.placeLayer(); window.addEventListener('resize', this._onWin);
     this.root = document.createElement('div');
     const adapter = makeAdapter(this);
-    adapter.openFull = state => AtlasApp.open(this.entry, {state});
+    adapter.openFull = game.user.isGM || game.settings.get(MOD, 'playerWindow') ? state => AtlasApp.open(this.entry, {state}) : null;
     this.view = new AtlasView(this.root, {
       store: this.store, isGM: game.user.isGM, canEdit: this.entry.isOwner, viewer: {id: game.user.id, name: game.user.name},
       atlasKey: `${game.world.id}:${this.entry.id}:scene:${this.scene.id}`, animate: game.settings.get(MOD, 'animate'), adapter, editorFactory: null,

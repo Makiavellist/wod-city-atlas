@@ -43,7 +43,31 @@ export function makeAdapter(app) {
     docInfo: uuid => docInfo(uuid),
     actors: () => game.actors.filter(a => game.user.isGM || a.testUserPermission(game.user, 'LIMITED')).map(a => ({uuid: a.uuid, name: a.name, img: a.img, folder: a.folder?.name || ''})).sort((a, b) => a.name.localeCompare(b.name)),
     actorTypes: () => actorTypes(),
-    createActors: game.user.isGM ? (list, o) => createActors(list, o) : null
+    createActors: game.user.isGM ? (list, o) => createActors(list, o) : null,
+    // personal notes on the map, kept in each user's own flags (players can write those, not the atlas)
+    notes: notesApi(app),
+    onNotes: cb => { const id = Hooks.on('updateUser', (u, ch) => { if (ch?.flags?.[MOD] !== undefined) cb(); }); return () => Hooks.off('updateUser', id); }
+  };
+}
+function notesApi(app) {
+  const eid = () => app.entry?.id;
+  return {
+    list() {
+      const out = [];
+      for (const u of game.users) {
+        const all = u.getFlag?.(MOD, 'notes') || {}; const mine = all[eid()] || {};
+        for (const [id, n] of Object.entries(mine)) { if (!n || typeof n !== 'object') continue; out.push(Object.assign({}, n, {id, author: u.id, authorName: u.name, authorColor: u.color?.css ?? (typeof u.color === 'string' ? u.color : undefined), mine: u.id === game.user.id})); }
+      }
+      return out;
+    },
+    async save(n) {
+      const clean = {at: n.at, realm: n.realm, level: n.level, title: String(n.title || '').slice(0, 200), html: String(n.html || '').slice(0, 5000), icon: n.icon, color: n.color, shared: !!n.shared, t: n.t || Date.now()};
+      await game.user.update({[`flags.${MOD}.notes.${eid()}.${n.id}`]: clean});
+    },
+    async remove(n) {
+      const u = game.users.get(n.author) || game.user; if (u.id !== game.user.id && !game.user.isGM) return;
+      await u.update({[`flags.${MOD}.notes.${eid()}.-=${n.id}`]: null});
+    }
   };
 }
 const DEFAULT_ICON = /(^|\/)icons\/svg\/mystery-man\.svg$/;
@@ -114,6 +138,14 @@ export class AtlasApp extends ApplicationV2 {
   get title() { return this.entry?.name || 'City Atlas'; }
 
   static open(entry, {state = null} = {}) {
+    if (!game.user.isGM && !game.settings.get(MOD, 'playerWindow')) {
+      // players use atlases only through their scenes
+      const sa = SceneAtlas.current;
+      if (sa && sa.entry.id === entry.id && sa.view) { sa.showHud(); if (state) sa.view.applyState(state); return null; }
+      const sc = game.scenes.find(s => s.getFlag(MOD, 'atlas')?.entry === entry.id && s.visible !== false);
+      ui.notifications.info(sc ? `${entry.name}: open the scene “${sc.name}” to use the atlas.` : L('UseScene', 'The atlas is used through its scene.'));
+      return null;
+    }
     const id = `wca-atlas-${entry.id}`; const existing = foundry.applications.instances.get(id);
     if (existing) { existing.bringToFront?.(); existing.maximize?.(); if (state && existing.view) existing.view.applyState(state); return existing; }
     const w = Math.min(1320, window.innerWidth - 80), h = Math.min(860, window.innerHeight - 60);
@@ -164,6 +196,7 @@ export function onSocket(msg) {
   const entry = game.journal.get(msg.entryId); if (!entry || !entry.testUserPermission(game.user, 'OBSERVER')) return;
   const sa = SceneAtlas.current;
   if (sa && sa.entry.id === entry.id && sa.view) { sa.showHud(); sa.view.applyState(msg.state); return; }
+  if (!game.user.isGM && !game.settings.get(MOD, 'playerWindow')) { const sc = game.scenes.find(s => s.getFlag(MOD, 'atlas')?.entry === entry.id); if (sc) ui.notifications.info(`The Storyteller is showing something on “${sc.name}”.`); return; }
   AtlasApp.open(entry, {state: msg.state});
 }
 
@@ -172,6 +205,10 @@ export class AtlasLauncher extends ApplicationV2 {
   static DEFAULT_OPTIONS = {id: 'wca-launcher', classes: ['wca-launcher'], window: {title: 'City Atlas', icon: 'fa-solid fa-map-location-dot', resizable: true}, position: {width: 520, height: 'auto'}};
   static show() { const ex = foundry.applications.instances.get('wca-launcher'); if (ex) { ex.render(true); ex.bringToFront?.(); return ex; } const a = new AtlasLauncher(); a.render({force: true}); return a; }
   async _renderHTML() {
+    if (!game.user.isGM && !game.settings.get(MOD, 'playerWindow')) {
+      const scenes = game.scenes.filter(s => s.getFlag(MOD, 'atlas') && s.visible !== false);
+      return `<div class="wcal">${scenes.length ? `<h3>${L('AtlasScenes', 'Atlas scenes')}</h3><ul class="wcal-list">${scenes.map(s => `<li><button type="button" data-scene="${s.id}"><i class="fa-solid fa-map"></i><span><b>${esc(s.name)}</b><small>${esc(game.journal.get(s.getFlag(MOD, 'atlas').entry)?.name || '')}</small></span></button></li>`).join('')}</ul>` : `<p class="hint">${L('NonePlayer', 'Your Storyteller hasn’t shared an atlas with you yet.')}</p>`}</div>`;
+    }
     const list = game.journal.filter(e => isAtlasEntry(e) && e.visible);
     const presets = game.user.isGM ? await loadPresets() : [];
     const rows = list.map(e => `<li><button type="button" data-open="${e.id}"><i class="fa-solid fa-map"></i><span><b>${esc(e.name)}</b><small>${esc(metaDesc(e))}</small></span></button></li>`).join('');
@@ -189,6 +226,7 @@ export class AtlasLauncher extends ApplicationV2 {
   _replaceHTML(result, content) { content.innerHTML = result; }
   _onRender() {
     const el = this.element;
+    el.querySelectorAll('[data-scene]').forEach(b => b.addEventListener('click', () => { game.scenes.get(b.dataset.scene)?.view(); this.close(); }));
     el.querySelectorAll('[data-open]').forEach(b => b.addEventListener('click', () => { const e = game.journal.get(b.dataset.open); if (e) { AtlasApp.open(e); this.close(); } }));
     el.querySelectorAll('[data-preset]').forEach(b => b.addEventListener('click', () => this.fromPreset(b.dataset.preset)));
     el.querySelectorAll('[data-new]').forEach(b => b.addEventListener('click', () => this.newAtlas(b.dataset.new)));

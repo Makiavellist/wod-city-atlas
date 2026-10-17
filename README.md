@@ -72,13 +72,18 @@ Every realm, level, layer, place category, place, zone, route, glow, person and 
 | 0 · Hidden | nothing |
 | 1 · Existence | a grey "?" pin or outline called *Unknown place* (or a name you choose) |
 | 2 · Basic | name, subtitle, category, faction, picture |
-| 3 · Full | the description, facts, links, people, routes and ordinary callouts |
-| 4+ · Secret | callouts you marked with that tier |
+| 3 · Full | the description, facts, links, people, relations, routes and ordinary callouts |
+
+**Secrets** are revealed one by one. Mark a callout or a relation as *secret* (in the edit form, or add a secret relation straight from the dossier); it stays hidden until you reveal it. The *What players see* panel at the bottom of an entry's dossier lists its secrets: reveal each to everyone, or say for each player whether they know it. A player who knows a secret sees it even if they only know the entry exists.
 
 - **One entry:** open it in Storyteller view. At the bottom of its dossier, the *What players see* panel sets the tier for **Everyone** and, if you like, a different tier for each player. The same panel is in its edit form.
 - **Many at once:** *Edit → Player visibility* has a table for realms, levels, layers and categories (shown/hidden per player), the default tier for everything you haven't configured, tier names, and a bulk tool ("all Havens in the Waking realm → Basic for Anna").
-- **Check a view:** *Layers menu → View as* shows the map exactly as a given player (or "every player") sees it.
+- **Check a view:** *Layers menu (or the Map tab) → View as* shows the map exactly as a given player (or "every player") sees it.
 - Players get a short notification when you reveal something to them.
+
+## Pins
+
+Pins come in shapes (circle, square, diamond, hexagon, octagon, shield, map marker) with dozens of icons. A category sets the shape for its places and a place can override it. *Use the picture as the pin* shows a place's picture (its own, its linked Actor's or a person's there) inside the pin. In Milwaukee every category has its own shape and about half the places have their own icon (churches, bars, docks, factories, parks, police…).
 
 ## Kindred domains
 
@@ -86,7 +91,14 @@ Every person can own one or more domains (zones on the domain layer). In a Kindr
 
 ## The atlas as a Scene
 
-*Edit → Show as a Scene* makes a Foundry scene that **is** the atlas:
+*Edit → Show as a Scene* makes a Foundry scene that **is** the atlas. **Players use atlases only through their scenes:** atlas journal entries are hidden from them, and they can't open the atlas window or change anything you made (a world setting, *Players may open atlases outside scenes*, turns this off).
+
+- **The toolbar on the scene** (top centre) has the realm and level switches, the dossier button, layers, search, *Add a note*, quick layer buttons (the crown for Kindred domains) and a button to hide the atlas and see the plain scene.
+- **The dossier** beside the map has the Places, People, Zones and Chronicle tabs, plus:
+  - **Map:** every switch in one place: realms, levels, layers, place categories, notes, *Whole map*, *Search*, *Hide the atlas*, the legend, and (Storyteller) *View as* and *Players follow my realm*.
+  - **Notes:** your notes and the ones others share.
+- **Notes.** Anyone can add their own notes to the map (title, text, icon, colour), visible to *Only me* or *Everyone*. Notes never change the Storyteller's map. They are kept with each user's account. The Storyteller can delete any note and, from the Map tab, choose to see players' private notes.
+- **Pictures on hover.** Pointing at a pin, zone or domain shows its picture: its own, its linked Actor's, or the portrait of someone known to be there.
 
 - **Each player sees their own map.** Every screen draws the atlas live with that player's access: realms, layers, places, zones, people and secrets you haven't revealed to them stay hidden, and things they only know exist show as "?". When you reveal something, it appears on their scene at once.
 - **The whole dossier is on the scene.** Click a pin, zone, route or glow to open its dossier in a window beside the map: descriptions, portraits, relations, domains, chronicle pages, layers, realm and level switches, and search. Toggle the window with the book button in the Token controls, the map button in the Notes controls, or **Alt+M**.
@@ -102,7 +114,7 @@ Choose the area (the whole atlas, the home view or what you see now) and whether
 - **Link a person to an Actor:** in their edit form, pick the *Linked Actor* or drop one from the Actors tab onto it.
 - **Many at once:** *Edit → People → Link to Actors…* matches people to Actors by exact name, lets you pick the rest, and can create Actors for everyone unlinked (in a *City Atlas characters* folder, with their portrait and, where the system has one, their description as biography).
 - A linked person's dossier shows a **Character sheet** button to anyone allowed to open that Actor (so players see their own and the ones you share), and uses the Actor's portrait when the person has none.
-- **Relations** link to the people they name (matched by name, or set *Links to* in the editor), with a sheet button for linked Actors.
+- **Relations** work for every character. Each person's dossier lists how they see others and *How others see them*. As Storyteller you add a relation right in the dossier (who, attitude, secret or not) and remove one with its ✕; the edit form has the full list. Names link to the people they name (matched by name, or set *Links to*), with a sheet button for linked Actors.
 - Right-click an Actor in the Actors tab → **Show in City Atlas**.
 
 ## Editing (Storyteller)

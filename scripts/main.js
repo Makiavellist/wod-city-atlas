@@ -10,6 +10,7 @@ Hooks.once('init', () => {
   game.settings.register(MOD, 'openJournalAsAtlas', {name: 'WCA.SettingOpenJournal', hint: 'WCA.SettingOpenJournalHint', scope: 'world', config: true, type: Boolean, default: true});
   game.settings.register(MOD, 'defaultOwnership', {name: 'WCA.SettingOwnership', hint: 'WCA.SettingOwnershipHint', scope: 'world', config: true, type: String, default: 'OBSERVER',
     choices: {NONE: 'WCA.OwnNone', LIMITED: 'WCA.OwnLimited', OBSERVER: 'WCA.OwnObserver'}});
+  game.settings.register(MOD, 'playerWindow', {name: 'WCA.SettingPlayerWindow', hint: 'WCA.SettingPlayerWindowHint', scope: 'world', config: true, type: Boolean, default: false});
   game.settings.register(MOD, 'sceneControl', {name: 'WCA.SettingControl', hint: 'WCA.SettingControlHint', scope: 'world', config: true, type: Boolean, default: true, requiresReload: true});
 });
 
@@ -63,7 +64,9 @@ Hooks.on('getSceneControlButtons', controls => {
 
 /* A "City Atlas" button at the top of the Journal sidebar. */
 Hooks.on('renderJournalDirectory', (app, html) => {
-  const root = html instanceof HTMLElement ? html : html?.[0]; if (!root || root.querySelector('.wca-dir-btn')) return;
+  const root = html instanceof HTMLElement ? html : html?.[0]; if (!root) return;
+  if (!game.user.isGM) hideAtlasEntries(root);
+  if (root.querySelector('.wca-dir-btn')) return;
   const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'wca-dir-btn';
   btn.innerHTML = `<i class="fa-solid fa-map-location-dot"></i> ${game.i18n.localize('WCA.Button')}`;
   btn.addEventListener('click', ev => { ev.preventDefault(); AtlasLauncher.show(); });
@@ -73,7 +76,15 @@ Hooks.on('renderJournalDirectory', (app, html) => {
 
 /* Opening an atlas journal entry opens the map instead of the data pages. */
 Hooks.on('renderJournalEntrySheet', (app, html) => {
-  const entry = app.document; if (!isAtlasEntry(entry) || !game.settings.get(MOD, 'openJournalAsAtlas')) return;
+  const entry = app.document; if (!isAtlasEntry(entry)) return;
+  if (!game.user.isGM && !game.settings.get(MOD, 'playerWindow')) {
+    // players only reach an atlas through its scene
+    if (app._wcaRedirected) return; app._wcaRedirected = true;
+    setTimeout(() => app.close({animate: false}), 0);
+    if (SceneAtlas.current?.entry?.id === entry.id) SceneAtlas.current.showHud(); else ui.notifications.info(game.i18n.localize('WCA.UseScene'));
+    return;
+  }
+  if (!game.settings.get(MOD, 'openJournalAsAtlas')) return;
   if (app._wcaRedirected) return; app._wcaRedirected = true;
   AtlasApp.open(entry);
   setTimeout(() => app.close({animate: false}), 0);
@@ -128,3 +139,14 @@ Hooks.on('getActorSheetHeaderButtons', (sheet, buttons) => {
   const a = sheet.actor || sheet.document; if (!a) return; const hit = findPeopleByActor(a.uuid)[0]; if (!hit) return;
   buttons.unshift({label: game.i18n.localize('WCA.AtlasShort'), class: 'wca-atlas', icon: 'fa-solid fa-map-location-dot', onclick: () => openInAtlas(hit.entry, hit.id)});
 });
+
+/** Players never see atlas journal entries in the Journal tab (nor a folder that holds only atlases). */
+function hideAtlasEntries(root) {
+  if (game.settings.get(MOD, 'playerWindow')) return;
+  for (const li of root.querySelectorAll('[data-entry-id]')) { if (isAtlasEntry(game.journal.get(li.dataset.entryId))) li.remove(); }
+  for (const f of [...root.querySelectorAll('.folder[data-folder-id], [data-folder-id].directory-item')].reverse()) {
+    const sub = f.querySelector('.subdirectory, ol, ul'); const folder = game.folders.get?.(f.dataset.folderId) ?? game.folders.find?.(x => x.id === f.dataset.folderId);
+    const hasAtlas = folder ? game.journal.filter(e => e.folder?.id === folder.id).some(isAtlasEntry) : false;
+    if (hasAtlas && !(sub || f).querySelector('[data-entry-id]')) f.remove();
+  }
+}

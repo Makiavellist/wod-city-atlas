@@ -6,7 +6,7 @@ export const MAP_ITEMS = ['places', 'zones', 'routes', 'labels', 'auras'];
 export const META_KEYS = ['tiers', 'revealDefault', 'domainLayer', 'domainStatuses', 'scene', 'schema', 'title', 'titleHtml', 'description', 'projection', 'bounds', 'home', 'zoom', 'closeBy', 'basemap', 'background', 'theme', 'statuses', 'precisions', 'fonts', 'scale', 'version'];
 export const TYPE_NAMES = {places: 'Place', zones: 'Zone', routes: 'Route', labels: 'Label', auras: 'Glow', people: 'Person', pages: 'Page', realms: 'Realm', layers: 'Layer', categories: 'Category', factions: 'Faction', styles: 'Style'};
 
-export const DEFAULT_TIERS = ['Hidden', 'Existence', 'Basic', 'Full', 'Secret', 'Deep secret'];
+export const DEFAULT_TIERS = ['Hidden', 'Existence', 'Basic', 'Full'];
 export const TIER = {HIDDEN: 0, EXIST: 1, BASIC: 2, FULL: 3, SECRET: 4};
 export const STRUCT = ['realms', 'layers', 'categories', 'factions', 'styles'];
 export const DEFAULT_THEME = {panel: '#141117', panel2: '#1c1820', line: '#2e2832', accent: '#b3202a', gold: '#d8b45a', muted: '#a39886', faint: '#6d6459', bone: '#ebe2d0', accentLine: 'rgba(179,32,42,.55)', accentSoft: '#e6a3a3', segOn: '#2a2230', segOnFg: '#ebe2d0', glow: 'rgba(179,32,42,.10)', chrome: 'rgba(20,17,23,.92)', pinBg: ['#231e27', '#0f0d12'], labelHalo: '#000'};
@@ -134,8 +134,8 @@ export class AtlasModel {
   /* ---------- who may see what ----------
    * st.storyteller: the GM's full view. Otherwise st.as is the user id being shown (a player, or '*' for "every player").
    * Every item, realm, level, layer and category may carry reveal: {all: tier, users: {userId: tier}}.
-   * Tiers: 0 hidden, 1 existence only, 2 basic, 3 full, 4+ secrets (callouts carry their own tier). */
-  tiers() { return Array.isArray(this.atlas.tiers) && this.atlas.tiers.length > 3 ? this.atlas.tiers : DEFAULT_TIERS; }
+   * Tiers: 0 hidden, 1 existence only, 2 basic, 3 full. Deeper secrets (callouts, relations) are revealed one by one. */
+  tiers() { return Array.isArray(this.atlas.tiers) && this.atlas.tiers.length > 3 ? this.atlas.tiers.slice(0, 4) : DEFAULT_TIERS; }
   tierName(t) { const ts = this.tiers(); return t >= 99 ? 'Storyteller' : (ts[t] ?? `Tier ${t}`); }
   defaultTier(coll) {
     if (STRUCT.includes(coll)) return TIER.FULL;
@@ -143,7 +143,8 @@ export class AtlasModel {
     if (typeof d === 'object') return +(d[coll] ?? d['*'] ?? TIER.FULL);
     return +d;
   }
-  rawTier(it, coll, as) {
+  rawTier(it, coll, as) { return Math.min(TIER.FULL, this._rawTier(it, coll, as)); }
+  _rawTier(it, coll, as) {
     const r = it.reveal;
     if (r) { const u = r.users && as != null && as !== '*' ? r.users[as] : undefined; if (u !== undefined && u !== null && u !== '') return +u; if (r.all !== undefined && r.all !== null && r.all !== '') return +r.all; }
     if (it.gm) return TIER.HIDDEN;
@@ -151,6 +152,35 @@ export class AtlasModel {
   }
   tier(it, coll, st) { if (!it) return 0; if (st.storyteller) return 99; return this.rawTier(it, coll, st.as); }
   noteTier(n) { return n.tier != null && n.tier !== '' ? +n.tier : (n.gm ? TIER.SECRET : TIER.FULL); }
+  /* ----- secrets: callouts and relations that are revealed one by one ----- */
+  /** A secret is hidden from players until revealed to everyone or to them. Older data: gm notes or tier 4+. */
+  isSecret(n) { if (!n) return false; if (n.secret !== undefined) return !!n.secret; return !!n.gm || (n.tier != null && n.tier !== '' && +n.tier > TIER.FULL); }
+  /** Revealed to this viewer? reveal = {all: 0|1, users: {userId: 0|1}}. */
+  secretKnown(n, it, coll, st) {
+    if (st.storyteller) return true;
+    const r = n.reveal, as = st.as;
+    if (r) { const u = r.users && as != null && as !== '*' ? r.users[as] : undefined; if (u !== undefined && u !== null && u !== '') return !!+u; if (r.all !== undefined && r.all !== null && r.all !== '') return !!+r.all; }
+    if (n.secret === undefined && n.tier != null && n.tier !== '' && +n.tier > TIER.FULL) return this._rawTier(it, coll, as) >= +n.tier; // version 1.1 data
+    return false;
+  }
+  /** Who knows a secret, for the Storyteller: 'everyone', 'nobody' or a list of names. */
+  secretAudience(n, players) {
+    const r = n.reveal || {}, all = !!+(r.all || 0), us = r.users || {};
+    const who = players.filter(p => us[p.id] !== undefined && us[p.id] !== '' ? !!+us[p.id] : all).map(p => p.name);
+    return all && who.length === players.length ? 'everyone' : who.length ? who.join(', ') : 'nobody yet';
+  }
+  /** Ordinary callouts show with full knowledge; secrets show once revealed (to anyone who knows the entry exists). */
+  noteVisible(n, it, coll, st) {
+    if (st.storyteller) return true;
+    const t = this.tier(it, coll, st);
+    if (this.isSecret(n)) return t >= TIER.EXIST && this.secretKnown(n, it, coll, st);
+    return t >= TIER.FULL;
+  }
+  /** Relation rows as objects: {a: who, b: attitude, ref: personId|Actor uuid, secret, reveal}. Old rows were arrays. */
+  relRows(p) {
+    const rows = (p && p.relations && p.relations.rows) || [];
+    return rows.map((r, i) => Array.isArray(r) ? {a: r[0] || '', b: r[1] || '', ref: r[2] || undefined, i} : Object.assign({}, r, {i}));
+  }
   realmVisible(id, st) { const r = this.atlas.realms[id]; return !!r && this.tier(r, 'realms', st) >= 1; }
   levelVisible(realmId, levelId, st) { const r = this.atlas.realms[realmId]; const l = r && r.levels.find(x => x.id === levelId); return !l || this.tier(l, 'realms', st) >= 1; }
   visibleRealms(st) { return this.realmList.filter(r => this.realmVisible(r.id, st)); }

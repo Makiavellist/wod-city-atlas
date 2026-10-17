@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.3.0
+- **Players only use scenes.** Atlas journal entries are hidden from players, they can't open the atlas window or journal, and they can't change the Storyteller's map. The launcher shows players the atlas scenes they may visit. (World setting *Players may open atlases outside scenes* restores the old behaviour.)
+- **Player notes.** Anyone can add notes to the map from the scene: title, text, icon and colour, visible to *Only me* or *Everyone*. Notes are stored with each user's account and never change the atlas. The Storyteller can delete any note and choose to see private ones.
+- **Toolbar on the scene.** Realm and level switches, dossier, layers, search, *Add a note*, quick layer buttons and *Hide the atlas* now sit on the scene itself. The dossier has a new **Map** tab with every switch (realms, levels, layers, place categories, notes, legend, View as, realm lock) and a **Notes** tab.
+- **Pictures on hover.** Pins, zones and domains show their picture (own, linked Actor's, or a person's there) in the hover tooltip.
+- **Secrets revealed one by one.** Tiers stop at 0–3 (hidden, existence, basic, full). Each secret callout or relation is revealed separately, to everyone or to particular players, from the dossier. Older tier-4+ callouts become secrets automatically.
+- **Relations for everyone.** Every character can have relations; the Storyteller adds and removes them in the dossier (optionally as secrets). Dossiers also show *How others see them*.
+- **More varied pins.** Seven pin shapes, 35 new icons, optional picture pins. The Milwaukee preset gives each category its own shape and about 160 places their own icon.
+
 ## 1.2.3
 - **Fix: scenes stopped drawing after visiting an atlas scene.** Atlas scenes raised Foundry's maximum zoom, but in Foundry 13.351 that setting does not exist, so the value became "not a number" and broke the camera of every scene for the rest of the session. The module now only adjusts the zoom limit when Foundry has a valid one, and repairs an invalid value if it finds one.
 

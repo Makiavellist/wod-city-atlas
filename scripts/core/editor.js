@@ -3,6 +3,7 @@ import {esc, svg, clone, uid, safeId, sortBy, GLYPH, segDist, inPoly, clamp} fro
 import {COLLECTIONS, TYPE_NAMES, normalize, TIER} from './model.js';
 import {renderFields, readFields, bindFields} from './forms.js';
 import {LOOKS, applyLook} from './templates.js';
+const SHAPE_OPTS = [['circle', 'Circle'], ['square', 'Square'], ['diamond', 'Diamond'], ['hex', 'Hexagon'], ['octagon', 'Octagon'], ['shield', 'Shield'], ['marker', 'Map marker']];
 
 const TOOLS = [['select', 'cursor', 'Select & move'], ['places', 'pin', 'Add a place'], ['zones', 'poly', 'Draw a zone'], ['routes', 'line', 'Draw a route'], ['labels', 'text', 'Add a label'], ['auras', 'glow', 'Add a glow']];
 const HINTS = {select: 'Click anything to edit it. Drag pins, label handles and shape corners to move them. Shift-drag inside a selected shape moves it all; Alt-click a corner removes it; click a midpoint dot to add one.',
@@ -289,7 +290,7 @@ export class AtlasEditor {
       aliasText: {k: 'aliasText', t: 'text', label: 'Text while unknown', wide: true, ph: 'You know something is here, but nothing more.'},
       html: {k: 'html', t: 'html', label: 'Description', wide: true},
       img: {k: 'img', t: 'image', label: 'Picture', wide: true},
-      notes: {k: 'notes', t: 'list', label: 'Callouts & secrets', wide: true, addLabel: 'Add callout', sub: [{k: 'title', t: 'text', label: 'Heading'}, {k: 'kind', t: 'select', label: 'Style', opts: NOTE_KINDS, none: 'Plain'}, {k: 'tier', t: 'select', label: 'Revealed at tier', opts: () => self.tierOpts(), none: 'Full (3)', num: true}, {k: 'html', t: 'textarea', label: 'Text', wide: true, rows: 3}]},
+      notes: {k: 'notes', t: 'list', label: 'Callouts & secrets', wide: true, addLabel: 'Add callout', sub: [{k: 'title', t: 'text', label: 'Heading'}, {k: 'kind', t: 'select', label: 'Style', opts: NOTE_KINDS, none: 'Plain'}, {k: 'html', t: 'textarea', label: 'Text', wide: true, rows: 3}, {k: '_sec', t: 'secret', label: 'Secret?', help: 'secrets are revealed one by one, to everyone or to particular players', wide: true}]},
       facts: {k: 'facts', t: 'list', label: 'Facts', wide: true, addLabel: 'Add fact', sub: [{k: 'k', t: 'text', label: 'Label'}, {k: 'v', t: 'text', label: 'Value'}]},
       tags: {k: 'tags', t: 'list', label: 'Tags', wide: true, addLabel: 'Add tag', sub: [{k: 'text', t: 'text', label: 'Text'}, {k: 'color', t: 'color', label: 'Colour'}]},
       people: {k: 'people', t: 'refs', label: 'Figures here', wide: true, refs: () => self.refList(['people'])},
@@ -341,7 +342,7 @@ export class AtlasEditor {
     const C = this.common(coll), self = this, posLabel = this.proj.kind === 'mercator' ? 'Position [lat, lng]' : 'Position [x, y]';
     switch (coll) {
       case 'places': return [{k: 'name', t: 'text', label: 'Name', wide: true}, C.sub, C.realm, C.level, {k: 'cat', t: 'select', label: 'Category', opts: d => self.catOpts(d.realm)}, C.faction, C.layer,
-        {k: 'precision', t: 'select', label: 'Placement', opts: () => self.precOpts(), show: () => self.precOpts().length}, C.color, C.icon, C.gm, C.alias, C.aliasText, {k: 'hidden', t: 'check', label: 'No map pin', help: 'listed but not drawn'},
+        {k: 'precision', t: 'select', label: 'Placement', opts: () => self.precOpts(), show: () => self.precOpts().length}, C.color, C.icon, {k: 'pin.shape', t: 'select', label: 'Pin shape', opts: SHAPE_OPTS, none: 'As its category'}, {k: 'pin.photo', t: 'check', label: 'Use the picture as the pin', help: 'its own, its linked Actor’s, or a person’s there'}, C.gm, C.alias, C.aliasText, {k: 'hidden', t: 'check', label: 'No map pin', help: 'listed but not drawn'},
         C.html, C.img, C.notes, C.people, {k: 'zone', t: 'ref', label: 'Inside zone', wide: true, refs: () => self.refList(['zones'])}, C.anchor, C.links, C.facts, C.tags, C.uuid,
         {k: 'at', t: 'coords', label: posLabel}, {k: 'zoom', t: 'number', label: 'Focus zoom'}, C.kicker, C.order, C.src];
       case 'zones': return [{k: 'name', t: 'text', label: 'Name', wide: true}, C.sub, C.realm, C.level, C.layer, C.faction, C.color, ...this.styleFields(), C.gm, C.alias, C.aliasText,
@@ -365,7 +366,7 @@ export class AtlasEditor {
         {k: 'status', t: 'select', label: 'Status', opts: () => self.statusOpts()}, C.icon, C.color, C.gm, C.alias, C.aliasText, {k: 'realms', t: 'multi', label: 'Listed under', help: 'which realms and levels show this person', wide: true, opts: () => self.realmKeyOpts()},
         C.img, C.html, C.notes, {k: 'at', t: 'refs', label: 'Where to find them', wide: true, refs: () => self.refList(['places', 'zones', 'routes'])},
         {k: 'uuid', t: 'actor', label: 'Linked Actor', help: 'their character sheet in the Actors tab', wide: true, otherLabel: u => `Other document: ${u}`},
-        {k: 'relations.title', t: 'text', label: 'Relations heading', ph: 'Attitudes'}, {k: '_rel', t: 'list', label: 'Relations', wide: true, addLabel: 'Add relation', sub: [{k: 'a', t: 'text', label: 'Who'}, {k: 'b', t: 'text', label: 'Attitude'}, {k: 'ref', t: 'ref', label: 'Links to', help: 'blank = found by name', refs: () => self.refList(['people'])}]},
+        {k: 'relations.title', t: 'text', label: 'Relations heading', ph: 'Attitudes'}, {k: '_rel', t: 'list', label: 'Relations', wide: true, addLabel: 'Add relation', sub: [{k: 'a', t: 'text', label: 'Who'}, {k: 'b', t: 'text', label: 'Attitude'}, {k: 'ref', t: 'ref', label: 'Links to', help: 'blank = found by name', refs: () => self.refList(['people'])}, {k: '_sec', t: 'secret', label: 'Secret?', wide: true}]},
         C.facts, C.order, C.src];
       case 'pages': return [{k: 'title', t: 'text', label: 'Title', wide: true}, C.realm, {k: 'levels', t: 'multi', label: 'Only on levels', help: 'none ticked = every level', opts: d => self.levelOpts(d.realm), show: d => d.realm && self.levelOpts(d.realm).length > 1, wide: true},
         {k: 'tab', t: 'select', label: 'Shown in', opts: TABS, none: false}, {k: 'order', t: 'number', label: 'Order'}, C.gm,
@@ -373,7 +374,7 @@ export class AtlasEditor {
         {k: 'html', t: 'html', label: 'Text', wide: true, rows: 12}];
       case 'categories': return [{k: 'name', t: 'text', label: 'Name', wide: true}, {k: 'realm', t: 'select', label: 'Realm', opts: () => self.realmOpts(), none: 'All realms'}, {k: 'levels', t: 'multi', label: 'Only on levels', opts: d => d.realm ? self.levelOpts(d.realm) : self.allLevelOpts(), wide: true},
         {k: 'icon', t: 'icon', label: 'Icon'}, {k: 'color', t: 'color', label: 'Colour', help: 'used when the place has no faction'}, {k: 'order', t: 'number', label: 'Order'},
-        C.gm, {k: 'pin.border', t: 'select', label: 'Pin ring', opts: [['solid', 'Solid'], ['dashed', 'Dashed'], ['dotted', 'Dotted'], ['double', 'Double']], none: 'Default'}, {k: 'pin.glow', t: 'check', label: 'Pin glows'}, {k: 'pin.anim', t: 'select', label: 'Pin animation', opts: [['pulse', 'Pulse']], none: 'None'}];
+        C.gm, {k: 'pin.shape', t: 'select', label: 'Pin shape', opts: SHAPE_OPTS, none: 'Circle'}, {k: 'pin.photo', t: 'check', label: 'Pictures as pins', help: 'places with a picture show it'}, {k: 'pin.border', t: 'select', label: 'Pin ring', opts: [['solid', 'Solid'], ['dashed', 'Dashed'], ['dotted', 'Dotted'], ['double', 'Double']], none: 'Default'}, {k: 'pin.glow', t: 'check', label: 'Pin glows'}, {k: 'pin.anim', t: 'select', label: 'Pin animation', opts: [['pulse', 'Pulse']], none: 'None'}];
       case 'factions': return [{k: 'name', t: 'text', label: 'Name', wide: true}, {k: 'short', t: 'text', label: 'Short name'}, {k: 'color', t: 'color', label: 'Colour'}, {k: 'order', t: 'number', label: 'Order'}, {k: 'html', t: 'html', label: 'Notes', wide: true, rows: 4}];
       case 'layers': return [{k: 'name', t: 'text', label: 'Name', wide: true}, {k: 'realm', t: 'multi', label: 'Realms', help: 'none ticked = every realm', opts: () => self.realmOpts(), wide: true}, {k: 'levels', t: 'multi', label: 'Levels', help: 'none ticked = every level', opts: () => self.allLevelOpts(), wide: true},
         {k: 'on', t: 'check', label: 'On by default'}, C.gm, {k: 'icon', t: 'icon', label: 'Map-bar button', none: 'none'}, {k: 'hotkey', t: 'text', label: 'Hotkey', ph: 'd'}, {k: 'order', t: 'number', label: 'Order'}];
@@ -398,9 +399,10 @@ export class AtlasEditor {
     const d = clone(it) || {};
     if (d.gm && !d.reveal && !['realms', 'layers', 'categories', 'factions', 'styles'].includes(coll)) { d.reveal = {all: 0}; }
     delete d.gm;
-    if (Array.isArray(d.notes)) d.notes = d.notes.map(n => { const o = Object.assign({}, n); const t = this.m.noteTier(n); delete o.gm; if (t !== TIER.FULL) o.tier = t; else delete o.tier; return o; });
+    const secIn = n => { const o = Object.assign({}, n); o._sec = {secret: this.m.isSecret(n), reveal: n.reveal || (n.secret === undefined && this.m.isSecret(n) ? {all: 0} : undefined)}; delete o.gm; delete o.tier; delete o.secret; delete o.reveal; return o; };
+    if (Array.isArray(d.notes)) d.notes = d.notes.map(secIn);
     if (coll === 'zones' || coll === 'routes') this.styleIn(d, coll);
-    if (coll === 'people') d._rel = ((d.relations && d.relations.rows) || []).map(([a, b, ref]) => ({a, b, ref}));
+    if (coll === 'people') d._rel = this.m.relRows(d).map(({i, ...r}) => secIn(r));
     if (coll === 'realms') { d._levels = (d.levels || []).map(l => Object.assign({}, l, {show: (l.show || []).join(', ')})); }
     if (coll === 'layers' && d.realm != null) d.realm = [].concat(d.realm);
     if (coll === 'styles') { d._name = it.id; d._body = clone(it); delete d._body.id; }
@@ -408,7 +410,9 @@ export class AtlasEditor {
   }
   fromForm(coll, d, orig) {
     if (coll === 'zones' || coll === 'routes') this.styleOut(d);
-    if (coll === 'people') { const rows = (d._rel || []).filter(r => r.a || r.b || r.ref).map(r => r.ref ? [r.a || '', r.b || '', r.ref] : [r.a || '', r.b || '']);
+    const secOut = n => { const o = Object.assign({}, n), sc = o._sec; delete o._sec; delete o.tier; delete o.gm; delete o.secret; delete o.reveal; if (sc && sc.secret) { o.secret = true; o.reveal = sc.reveal || {all: 0}; } for (const k of Object.keys(o)) if (o[k] === undefined || o[k] === '') delete o[k]; return o; };
+    if (Array.isArray(d.notes)) d.notes = d.notes.map(secOut);
+    if (coll === 'people') { const rows = (d._rel || []).filter(r => r.a || r.b || r.ref).map(secOut);
       if (d.uuid) { const a = (this.A.actors?.() || []).find(x => x.uuid === d.uuid); if (a) d.uuidName = `Actor: ${a.name}`; } else delete d.uuidName; delete d._rel; if (rows.length) d.relations = Object.assign({}, d.relations || {}, {rows}); else if (d.relations) delete d.relations.rows; if (d.relations && !d.relations.rows) delete d.relations; }
     if (coll === 'realms') {
       d.levels = (d._levels || []).filter(l => l.id).map(l => Object.assign({}, (orig.levels || []).find(o => o.id === l.id) || {}, l, {id: safeId(l.id), show: String(l.show || l.id).split(/[\s,]+/).filter(Boolean)}));
@@ -603,7 +607,7 @@ export class AtlasEditor {
       <p class="hint">Decide what each player can see. A hidden realm, level, layer or category hides everything in it. Individual places, zones, people and pages have their own <b>What players see</b> panel, in their dossier (Storyteller view) and in their edit form. Use <b>View as</b> in the layers menu to check a player's view.</p>
       <h3>Defaults</h3>
       <label class="vrow">Unconfigured entries are shown to players at <select data-def>${tiers.map((n, i) => `<option value="${i}" ${def === i ? 'selected' : ''}>${i} · ${esc(n)}</option>`).join('')}</select></label>
-      <details class="raw"><summary>Rename the tiers</summary><div class="tiernames">${tiers.map((n, i) => `<label>${i}<input type="text" data-tiername="${i}" value="${esc(n)}"></label>`).join('')}<button type="button" class="mini" data-ed="addtier">${svg('plus', 2)} Add a secret tier</button></div></details>
+      <details class="raw"><summary>Rename the tiers</summary><div class="tiernames">${tiers.map((n, i) => `<label>${i}<input type="text" data-tiername="${i}" value="${esc(n)}"></label>`).join('')}<p class="hint">Deeper secrets are no longer tiers: mark a callout or relation as secret, then reveal it to everyone or to particular players.</p></div></details>
       <h3>Realms & levels</h3><div class="vtable"><table>${head}${rows.join('')}</table></div>
       <h3>Layers</h3><div class="vtable"><table>${head}${lrows}</table></div>
       <details class="raw"><summary>Place categories (${Object.keys(a.categories).length})</summary><div class="vtable"><table>${head}${crows}</table></div></details>

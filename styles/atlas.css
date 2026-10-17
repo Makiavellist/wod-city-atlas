@@ -453,3 +453,74 @@
 .wca .alcreate h3{margin:0 0 6px}
 .wca .wca-modebar .follow{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border:1px solid var(--wca-line);border-radius:999px;background:var(--wca-chrome);color:var(--wca-muted);font:13px var(--f-sc);letter-spacing:.06em;pointer-events:auto}
 .wca .wca-modebar .follow svg{width:13px;height:13px}
+
+/* ---------- 1.3: pins drawn as shapes ---------- */
+.wca .wca-pin .pin{border:0!important;background:none!important;box-shadow:none!important;display:grid;place-items:center}
+.wca .wca-pin .pin>*{grid-area:1/1}
+.wca .wca-pin .pin .pbg{width:100%;height:100%;overflow:visible;filter:drop-shadow(0 2px 3px rgba(0,0,0,.75))}
+.wca .wca-pin .pin>svg:not(.pbg){position:relative;color:var(--c)}
+.wca.pin-glow .wca-pin .pin .pbg,.wca .wca-pin .pin.glow .pbg{filter:drop-shadow(0 0 5px var(--g,var(--c))) drop-shadow(0 2px 3px rgba(0,0,0,.6))}
+.wca .wca-pin.sel .pin .pbg,.wca .wca-pin:hover .pin .pbg{filter:drop-shadow(0 0 3px var(--c)) drop-shadow(0 0 9px var(--c))}
+.wca .wca-pin:not(.s-circle) .pin{left:-15px;top:-15px;width:30px;height:30px}
+.wca .wca-pin.s-marker .pin{top:-29px}
+.wca .wca-pin.s-marker .pin>svg:not(.pbg){margin-top:-5px}
+.wca .wca-pin.s-shield .pin>svg:not(.pbg){margin-top:-2px}
+.wca .zl-lo .wca-pin.s-marker .pin{top:-16px}
+.wca .wca-pin .pin.photo .pphoto{width:74%;height:74%;border-radius:50%;object-fit:cover;position:relative}
+.wca .wca-pin.pnote .pbg>g:first-child{fill:var(--c)!important;stroke:rgba(20,16,10,.55)!important;stroke-width:1.4!important}
+.wca .wca-pin.pnote .pbg>g:nth-child(2){display:none}
+.wca .wca-pin.pnote .pin>svg:not(.pbg){color:#1a1510}
+.wca .wca-pin.pnote.private .pin{opacity:.92}
+.wca .wca-pin.pnote.private .pbg>g:first-child{stroke-dasharray:3 2}
+
+/* ---------- hover pictures ---------- */
+.wca-tip.pic{display:flex;align-items:center;gap:10px;padding:5px 10px 5px 5px}
+.wca-tip .tipimg{width:64px;height:64px;object-fit:cover;border-radius:3px;border:1px solid var(--wca-line);flex:none;background:#0b0a0c}
+.wca-tip .tiptx{display:block}
+
+/* ---------- toolbar on the scene ---------- */
+.wca.scene-map .wca-scenebar{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:20;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none;max-width:calc(100vw - 760px);min-width:360px}
+.wca.scene-map .wca-scenebar .wca-modebar{position:static;max-width:none;justify-content:center}
+.wca.scene-map .wca-scenebar .wca-bar{position:relative;top:auto;right:auto;flex-direction:row;flex-wrap:wrap;justify-content:center;align-items:center;gap:4px;background:var(--wca-chrome);border:1px solid var(--wca-line);border-radius:6px;padding:4px;box-shadow:0 6px 20px rgba(0,0,0,.45)}
+.wca.scene-map .wca-scenebar .mbtn{width:32px;height:32px;pointer-events:auto}
+.wca.scene-map .wca-scenebar .mbtn svg{width:16px;height:16px}
+.wca.scene-map .wca-scenebar .wca-bar [data-act="in"],.wca.scene-map .wca-scenebar .wca-bar [data-act="out"]{display:none}
+.wca.scene-map .wca-scenebar .wca-layers{position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);pointer-events:auto;max-height:60vh}
+.wca.scene-map .wca-scenebar .wca-finder{position:relative;top:auto;left:auto;transform:none;width:min(520px,90vw);pointer-events:auto}
+.wca.scene-map .wca-scenebar .seg,.wca.scene-map .wca-scenebar .follow{pointer-events:auto}
+.wca.scene-map.atlas-off .wca-canvas,.wca.scene-map.atlas-off .wca-overlay,.wca.scene-map.atlas-off .wca-tip{visibility:hidden}
+.wca.scene-map.placing .wca-scenebar [data-act="note"]{color:#1a1510;background:var(--wca-gold)}
+.wca.scene-hud .wca-tabs{flex-wrap:wrap;padding:0 6px}
+.wca.scene-hud .wca-tabs button{font-size:13px;padding:9px 3px 7px;min-width:60px}
+
+/* ---------- Map and Notes tabs ---------- */
+.wca .maptab .grp{margin-top:14px}
+.wca .maptab .grp:first-child{margin-top:0}
+.wca .mt-seg,.wca .mt-btns{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.wca .mt-list{display:grid;gap:2px;margin:4px 0 8px}
+.wca .mt-list label,.wca .mt-row{display:flex;align-items:center;gap:9px;padding:5px 2px;cursor:pointer;font-size:14px}
+.wca .mt-list label svg,.wca .mt-list label i{width:15px;height:15px;color:var(--wca-muted);flex:none}
+.wca .mt-list label span{flex:1}
+.wca .mt-row{justify-content:space-between}
+.wca .mt-row select{max-width:60%}
+.wca .mt-legend{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12.5px;color:var(--wca-muted)}
+.wca .mt-legend span{display:inline-flex;align-items:center;gap:6px}
+.wca .mt-legend i{width:12px;height:12px;border:1.5px solid var(--c);background:repeating-linear-gradient(135deg,var(--c) 0 1.5px,transparent 1.5px 4px);border-radius:1px}
+.wca .mt-legend i.k-dash{border-style:dashed;background:none}
+.wca .mt-legend i.k-line{border:0;height:0;width:16px;border-top:2.5px dashed var(--c);background:none}
+.wca .mt-legend i.k-dot{border-radius:50%;background:var(--c);border:0}
+.wca .notef .notevis{display:flex;gap:18px}
+.wca .notef .notevis label{display:flex;align-items:center;gap:6px;cursor:pointer}
+.wca .notebody{white-space:normal}
+
+/* ---------- secrets and relations ---------- */
+.wca .secrow{border-top:1px solid var(--wca-line);padding:8px 0;display:grid;gap:4px}
+.wca .secrow b{font:14px var(--f-head);color:var(--wca-bone)}
+.wca .secrow label,.wca .secretf label{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px}
+.wca .secretf{display:grid;gap:4px}
+.wca .reladd{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0 12px}
+.wca .reladd select,.wca .reladd input[type=text]{flex:1;min-width:120px;background:var(--wca-panel2);border:1px solid var(--wca-line);border-radius:3px;padding:3px 6px;height:28px}
+.wca .reladd label{display:flex;align-items:center;gap:4px;font-size:13px;color:var(--wca-muted)}
+.wca .rel .rdel{display:inline-grid;place-items:center;width:18px;height:18px;margin-left:6px;vertical-align:-3px;color:var(--wca-faint);border-radius:3px}
+.wca .rel .rdel:hover{color:#e07a7a;background:var(--wca-panel2)}
+.wca .rel .rdel svg{width:11px;height:11px}
