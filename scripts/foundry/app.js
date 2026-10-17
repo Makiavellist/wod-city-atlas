@@ -310,7 +310,7 @@ export async function exportScene(app, o) {
   const path = await uploadFile(dir, new File([snap.blob], `${entry.id}-base-${Date.now().toString(36)}.webp`, {type: 'image/webp'}));
   prog('Building the scene…');
   let scene = o.sceneId ? game.scenes.get(o.sceneId) : null;
-  const flag = {entry: entry.id, bb, realm: view.st.realm, level: view.st.level, lock: !!o.lock, maxZoom, v: 2};
+  const flag = {entry: entry.id, bb, realm: view.st.realm, level: view.st.level, bgRealm: view.st.realm, bgLevel: view.st.level, lock: !!o.lock, maxZoom, v: 3};
   const data = {name: o.name || entry.name, width: W, height: H, padding: 0.1, background: {src: path}, backgroundColor: view.rv.bg || '#000000',
     grid: {type: 0}, tokenVision: false, fog: {exploration: false}, environment: {darknessLevel: 0, globalLight: {enabled: true}}, flags: {[MOD]: {atlas: flag}}};
   if (scene) {

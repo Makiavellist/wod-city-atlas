@@ -71,18 +71,23 @@ export class Renderer {
   draw() {
     const v = this.v, x = this.ctx, c = this.cam, view = v.rv;
     x.setTransform(c.dpr, 0, 0, c.dpr, 0, 0); x.globalAlpha = 1; x.globalCompositeOperation = 'source-over'; x.lineCap = 'round'; x.lineJoin = 'round'; x.setLineDash([]);
-    x.fillStyle = view.bg; x.fillRect(0, 0, c.W, c.H);
-    for (const e of view.effects) if (e.under && this.effectOn(e)) this.effect(e);
-    this.drawBackground(view);
-    this.drawBase(view);
+    // clearBase: the plain map is already underneath (a Foundry scene picture), so only draw what is on top of it
+    const fx = !v.clearBase;
+    if (v.clearBase) x.clearRect(0, 0, c.W, c.H);
+    else {
+      x.fillStyle = view.bg; x.fillRect(0, 0, c.W, c.H);
+      for (const e of view.effects) if (e.under && this.effectOn(e)) this.effect(e);
+      this.drawBackground(view);
+      this.drawBase(view);
+    }
     if (v.bare) return; // just the map itself (a neutral scene background)
-    for (const e of view.effects) if (!e.under && e.clip && this.effectOn(e)) this.effect(e);
+    if (fx) for (const e of view.effects) if (!e.under && e.clip && this.effectOn(e)) this.effect(e);
     this.drawEcho(view);
     this.drawZones();
     this.drawAuras();
     this.drawRoutes();
     this.drawThreads(view);
-    for (const e of view.effects) if (!e.under && !e.clip && this.effectOn(e)) this.effect(e);
+    if (fx) for (const e of view.effects) if (!e.under && !e.clip && this.effectOn(e)) this.effect(e);
     // labels collide with markers first
     this.boxes = v.markerBoxes();
     if (!v.noLabels) { this.drawZoneLabels(); this.drawLabels(view); this.drawFeatureLabels(view); }

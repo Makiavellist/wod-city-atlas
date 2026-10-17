@@ -407,7 +407,6 @@
 .wca.scene-map{display:block;min-height:0;width:auto;height:auto;background:transparent;container-type:normal;overflow:hidden}
 .wca.scene-map .wca-map{position:absolute;inset:0;height:100%;background:transparent;cursor:default;pointer-events:none;touch-action:auto}
 .wca.scene-map .wca-canvas{pointer-events:none}
-#wca-scene-layer.mode-under .wca-canvas{visibility:hidden}
 .wca.scene-map .wca-scale,.wca.scene-map .wca-credit,.wca.scene-map .wca-edbar{display:none!important}
 .wca.scene-map .wca-empty{pointer-events:none}
 .wca.scene-map .wca-tip{z-index:5}

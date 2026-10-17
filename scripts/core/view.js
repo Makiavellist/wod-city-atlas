@@ -119,6 +119,8 @@ export class AtlasView {
     // the wheel over a pin still zooms the scene
     L.addEventListener('wheel', e => this.sc.forwardWheel?.(e), {passive: true});
   }
+  /** Scene mode: the scene picture already shows this realm's plain map, so the layer stays transparent there. */
+  get clearBase() { return !!(this.sc && this.sc.baseShown && this.sc.baseShown(this.st.realm, this.st.level)); }
   roots() { return this.layerRoot ? [this.root, this.layerRoot] : [this.root]; }
   destroy() {
     this.dead = true; this.ro?.disconnect(); this.unsub?.(); cancelAnimationFrame(this.raf); cancelAnimationFrame(this.loopRaf); this.savePrefs();

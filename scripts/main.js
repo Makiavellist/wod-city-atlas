@@ -1,6 +1,6 @@
 /* World of Darkness City Atlas — entry point for Foundry VTT v13. */
 import {AtlasApp, AtlasLauncher, createAtlas, onSocket, resolveUrl, findPeopleByActor, openInAtlas} from './foundry/app.js';
-import {SceneAtlas} from './foundry/scene-layer.js';
+import {SceneAtlas, showDiagnosis} from './foundry/scene-layer.js';
 import {JournalStore, MOD, isAtlasEntry} from './foundry/journal-store.js';
 import {rebasePaths} from './core/store.js';
 import {blankAtlas} from './core/templates.js';
@@ -10,8 +10,6 @@ Hooks.once('init', () => {
   game.settings.register(MOD, 'openJournalAsAtlas', {name: 'WCA.SettingOpenJournal', hint: 'WCA.SettingOpenJournalHint', scope: 'world', config: true, type: Boolean, default: true});
   game.settings.register(MOD, 'defaultOwnership', {name: 'WCA.SettingOwnership', hint: 'WCA.SettingOwnershipHint', scope: 'world', config: true, type: String, default: 'OBSERVER',
     choices: {NONE: 'WCA.OwnNone', LIMITED: 'WCA.OwnLimited', OBSERVER: 'WCA.OwnObserver'}});
-  game.settings.register(MOD, 'sceneMode', {name: 'WCA.SettingSceneMode', hint: 'WCA.SettingSceneModeHint', scope: 'client', config: true, type: String, default: 'under',
-    choices: {under: 'WCA.SceneUnder', over: 'WCA.SceneOver'}, onChange: () => { SceneAtlas.teardown(); SceneAtlas.sync(); }});
   game.settings.register(MOD, 'sceneControl', {name: 'WCA.SettingControl', hint: 'WCA.SettingControlHint', scope: 'world', config: true, type: Boolean, default: true, requiresReload: true});
 });
 
@@ -46,7 +44,7 @@ Hooks.once('ready', () => {
     /** The live atlas drawn on the current scene, if any. */
     get scene() { return SceneAtlas.current; },
     /** Why does an atlas scene look wrong? Run in the console (F12) and send the result. */
-    diagnose() { const d = SceneAtlas.current?.diagnose() ?? {mounted: false, sceneFlag: canvas?.scene?.getFlag(MOD, 'atlas') ?? null}; console.log(`${MOD} | diagnose ${JSON.stringify(d)}`); return d; },
+    diagnose() { const d = SceneAtlas.current?.diagnose() ?? {mounted: false, version: game.modules.get(MOD)?.version, foundry: game.version, sceneFlag: canvas?.scene?.getFlag(MOD, 'atlas') ?? null}; console.log(`${MOD} | diagnose ${JSON.stringify(d)}`); showDiagnosis(d); return d; },
     JournalStore, isAtlasEntry
   };
 });

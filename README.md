@@ -90,12 +90,12 @@ Every person can own one or more domains (zones on the domain layer). In a Kindr
 
 - **Each player sees their own map.** Every screen draws the atlas live with that player's access: realms, layers, places, zones, people and secrets you haven't revealed to them stay hidden, and things they only know exist show as "?". When you reveal something, it appears on their scene at once.
 - **The whole dossier is on the scene.** Click a pin, zone, route or glow to open its dossier in a window beside the map: descriptions, portraits, relations, domains, chronicle pages, layers, realm and level switches, and search. Toggle the window with the book button in the Token controls, the map button in the Notes controls, or **Alt+M**.
-- **Tokens work as usual** and sit on top of the map, with drawings and lighting. Clicks on tokens go to the token, not the atlas.
+- **Tokens work as usual.** Foundry shows the plain map as the scene picture; the per-player layer (zones, routes, glows, labels, pins) is drawn on top of it and is transparent elsewhere, so tokens show through. Clicks on tokens go to the token, not the atlas.
 - **Realm lock.** The lock button in the dossier makes players follow your realm and level (step the whole party into the Umbra). Unlocked, each player switches between the realms you have shown them.
 - **Show to players** (the eye) moves every player's scene to your view and opens the entry you're looking at.
 - **Editing** opens the full atlas window; changes show on the scene immediately.
 
-Choose the area (the whole atlas, the home view or what you see now) and whether to create a new scene or update an existing one. Players who can't open the atlas journal see only the plain map picture. If the map does not appear on an atlas scene, set *Configure Settings → Atlas scenes: how to draw the map* to *Overlay* (it then covers tokens).
+Choose the area (the whole atlas, the home view or what you see now) and whether to create a new scene or update an existing one. Players who can't open the atlas journal see only the plain map picture. If an atlas scene shows nothing, run `game.modules.get('wod-city-atlas').api.diagnose()` in the console (F12) and send the text it shows.
 
 ## Characters and Actors
 
