@@ -90,10 +90,15 @@ Hooks.on('getJournalEntryContextOptions', (app, options) => {
 /* Atlas scenes: the atlas is drawn live on the scene for each user. */
 let ORIG_MAX_ZOOM = null;
 Hooks.on('canvasInit', cv => {
+  // Let atlas scenes zoom in further, but only where Foundry has a numeric CONFIG.Canvas.maxZoom to adjust.
+  // (Never write anything that is not a finite number: an invalid value breaks the camera of every scene.)
   try {
-    ORIG_MAX_ZOOM ??= CONFIG.Canvas.maxZoom;
-    const f = cv?.scene?.getFlag(MOD, 'atlas');
-    CONFIG.Canvas.maxZoom = f && f.maxZoom ? Math.max(ORIG_MAX_ZOOM, f.maxZoom) : ORIG_MAX_ZOOM;
+    const C = CONFIG.Canvas; if (!C) return;
+    if ('maxZoom' in C && !Number.isFinite(C.maxZoom)) { if (Number.isFinite(ORIG_MAX_ZOOM)) C.maxZoom = ORIG_MAX_ZOOM; else delete C.maxZoom; }
+    if (ORIG_MAX_ZOOM === null && Number.isFinite(C.maxZoom)) ORIG_MAX_ZOOM = C.maxZoom;
+    if (!Number.isFinite(ORIG_MAX_ZOOM)) return;
+    const f = cv?.scene?.getFlag(MOD, 'atlas'), want = f && Number(f.maxZoom);
+    C.maxZoom = Number.isFinite(want) && want > ORIG_MAX_ZOOM ? want : ORIG_MAX_ZOOM;
   } catch (e) {}
 });
 Hooks.on('canvasReady', () => { SceneAtlas.sync(); });
