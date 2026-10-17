@@ -20,7 +20,7 @@ const ICONS = () => Object.keys(GLYPH).sort();
 
 /**
  * Field spec: {k: 'path', t: type, label, help, opts: [[value,label]] | () => [...], ph, wide, rows, sub: [fields] (list), refs: () => [{id,label}], show: data => bool}
- * Types: text, textarea, html, number, check, select, multi, color, icon, image, refs, ref, list, json, stops, coords
+ * Types: text, textarea, html, number, check, select, multi, color, icon, image, refs, ref, list, json, stops, coords, reveal, actor
  */
 export function renderFields(fields, data, ctx) {
   return fields.filter(f => !f.show || f.show(data)).map(f => renderField(f, data, ctx)).join('');
@@ -59,6 +59,13 @@ export function renderField(f, data, ctx) {
       const opt = (sel, inherit, defLabel) => (inherit ? `<option value="" ${sel === '' || sel == null ? 'selected' : ''}>${esc(defLabel)}</option>` : '') + tiers.map((n, i) => `<option value="${i}" ${sel !== '' && sel != null && +sel === i ? 'selected' : ''}>${i} · ${esc(n)}</option>`).join('');
       return wrap(`<div class="revealf"><label><span>Everyone</span><select data-who="*">${opt(r.all, true, f.defLabel || 'default')}</select></label>${ps.map(p => `<label><span>${esc(p.name)}</span><select data-who="${esc(p.id)}">${opt((r.users || {})[p.id], true, 'as everyone')}</select></label>`).join('')}</div>`);
     }
+    case 'actor': {
+      const list = (ctx && ctx.actors && ctx.actors()) || [], cur = list.find(a => a.uuid === v);
+      const groups = new Map(); for (const a of list) { const g = a.folder || ''; if (!groups.has(g)) groups.set(g, []); groups.get(g).push(a); }
+      const o = a => `<option value="${esc(a.uuid)}" ${a.uuid === v ? 'selected' : ''}>${esc(a.name)}</option>`;
+      const body = [...groups].map(([g, arr]) => g ? `<optgroup label="${esc(g)}">${arr.map(o).join('')}</optgroup>` : arr.map(o).join('')).join('');
+      return wrap(`<div class="actorrow" data-drop>${cur && cur.img ? `<img class="aprev" src="${esc(ctx.resolveUrl ? ctx.resolveUrl(cur.img) : cur.img)}" alt="">` : `<span class="aprev none">${svg('user')}</span>`}<select id="${id}"><option value="">${esc(f.none || '— not linked —')}</option>${body}${v && !cur ? `<option value="${esc(v)}" selected>${esc(f.otherLabel ? f.otherLabel(v) : v)}</option>` : ''}</select></div><small class="drophint">${list.length ? 'Pick an Actor, or drop one from the Actors tab here.' : 'No Actors in this world yet. Create them in the Actors tab, or use “Link to Actors” in People.'}</small>`);
+    }
     case 'stops': return wrap(`<input id="${id}" type="text" value="${esc(v === undefined ? '' : JSON.stringify(v))}" placeholder="2 or [[10,1],[15,4]]">`);
     case 'coords': return wrap(`<input id="${id}" type="text" value="${esc(v ? JSON.stringify(v) : '')}" placeholder="[a, b]">`);
     case 'info': return `<div class="ef ef-info wide">${f.html ? (typeof f.html === 'function' ? f.html(data) : f.html) : ''}</div>`;
@@ -78,7 +85,7 @@ export function readFields(root, fields, base, ctx) {
       case 'html': { const host = el.querySelector('[data-html-host]'); v = host && host._getValue ? host._getValue() : el.querySelector('textarea').value; v = (v || '').trim(); if (v && !/[<]/.test(v)) v = v.split(/\n{2,}/).map(p => `<p>${esc(p).replace(/\n/g, '<br>')}</p>`).join(''); break; }
       case 'number': { const s = el.querySelector('input').value; v = s === '' ? undefined : +s; break; }
       case 'check': { const was = getPath(base, f.k); v = el.querySelector('input').checked ? (was ? was : true) : undefined; break; }
-      case 'select': v = el.querySelector('select').value; if (f.num && v !== '') v = +v; break;
+      case 'select': case 'actor': v = el.querySelector('select').value; if (f.num && v !== '') v = +v; break;
       case 'multi': v = [...el.querySelectorAll('input:checked')].map(i => i.value); break;
       case 'color': v = el.querySelector('input[type=text]').value.trim(); break;
       case 'icon': { const t = el.querySelector('input').value.trim(); v = t || el.querySelector('select').value; break; }
@@ -126,6 +133,16 @@ export function bindFields(root, fields, ctx) {
     if (!rf.querySelector(`.chipref[data-id="${CSS.escape(hit.id)}"]`)) { const s = document.createElement('span'); s.className = 'chipref'; s.dataset.id = hit.id; s.innerHTML = `${esc(hit.label)}<button type="button" data-unref title="Remove">${svg('x', 2)}</button>`; rf.insertBefore(s, inp); }
     inp.value = '';
   }
+  // Actors: preview and drag-and-drop from the Actors tab
+  root.addEventListener('change', e => { const ar = e.target.closest('.actorrow'); if (!ar || !e.target.matches('select')) return; const a = ((ctx.actors && ctx.actors()) || []).find(x => x.uuid === e.target.value); const old = ar.querySelector('.aprev'); const n = document.createElement(a && a.img ? 'img' : 'span'); n.className = 'aprev' + (a && a.img ? '' : ' none'); if (a && a.img) { n.src = ctx.resolveUrl ? ctx.resolveUrl(a.img) : a.img; n.alt = ''; } else n.innerHTML = svg('user'); old.replaceWith(n); });
+  root.addEventListener('dragover', e => { if (e.target.closest('.actorrow')) e.preventDefault(); });
+  root.addEventListener('drop', async e => {
+    const ar = e.target.closest('.actorrow'); if (!ar || !ctx.resolveDrop) return; e.preventDefault(); e.stopPropagation();
+    let d; try { d = JSON.parse(e.dataTransfer.getData('text/plain')); } catch (er) { return; }
+    const doc = await ctx.resolveDrop(d); if (!doc) return;
+    const sel = ar.querySelector('select'); if (![...sel.options].some(o => o.value === doc.uuid)) { const o = document.createElement('option'); o.value = doc.uuid; o.textContent = `${doc.documentName}: ${doc.name}`; sel.appendChild(o); }
+    sel.value = doc.uuid; sel.dispatchEvent(new Event('change', {bubbles: true}));
+  });
   // rich text editors
   if (ctx.richEditor) root.querySelectorAll('.ef-html').forEach(ef => { const host = ef.querySelector('[data-html-host]'), ta = ef.querySelector('textarea'); try { const ok = ctx.richEditor(host, ta.value, ta); if (ok) ta.hidden = true; } catch (e) { console.warn('wod-city-atlas | rich editor unavailable', e); } });
 }

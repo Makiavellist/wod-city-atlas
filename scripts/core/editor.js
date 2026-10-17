@@ -364,8 +364,9 @@ export class AtlasEditor {
       case 'people': return [{k: 'name', t: 'text', label: 'Name', wide: true}, {k: 'kicker', t: 'text', label: 'Clan / kind line', wide: true, ph: 'Ventrue · 8th generation'}, {k: 'sub', t: 'text', label: 'Role', wide: true}, C.faction, {k: 'tag', t: 'text', label: 'Short tag', ph: 'Ventrue'},
         {k: 'status', t: 'select', label: 'Status', opts: () => self.statusOpts()}, C.icon, C.color, C.gm, C.alias, C.aliasText, {k: 'realms', t: 'multi', label: 'Listed under', help: 'which realms and levels show this person', wide: true, opts: () => self.realmKeyOpts()},
         C.img, C.html, C.notes, {k: 'at', t: 'refs', label: 'Where to find them', wide: true, refs: () => self.refList(['places', 'zones', 'routes'])},
-        {k: 'relations.title', t: 'text', label: 'Relations heading', ph: 'Attitudes'}, {k: '_rel', t: 'list', label: 'Relations', wide: true, addLabel: 'Add relation', sub: [{k: 'a', t: 'text', label: 'Who'}, {k: 'b', t: 'text', label: 'Attitude'}]},
-        C.facts, C.uuid, C.order, C.src];
+        {k: 'uuid', t: 'actor', label: 'Linked Actor', help: 'their character sheet in the Actors tab', wide: true, otherLabel: u => `Other document: ${u}`},
+        {k: 'relations.title', t: 'text', label: 'Relations heading', ph: 'Attitudes'}, {k: '_rel', t: 'list', label: 'Relations', wide: true, addLabel: 'Add relation', sub: [{k: 'a', t: 'text', label: 'Who'}, {k: 'b', t: 'text', label: 'Attitude'}, {k: 'ref', t: 'ref', label: 'Links to', help: 'blank = found by name', refs: () => self.refList(['people'])}]},
+        C.facts, C.order, C.src];
       case 'pages': return [{k: 'title', t: 'text', label: 'Title', wide: true}, C.realm, {k: 'levels', t: 'multi', label: 'Only on levels', help: 'none ticked = every level', opts: d => self.levelOpts(d.realm), show: d => d.realm && self.levelOpts(d.realm).length > 1, wide: true},
         {k: 'tab', t: 'select', label: 'Shown in', opts: TABS, none: false}, {k: 'order', t: 'number', label: 'Order'}, C.gm,
         {k: '_gmhelp', t: 'info', html: '<p class="hint">Inside the text, <code>&lt;span class="gm-only"&gt;…&lt;/span&gt;</code> hides a passage from players; <code>&lt;button data-link="id"&gt;</code> opens an entry. Foundry links like <code>@UUID[…]</code> work too.</p>'},
@@ -399,7 +400,7 @@ export class AtlasEditor {
     delete d.gm;
     if (Array.isArray(d.notes)) d.notes = d.notes.map(n => { const o = Object.assign({}, n); const t = this.m.noteTier(n); delete o.gm; if (t !== TIER.FULL) o.tier = t; else delete o.tier; return o; });
     if (coll === 'zones' || coll === 'routes') this.styleIn(d, coll);
-    if (coll === 'people') d._rel = ((d.relations && d.relations.rows) || []).map(([a, b]) => ({a, b}));
+    if (coll === 'people') d._rel = ((d.relations && d.relations.rows) || []).map(([a, b, ref]) => ({a, b, ref}));
     if (coll === 'realms') { d._levels = (d.levels || []).map(l => Object.assign({}, l, {show: (l.show || []).join(', ')})); }
     if (coll === 'layers' && d.realm != null) d.realm = [].concat(d.realm);
     if (coll === 'styles') { d._name = it.id; d._body = clone(it); delete d._body.id; }
@@ -407,7 +408,8 @@ export class AtlasEditor {
   }
   fromForm(coll, d, orig) {
     if (coll === 'zones' || coll === 'routes') this.styleOut(d);
-    if (coll === 'people') { const rows = (d._rel || []).filter(r => r.a || r.b).map(r => [r.a || '', r.b || '']); delete d._rel; if (rows.length) d.relations = Object.assign({}, d.relations || {}, {rows}); else if (d.relations) delete d.relations.rows; if (d.relations && !d.relations.rows) delete d.relations; }
+    if (coll === 'people') { const rows = (d._rel || []).filter(r => r.a || r.b || r.ref).map(r => r.ref ? [r.a || '', r.b || '', r.ref] : [r.a || '', r.b || '']);
+      if (d.uuid) { const a = (this.A.actors?.() || []).find(x => x.uuid === d.uuid); if (a) d.uuidName = `Actor: ${a.name}`; } else delete d.uuidName; delete d._rel; if (rows.length) d.relations = Object.assign({}, d.relations || {}, {rows}); else if (d.relations) delete d.relations.rows; if (d.relations && !d.relations.rows) delete d.relations; }
     if (coll === 'realms') {
       d.levels = (d._levels || []).filter(l => l.id).map(l => Object.assign({}, (orig.levels || []).find(o => o.id === l.id) || {}, l, {id: safeId(l.id), show: String(l.show || l.id).split(/[\s,]+/).filter(Boolean)}));
       if (!d.levels.length) d.levels = [{id: 'main', name: 'Main', show: ['main']}];
@@ -421,7 +423,7 @@ export class AtlasEditor {
 
   /* ================= pane ================= */
   ctx() {
-    return {tiers: this.m.tiers(), players: this.v.players(), resolveUrl: s => this.v.resolveUrl(s), pickImage: this.A.pickImage ? (cur, cb) => this.A.pickImage(cur, cb) : (cur, cb) => { const p = window.prompt('Image path or URL', cur || ''); if (p != null) cb(p); }, richEditor: this.A.richEditor, data: this.panel && this.panel.data};
+    return {tiers: this.m.tiers(), players: this.v.players(), actors: this.A.actors ? () => this.A.actors() : null, resolveDrop: this.A.resolveDrop, resolveUrl: s => this.v.resolveUrl(s), pickImage: this.A.pickImage ? (cur, cb) => this.A.pickImage(cur, cb) : (cur, cb) => { const p = window.prompt('Image path or URL', cur || ''); if (p != null) cb(p); }, richEditor: this.A.richEditor, data: this.panel && this.panel.data};
   }
   renderPane() {
     const P = this.panel || {type: 'home'}, pane = this.v.el.pane;
@@ -432,6 +434,7 @@ export class AtlasEditor {
     if (P.type === 'io') return this.renderIO();
     if (P.type === 'visibility') return this.renderVisibility();
     if (P.type === 'scene') return this.renderScene();
+    if (P.type === 'actorlink') return this.renderActorLink();
     // home
     const a = this.m.atlas, count = c => Object.keys(a[c]).length;
     pane.innerHTML = `<div class="ed"><div class="ed-h"><h2>Edit atlas</h2><p class="hint">Pick a tool on the map (top centre) to add places, zones, routes, labels and glows, or click anything on the map to edit it. Everything is saved as you go; <b>Undo</b> steps back.</p></div>
@@ -452,7 +455,7 @@ export class AtlasEditor {
     const label = it => it.name || it.title || it.text || it.id;
     const sub = it => [it.realm && a.realms[it.realm] ? a.realms[it.realm].name : '', it.level || '', it._coll === 'auras' ? 'glow' : '', it.layer && a.layers[it.layer] ? a.layers[it.layer].name : '', coll === 'categories' || coll === 'layers' ? (it.realm ? [].concat(it.realm).join(', ') : 'all realms') : ''].filter(Boolean).join(' · ');
     const canAdd = !['places', 'zones', 'routes', 'labels'].includes(coll);
-    pane.innerHTML = `<div class="ed"><div class="ed-top"><button type="button" class="back" data-ed="back">${svg('back', 2)} Back</button>${canAdd ? `<button type="button" class="lnk" data-ed="add">${svg('plus', 2)} New ${esc((TYPE_NAMES[coll] || coll).toLowerCase())}</button>` : ''}${coll === 'people' && this.A.pickActors ? `<button type="button" class="lnk" data-ed="actors">${svg('user')} From Actors…</button>` : ''}</div>
+    pane.innerHTML = `<div class="ed"><div class="ed-top"><button type="button" class="back" data-ed="back">${svg('back', 2)} Back</button>${canAdd ? `<button type="button" class="lnk" data-ed="add">${svg('plus', 2)} New ${esc((TYPE_NAMES[coll] || coll).toLowerCase())}</button>` : ''}${coll === 'people' && this.A.pickActors ? `<button type="button" class="lnk" data-ed="actors">${svg('user')} From Actors…</button>` : ''}${coll === 'people' && this.A.actors ? `<button type="button" class="lnk" data-ed="actorlink">${svg('link')} Link to Actors…</button>` : ''}</div>
       <h2>${esc({realms: 'Realms & levels', layers: 'Layers', categories: 'Place categories', factions: 'Factions', people: 'People', pages: 'Chronicle pages', styles: 'Styles', places: 'Places', zones: 'Zones', routes: 'Routes', labels: 'Labels & glows'}[coll] || coll)} <span class="n">${items.length}</span></h2>
       ${['places', 'zones', 'routes', 'labels'].includes(coll) ? `<p class="hint">Add these with the tools on the map.</p>` : ''}
       <div class="search">${svg('search')}<input class="ed-q" type="search" placeholder="Filter…" value="${esc(this.panel.q || '')}"></div>
@@ -462,6 +465,7 @@ export class AtlasEditor {
       const b = e.target.closest('button'); if (!b) return;
       if (b.dataset.ed === 'back') this.back();
       else if (b.dataset.ed === 'add') { const it = Object.assign(this.defaults(coll), {}); it.id = this.freshId(coll); await this.put(coll, it); this.edit(it.id, {isNew: true, coll}); }
+      else if (b.dataset.ed === 'actorlink') { this.panel = {type: 'actorlink', from: this.panel}; this.renderPane(); }
       else if (b.dataset.ed === 'actors') { const list = await this.A.pickActors(); for (const ac of list || []) { if (Object.values(this.m.atlas.people).some(p => p.uuid === ac.uuid)) continue; await this.put('people', {id: this.newId('people', ac.name), name: ac.name, img: ac.img, uuid: ac.uuid, uuidName: `Actor: ${ac.name}`, realms: [this.v.st.realm], kicker: ac.kicker || undefined}); } this.renderCollection(coll); if (list && list.length) this.notify(`Added ${list.length} people from Actors.`); }
       else if (b.dataset.edit) this.edit(b.dataset.edit, {coll: b.dataset.coll});
     };
@@ -648,28 +652,83 @@ export class AtlasEditor {
 
   /* ================= show as a Foundry scene ================= */
   renderScene() {
-    const pane = this.v.el.pane, ps = this.v.players(), v = this.v;
+    const pane = this.v.el.pane, v = this.v;
     const realm = v.model.realm(v.st.realm), lvl = v.model.level(v.st.realm, v.st.level);
+    const scenes = (this.A.atlasScenes && this.A.atlasScenes()) || [];
     pane.innerHTML = `<div class="ed"><div class="ed-top"><button type="button" class="back" data-ed="back">${svg('back', 2)} Back</button></div><h2>Show as a Scene</h2>
-      <p class="hint">Makes a Foundry scene from <b>${esc(realm.name)}${realm.levels.length > 1 ? ' · ' + esc(lvl.name || lvl.id) : ''}</b> as the chosen player would see it. The map becomes the scene background and every visible place becomes a map note: players double-click a note to open it in the atlas. Run it again to refresh the same scene after you edit or reveal things. Switch realm or level first to make scenes of other realms.</p>
+      <p class="hint">Makes a Foundry scene that <b>is</b> this atlas. Every player's screen draws the map live, as that player may see it: hidden realms, layers, places and people stay hidden, unknown ones appear as “?”, and revealing something updates their screen at once. Clicking a pin, zone, route or glow on the scene opens its dossier (descriptions, people, relations, domains, layers, search) in a panel beside the map. Tokens move on top of the map as usual.</p>
       <form class="ed-form" autocomplete="off">
-        <div class="ef"><label>Area</label><select name="area"><option value="view">What the map shows now</option><option value="all">The whole atlas</option></select></div>
-        <div class="ef"><label>Picture size</label><select name="size"><option value="2048">2048 px</option><option value="4096" selected>4096 px</option><option value="6144">6144 px</option><option value="8192">8192 px (big file)</option></select></div>
-        <div class="ef"><label>As seen by</label><select name="as"><option value="*">Every player (defaults)</option>${ps.map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('')}<option value="gm">Storyteller (everything)</option></select></div>
-        <div class="ef"><label>Scene name</label><input type="text" name="name" value="${esc(v.model.atlas.title)} · ${esc(realm.name)}${realm.levels.length > 1 ? ' · ' + esc(lvl.name || lvl.id) : ''}"></div>
-        <div class="ef ef-check wide"><label><input type="checkbox" name="notes" checked> Add a map note for every visible place</label></div>
-        <div class="ef ef-check wide"><label><input type="checkbox" name="labels" checked> Draw zone and area names into the picture</label></div>
+        <div class="ef wide"><label>Scene</label><select name="scene"><option value="">Create a new scene</option>${scenes.map(sc => `<option value="${esc(sc.id)}">Update “${esc(sc.name)}”</option>`).join('')}</select></div>
+        <div class="ef"><label>Area<small>the part of the map the scene covers</small></label><select name="area"><option value="all">The whole atlas</option><option value="home">The home view</option><option value="view">What the map shows now</option></select></div>
+        <div class="ef"><label>Scene name</label><input type="text" name="name" value="${esc(v.model.atlas.title)}"></div>
+        <div class="ef ef-check wide"><label><input type="checkbox" name="lock"> Players follow my realm and level<small>otherwise each player switches between the realms you've shown them (here: starts in ${esc(realm.name)}${realm.levels.length > 1 ? ' · ' + esc(lvl.name || lvl.id) : ''})</small></label></div>
         <div class="ef ef-check wide"><label><input type="checkbox" name="activate"> Activate the scene for everyone when done</label></div>
-        <div class="ed-actions"><button type="submit" class="btn primary">${svg('scene')} Create / refresh scene</button><span class="hint scenestat"></span></div>
+        <div class="ed-actions"><button type="submit" class="btn primary">${svg('scene')} Make the scene</button><span class="hint scenestat"></span></div>
       </form></div>`;
     pane.onclick = e => { const b = e.target.closest('button[data-ed]'); if (b && b.dataset.ed === 'back') this.back(); };
     pane.querySelector('form').onsubmit = async e => {
       e.preventDefault(); const f = e.target.elements; const stat = pane.querySelector('.scenestat'); const btn = pane.querySelector('button[type=submit]');
-      btn.disabled = true; stat.textContent = 'Rendering…';
-      try { await this.A.exportScene({area: f.area.value, size: +f.size.value, as: f.as.value, name: f.name.value.trim(), notes: f.notes.checked, labels: f.labels.checked, activate: f.activate.checked, progress: t => { stat.textContent = t; }}); stat.textContent = 'Done.'; }
+      btn.disabled = true; stat.textContent = 'Working…';
+      try { await this.A.exportScene({area: f.area.value, sceneId: f.scene.value || null, name: f.name.value.trim(), lock: f.lock.checked, activate: f.activate.checked, progress: t => { stat.textContent = t; }}); stat.textContent = 'Done.'; }
       catch (err) { console.error(err); this.notify('Could not make the scene: ' + err.message, 'error'); stat.textContent = ''; }
       finally { btn.disabled = false; }
     };
+  }
+
+  /* ================= people ↔ Actors ================= */
+  renderActorLink() {
+    const pane = this.v.el.pane, P = this.panel, A = this.A;
+    const actors = (A.actors && A.actors()) || [];
+    P.map ||= Object.fromEntries(Object.values(this.m.atlas.people).map(p => [p.id, p.uuid || '']));
+    const people = sortBy(Object.values(this.m.atlas.people), p => p.faction || '', p => p.name || '');
+    const opts = cur => `<option value="">—</option>` + actors.map(a => `<option value="${esc(a.uuid)}" ${a.uuid === cur ? 'selected' : ''}>${esc(a.name)}${a.folder ? ` (${esc(a.folder)})` : ''}</option>`).join('') + (cur && !actors.some(a => a.uuid === cur) ? `<option value="${esc(cur)}" selected>${esc(cur)}</option>` : '');
+    const linked = Object.values(P.map).filter(Boolean).length;
+    const types = (A.actorTypes && A.actorTypes()) || [];
+    pane.innerHTML = `<div class="ed"><div class="ed-top"><button type="button" class="back" data-ed="back">${svg('back', 2)} Back</button></div><h2>Link people to Actors <span class="n">${linked}/${people.length}</span></h2>
+      <p class="hint">A linked person shows a <b>Character sheet</b> button in their dossier (for anyone allowed to open that Actor), uses the Actor's portrait when they have none, and links from relations. Changes are saved when you press Save.</p>
+      <div class="ed-tools"><button type="button" class="btn small" data-al="auto">${svg('link')} Match by name</button>${A.createActors ? `<button type="button" class="btn small" data-al="create">${svg('plus', 2)} Create Actors for the unlinked…</button>` : ''}<input class="ed-q" type="search" placeholder="Filter…" value="${esc(P.q || '')}"></div>
+      <div class="altable">${people.map(p => `<label class="alrow" data-pid="${esc(p.id)}" ${P.q && !(p.name || '').toLowerCase().includes(P.q.toLowerCase()) ? 'hidden' : ''}><span class="nm" style="--c:${esc(this.m.colorOf(p))}"><i></i>${esc(p.name || p.id)}<small>${esc(p.kicker || p.tag || '')}</small></span><select data-pid="${esc(p.id)}">${opts(P.map[p.id])}</select></label>`).join('') || '<div class="empty">No people yet.</div>'}</div>
+      <div class="alcreate" hidden><h3>Create Actors</h3>
+        <div class="ef"><label>Actor type</label><select name="type">${types.map(([k, n]) => `<option value="${esc(k)}">${esc(n)}</option>`).join('')}</select></div>
+        <div class="ef"><label>Players may<small>default access to the new sheets</small></label><select name="own"><option value="0">not see them</option><option value="1">see the portrait (Limited)</option><option value="2">read them (Observer)</option></select></div>
+        <div class="ef ef-check wide"><label><input type="checkbox" name="bio" checked> Copy the description into the Actor's biography (where the system has one)</label></div>
+        <div class="ed-actions"><button type="button" class="btn primary" data-al="docreate">Create</button><button type="button" class="btn" data-al="nocreate">Cancel</button></div></div>
+      <div class="ed-actions"><button type="button" class="btn primary" data-al="save">${svg('check', 2)} Save links</button><span class="hint alstat"></span></div></div>`;
+    pane.onchange = e => { const sel = e.target.closest('select[data-pid]'); if (sel) P.map[sel.dataset.pid] = sel.value; };
+    const qi = pane.querySelector('.ed-q'); qi.oninput = () => { P.q = qi.value; const q = qi.value.toLowerCase(); pane.querySelectorAll('.alrow').forEach(r => { const p = this.m.atlas.people[r.dataset.pid]; r.hidden = !!q && !(p.name || '').toLowerCase().includes(q); }); };
+    pane.onclick = async e => {
+      const b = e.target.closest('button'); if (!b) return;
+      if (b.dataset.ed === 'back') return this.back();
+      const a = b.dataset.al; const stat = pane.querySelector('.alstat');
+      if (a === 'auto') {
+        const norm = t => String(t || '').toLowerCase().replace(/[^\p{L}\p{N} ]+/gu, ' ').replace(/\s+/g, ' ').trim();
+        const byName = new Map(); for (const ac of actors) { const k = norm(ac.name); byName.set(k, byName.has(k) ? null : ac.uuid); }
+        let n = 0; for (const p of people) { if (P.map[p.id]) continue; const u = byName.get(norm(p.name)); if (u) { P.map[p.id] = u; n++; } }
+        this.renderActorLink(); this.v.el.pane.querySelector('.alstat').textContent = n ? `Matched ${n}. Press Save to keep them.` : 'No new matches by exact name.';
+      } else if (a === 'create') { pane.querySelector('.alcreate').hidden = false; pane.querySelector('.alcreate').scrollIntoView({block: 'nearest'}); }
+      else if (a === 'nocreate') pane.querySelector('.alcreate').hidden = true;
+      else if (a === 'docreate') {
+        const box = pane.querySelector('.alcreate'), todo = people.filter(p => !P.map[p.id]);
+        if (!todo.length) { stat.textContent = 'Everyone is linked already.'; return; }
+        if (A.confirm && !(await A.confirm('Create Actors', `Create ${todo.length} Actors (one for each unlinked person)?`))) return;
+        b.disabled = true; stat.textContent = 'Creating…';
+        try {
+          const made = await A.createActors(todo.map(p => ({id: p.id, name: p.name, img: p.img, html: p.html, kicker: p.kicker})), {type: box.querySelector('[name=type]').value, ownership: +box.querySelector('[name=own]').value, bio: box.querySelector('[name=bio]').checked});
+          for (const [pid, uuid] of Object.entries(made || {})) P.map[pid] = uuid;
+          await this.saveActorLinks(); this.renderActorLink(); this.v.el.pane.querySelector('.alstat').textContent = `Created and linked ${Object.keys(made || {}).length} Actors.`;
+        } catch (err) { console.error(err); this.notify('Could not create Actors: ' + err.message, 'error'); stat.textContent = ''; }
+        finally { b.disabled = false; }
+      } else if (a === 'save') { const n = await this.saveActorLinks(); stat.textContent = n ? `Saved ${n} changes.` : 'Nothing changed.'; }
+    };
+  }
+  async saveActorLinks() {
+    const P = this.panel, actors = (this.A.actors && this.A.actors()) || []; let n = 0;
+    for (const [pid, uuid] of Object.entries(P.map || {})) {
+      const p = this.store.atlas.people[pid]; if (!p || (p.uuid || '') === (uuid || '')) continue;
+      const d = clone(p); if (uuid) { d.uuid = uuid; const a = actors.find(x => x.uuid === uuid); d.uuidName = a ? `Actor: ${a.name}` : d.uuidName; } else { delete d.uuid; delete d.uuidName; }
+      await this.put('people', d); n++;
+    }
+    return n;
   }
 
   /* ================= import / export ================= */

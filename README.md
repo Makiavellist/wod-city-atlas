@@ -7,10 +7,11 @@ A city atlas has:
 - **Realms.** Each realm is a separate view of the same city: Waking, Dreaming, Shadowlands, Umbra, or anything else you add. Each one has its own colours, effects and crossing button.
 - **Levels** inside a realm, such as Street / Underground / Depths or Near / Deep.
 - **Places.** Pins with categories, factions, rich descriptions, Storyteller-only notes, portraits and links to Foundry Actors, Journals or Scenes.
+- **Live scenes.** The atlas can be a Foundry scene that each player sees with their own access, with the full dossier beside it.
 - **Zones.** Domains, territories and spirit zones, with hatched or patterned fills, ratings ("Danger 4/5"), owners and "lies within" lookups.
 - **Routes.** Patrols, trods, byways, moon bridges and tunnels, which can be animated.
 - **Labels** and **glows**, such as Glamour wells, a thin Shroud or a Kindred taint.
-- **People.** The Kindred, Kithain, wraiths, Garou and spirits of the city, listed by faction, with domains, haunts, relations and secrets.
+- **People.** The Kindred, Kithain, wraiths, Garou and spirits of the city, listed by faction, with domains, haunts, relations, secrets and linked Actors.
 - **Chronicle pages.** Timelines, hooks and tables, shown in the dossier tab of each realm.
 
 It ships with **Milwaukee by Night (1991)** as a ready-made atlas. That atlas has four realms, Underground and Depths levels, Kindred domains, 331 places, 150 people, 93 zones, 59 routes and 31 chronicle pages.
@@ -83,14 +84,26 @@ Every realm, level, layer, place category, place, zone, route, glow, person and 
 
 Every person can own one or more domains (zones on the domain layer). In a Kindred's dossier, the **Domain** section lists their domains with a show/hide eye. In the Storyteller view it also has *Draw a domain* and an edit button for the shape. In the Kindred list, the crown next to a name shows or hides just that Kindred's domain. Domains have a status: held, reserve, contested, vacant, hidden or hostile.
 
-## Showing the map as a Scene
+## The atlas as a Scene
 
-*Edit → Show as a Scene* renders the current realm and level as a Foundry scene, as a chosen player (or every player) would see it:
+*Edit → Show as a Scene* makes a Foundry scene that **is** the atlas:
 
-- The picture becomes the scene background.
-- Every visible place becomes a map note, and double-clicking a note opens that place in the atlas.
-- Running it again refreshes the same scene.
-- Pictures are saved in `worlds/<world>/wod-city-atlas/`.
+- **Each player sees their own map.** Every screen draws the atlas live with that player's access: realms, layers, places, zones, people and secrets you haven't revealed to them stay hidden, and things they only know exist show as "?". When you reveal something, it appears on their scene at once.
+- **The whole dossier is on the scene.** Click a pin, zone, route or glow to open its dossier in a window beside the map: descriptions, portraits, relations, domains, chronicle pages, layers, realm and level switches, and search. Toggle the window with the book button in the Token controls, the map button in the Notes controls, or **Alt+M**.
+- **Tokens work as usual** and sit on top of the map, with drawings and lighting. Clicks on tokens go to the token, not the atlas.
+- **Realm lock.** The lock button in the dossier makes players follow your realm and level (step the whole party into the Umbra). Unlocked, each player switches between the realms you have shown them.
+- **Show to players** (the eye) moves every player's scene to your view and opens the entry you're looking at.
+- **Editing** opens the full atlas window; changes show on the scene immediately.
+
+Choose the area (the whole atlas, the home view or what you see now) and whether to create a new scene or update an existing one. Players who can't open the atlas journal see only the plain map picture. If the map does not appear on an atlas scene, set *Configure Settings → Atlas scenes: how to draw the map* to *Overlay* (it then covers tokens).
+
+## Characters and Actors
+
+- **Link a person to an Actor:** in their edit form, pick the *Linked Actor* or drop one from the Actors tab onto it.
+- **Many at once:** *Edit → People → Link to Actors…* matches people to Actors by exact name, lets you pick the rest, and can create Actors for everyone unlinked (in a *City Atlas characters* folder, with their portrait and, where the system has one, their description as biography).
+- A linked person's dossier shows a **Character sheet** button to anyone allowed to open that Actor (so players see their own and the ones you share), and uses the Actor's portrait when the person has none.
+- **Relations** link to the people they name (matched by name, or set *Links to* in the editor), with a sheet button for linked Actors.
+- Right-click an Actor in the Actors tab → **Show in City Atlas**.
 
 ## Editing (Storyteller)
 

@@ -10,8 +10,8 @@ import {TIER} from './model.js';
  */
 export async function renderSnapshot(view, o = {}) {
   const m = view.model, c = view.cam;
-  let bb;
-  if (o.area === 'all') bb = view.worldBB();
+  let bb = o.bb || null;
+  if (!bb && o.area === 'all') bb = view.worldBB();
   if (!bb) { const s = Math.pow(2, c.z); bb = [c.cx - c.W / 2 / s, c.cy - c.H / 2 / s, c.cx + c.W / 2 / s, c.cy + c.H / 2 / s]; }
   const w0 = bb[2] - bb[0], h0 = bb[3] - bb[1], size = o.size || 4096;
   const k = size / Math.max(w0, h0);
@@ -21,12 +21,12 @@ export async function renderSnapshot(view, o = {}) {
   const places = [];
   const fake = {
     model: m, ctx: canvas.getContext('2d'), cam: {cx: (bb[0] + bb[2]) / 2, cy: (bb[1] + bb[3]) / 2, z: Math.log2(k), W, H, dpr: 1},
-    st, T: 0, sel: null, hover: null, rv: view.rv, editor: null, noLabels: o.labels === false,
+    st, T: 0, sel: null, hover: null, rv: view.rv, editor: null, noLabels: o.labels === false, bare: !!o.bare,
     layerOn: id => view.layerOn(id), isHiddenItem: id => view.isHiddenItem(id), resolveUrl: s => view.resolveUrl(s), dirty() {},
     markerBoxes: () => places.map(p => [p.x - 13, p.y - 13, p.x + 13, p.y + 13])
   };
   // places first, so labels avoid the note icons
-  for (const p of Object.values(m.atlas.places)) {
+  for (const p of o.bare ? [] : Object.values(m.atlas.places)) {
     if (!p.at || p.hidden || !m.visible(p, 'places', st, {ignoreCat: true})) continue;
     const w = m.proj.toWorld(p.at); const x = (w[0] - bb[0]) * k, y = (w[1] - bb[1]) * k;
     if (x < 0 || y < 0 || x > W || y > H) continue;
@@ -41,7 +41,7 @@ export async function renderSnapshot(view, o = {}) {
   try { await document.fonts.ready; } catch (e) {}
   r.draw();
   const blob = await new Promise(ok => canvas.toBlob(ok, 'image/webp', 0.88));
-  return {blob, width: W, height: H, places};
+  return {blob, width: W, height: H, places, bb};
 }
 
 /** A round pin icon for map notes: white glyph on a dark disc, meant to be tinted. */

@@ -14,16 +14,18 @@ export class AtlasView {
   constructor(root, opts) {
     this.root = root; this.opts = opts; this.store = opts.store; this.adapter = opts.adapter || {};
     this.isGM = !!opts.isGM;
+    this.sc = opts.scene || null; // live Foundry scene host: the map is drawn on the scene, the dossier lives in a window
     this.model = new AtlasModel(this.store.atlas, this.store.basemap);
     this.renderer = new Renderer(this);
     this.cam = {cx: 0, cy: 0, z: 11, W: 0, H: 0, dpr: 1};
     this.T = 0; this.sel = null; this.hover = null; this.tab = 'places'; this.q = ''; this.detailId = null;
     this.editor = null; this.editMode = false;
     this.prefs = this.loadPrefs();
-    const r0 = this.model.realm(this.prefs.realm);
+    const ini = opts.initial || {};
+    const r0 = this.model.realm(this.prefs.realm || ini.realm);
     this.viewer = opts.viewer || {id: 'me', name: 'Me'};
     const va = this.isGM ? (this.prefs.viewAs || 'gm') : this.viewer.id;
-    this.st = {realm: r0.id, level: this.model.level(r0.id, this.prefs.level).id, storyteller: va === 'gm', gm: va === 'gm', as: va === 'gm' ? '*' : va,
+    this.st = {realm: r0.id, level: this.model.level(r0.id, this.prefs.level || ini.level).id, storyteller: va === 'gm', gm: va === 'gm', as: va === 'gm' ? '*' : va,
       layerOn: id => this.layerOn(id), catOn: id => !this.catsOff.has(id)};
     this.ensureVisibleRealm();
     this.layerState = new Map(Object.entries(this.prefs.layers || {}));
@@ -33,8 +35,7 @@ export class AtlasView {
     this.build();
     this.unsub = this.store.onChange?.(info => this.onStoreChange(info));
     this.applyView(true);
-    this.home(true);
-    if (this.prefs.view && this.prefs.view.z) { Object.assign(this.cam, this.prefs.view); this.clampView(); }
+    if (!this.sc) { this.home(true); if (this.prefs.view && this.prefs.view.z) { Object.assign(this.cam, this.prefs.view); this.clampView(); } }
     this.render();
   }
 
@@ -90,7 +91,8 @@ export class AtlasView {
     this.el = {side: $('.wca-side'), pane: $('.wca-pane'), map: $('.wca-map'), canvas: $('.wca-canvas'), fade: $('.wca-fade'), overlay: $('.wca-overlay'), tip: $('.wca-tip'),
       realms: $('.seg.realms'), levels: $('.seg.levels'), bar: $('.wca-bar'), layers: $('.wca-layers'), legend: $('.wca-legend'), credit: $('.wca-credit'), scale: $('.wca-scale'),
       finder: $('.wca-finder'), fq: $('.wca-finder input'), fres: $('.wca-finder .fres'), edbar: $('.wca-edbar'), empty: $('.wca-empty'), hot: $('.hotlayers'), gmb: $('.gmbtns'), mast: $('.wca-mast')};
-    if (this.prefs.side) R.classList.add('side-min');
+    if (this.prefs.side && !this.sc) R.classList.add('side-min');
+    if (this.sc) this.mountScene();
     this.ctx = this.el.canvas.getContext('2d');
     R.querySelectorAll('.wca-tabs button').forEach(b => b.addEventListener('click', () => { this.tab = b.dataset.tab; this.detailId = null; this.setSel(null); this.render(); }));
     this.el.bar.addEventListener('click', e => this.onBar(e));
@@ -105,15 +107,29 @@ export class AtlasView {
     this.ro = new ResizeObserver(() => this.resize()); this.ro.observe(this.el.map);
     this.resize();
   }
+  /** Scene mode: the map surface goes onto the Foundry board; realm switches, map tools and search join the dossier. */
+  mountScene() {
+    const R = this.root, L = this.sc.layer;
+    R.classList.add('scene-hud');
+    const hud = document.createElement('div'); hud.className = 'wca-hud';
+    hud.append(R.querySelector('.wca-modebar'), this.el.bar, this.el.legend, this.el.finder);
+    R.prepend(hud);
+    L.classList.add('wca', 'scene-map'); L.appendChild(this.el.map);
+    this.el.hud = hud; this.layerRoot = L;
+    // the wheel over a pin still zooms the scene
+    L.addEventListener('wheel', e => this.sc.forwardWheel?.(e), {passive: true});
+  }
+  roots() { return this.layerRoot ? [this.root, this.layerRoot] : [this.root]; }
   destroy() {
     this.dead = true; this.ro?.disconnect(); this.unsub?.(); cancelAnimationFrame(this.raf); cancelAnimationFrame(this.loopRaf); this.savePrefs();
-    this.editor?.destroy?.(); this.root.innerHTML = '';
+    this.editor?.destroy?.(); this.root.innerHTML = ''; if (this.layerRoot) this.layerRoot.innerHTML = '';
   }
   resolveUrl(src) { return this.adapter.resolveUrl ? this.adapter.resolveUrl(src) : src; }
 
   /* ================= store sync ================= */
   onStoreChange(info = {}) {
     if (info.basemap) this.model.setBasemap(this.store.basemap);
+    this._nameIdx = null;
     this.model.setAtlas(this.store.atlas);
     if (!this.model.atlas.realms[this.st.realm]) this.st.realm = this.model.realmList[0].id;
     this.st.level = this.model.level(this.st.realm, this.st.level).id;
@@ -128,14 +144,12 @@ export class AtlasView {
   /* ================= realm / level ================= */
   applyView(first) {
     this.rv = this.model.view(this.st.realm, this.st.level);
-    const t = this.rv.theme, R = this.root;
-    const set = (k, v) => R.style.setProperty('--wca-' + k, v);
+    const t = this.rv.theme, R = this.root, RS = this.roots();
+    const set = (k, v) => RS.forEach(r => r.style.setProperty('--wca-' + k, v));
     set('panel', t.panel); set('panel2', t.panel2); set('line', t.line); set('accent', t.accent); set('gold', t.gold); set('muted', t.muted); set('faint', t.faint); set('bone', t.bone);
     set('accent-line', t.accentLine); set('accent-soft', t.accentSoft); set('seg-on', t.segOn); set('seg-on-fg', t.segOnFg); set('glow', t.glow); set('chrome', t.chrome);
     set('pin-a', (t.pinBg || [])[0] || '#231e27'); set('pin-b', (t.pinBg || [])[1] || '#0f0d12'); set('label-halo', t.labelHalo || '#000');
-    R.classList.toggle('pin-glow', !!t.pinGlow);
-    R.classList.toggle('is-gm', this.st.gm); R.classList.toggle('gm-user', this.isGM);
-    R.dataset.realm = this.st.realm; R.dataset.level = this.st.level;
+    for (const r of RS) { r.classList.toggle('pin-glow', !!t.pinGlow); r.classList.toggle('is-gm', this.st.gm); r.classList.toggle('gm-user', this.isGM); r.dataset.realm = this.st.realm; r.dataset.level = this.st.level; }
     const a = this.model.atlas, v = this.rv, m = this.el.mast;
     m.querySelector('.kg').innerHTML = svg(v.icon || 'ankh', 1.4);
     m.querySelector('.kt').textContent = v.kicker || v.name || '';
@@ -145,10 +159,14 @@ export class AtlasView {
     this.root.querySelectorAll('.wca-tabs button').forEach(b => { b.textContent = v.terms[b.dataset.tab] || b.dataset.tab; b.setAttribute('aria-selected', String(b.dataset.tab === this.tab)); });
     // realm & level switches
     const rl = this.st.storyteller ? this.model.realmList : this.model.visibleRealms(this.st);
-    this.el.realms.hidden = rl.length < 2;
+    const locked = !this.isGM && !!this.sc?.locked?.();
+    this.el.realms.hidden = rl.length < 2 || locked;
     this.el.realms.innerHTML = rl.map((r, i) => `<button type="button" role="radio" data-realm="${esc(r.id)}" aria-checked="${r.id === this.st.realm}" title="${esc(r.name)}${i < 9 ? ` (${i + 1})` : ''}" class="${this.isGM && !this.model.realmVisible(r.id, Object.assign({}, this.st, {storyteller: false})) ? 'veiled' : ''}">${svg(r.icon || 'sun')}<span>${esc(r.name)}</span></button>`).join('');
     const lv = this.st.storyteller ? this.model.realm(this.st.realm).levels : this.model.visibleLevels(this.st.realm, this.st);
-    this.el.levels.hidden = lv.length < 2;
+    this.el.levels.hidden = lv.length < 2 || locked;
+    let fl = this.el.realms.parentElement.querySelector('.follow');
+    if (locked) { if (!fl) { fl = document.createElement('span'); fl.className = 'follow'; this.el.realms.parentElement.appendChild(fl); } fl.innerHTML = `${svg('lock')}<span>${esc(this.rv.name || '')}${lv.length > 1 ? ' · ' + esc((lv.find(l => l.id === this.st.level) || {}).name || '') : ''}</span>`; fl.title = 'The Storyteller chooses the realm on this scene'; }
+    else if (fl) fl.remove();
     this.el.levels.innerHTML = lv.map(l => `<button type="button" role="radio" data-level="${esc(l.id)}" aria-checked="${l.id === this.st.level}">${esc(l.name || l.id)}</button>`).join('');
     this.el.realms.onclick = e => { const b = e.target.closest('[data-realm]'); if (b) this.setRealm(b.dataset.realm); };
     this.el.levels.onclick = e => { const b = e.target.closest('[data-level]'); if (b) this.setLevel(b.dataset.level); };
@@ -173,7 +191,7 @@ export class AtlasView {
     this.snapshotFade();
     this.st.realm = id; const r = this.model.realm(id); this.st.level = (this.st.storyteller ? r.levels : this.model.visibleLevels(id, this.st))[0]?.id || r.levels[0].id;
     this.q = ''; this.hideTip(); this.hover = null;
-    this.applyView(); this.persist();
+    this.applyView(); this.persist(); this.sc?.onRealm?.(this.st.realm, this.st.level);
     if (!quiet) { this.detailId = null; this.setSel(null); this.render(); this.focusRealm(); }
   }
   setLevel(id, quiet) {
@@ -181,12 +199,12 @@ export class AtlasView {
     if (!this.st.storyteller && !this.model.levelVisible(this.st.realm, id, this.st)) return;
     this.snapshotFade(250);
     this.st.level = this.model.level(this.st.realm, id).id;
-    this.applyView(); this.persist();
+    this.applyView(); this.persist(); this.sc?.onRealm?.(this.st.realm, this.st.level);
     if (!quiet) { if (!this.detailId) this.render(); this.focusRealm(); }
   }
   focusRealm() { const f = this.rv.focus; if (f && f.box && this.cam.z < (f.minZoom ?? 0)) this.fitLL(f.box, 40); }
   snapshotFade(ms = 650) {
-    if (reduceMotion() || !this.cam.W) return;
+    if (reduceMotion() || !this.cam.W || this.sc) return;
     const f = this.el.fade; f.width = this.el.canvas.width; f.height = this.el.canvas.height; f.style.width = this.cam.W + 'px'; f.style.height = this.cam.H + 'px';
     f.getContext('2d').drawImage(this.el.canvas, 0, 0); f.hidden = false; f.style.transition = 'none'; f.style.opacity = '1';
     requestAnimationFrame(() => { f.style.transition = `opacity ${ms}ms ease`; f.style.opacity = '0'; });
@@ -218,6 +236,13 @@ export class AtlasView {
   }
   renderGmButtons() {
     const canEdit = this.opts.canEdit ?? this.isGM;
+    if (this.sc) {
+      const lk = this.sc.locked?.();
+      this.el.gmb.innerHTML = (this.adapter.openFull ? `<button type="button" class="mbtn" data-act="full" title="${canEdit ? 'Open the full atlas window (to edit)' : 'Open the atlas in a window'}">${svg(canEdit ? 'pen' : 'window')}</button>` : '') +
+        (this.isGM && this.sc.setLocked ? `<button type="button" class="mbtn" data-act="lock" aria-pressed="${!!lk}" title="${lk ? 'Players follow your realm and level (click to let them switch freely)' : 'Players switch realms themselves (click to make them follow you)'}">${svg(lk ? 'lock' : 'unlock')}</button>` : '') +
+        (this.adapter.share && this.isGM ? `<button type="button" class="mbtn" data-act="share" title="Show this view to the players">${svg('share')}</button>` : '');
+      return;
+    }
     if (!canEdit && !this.isGM) { this.el.gmb.innerHTML = ''; return; }
     this.el.gmb.innerHTML = (this.opts.editorFactory && canEdit ? `<button type="button" class="mbtn ${this.editMode ? 'on' : ''}" data-act="edit" aria-pressed="${this.editMode}" title="Edit the atlas">${svg('pen')}</button>` : '') +
       (this.adapter.share && this.isGM ? `<button type="button" class="mbtn" data-act="share" title="Show this view to the players">${svg('share')}</button>` : '');
@@ -245,11 +270,14 @@ export class AtlasView {
     else if (a === 'out') this.animateTo([this.cam.cx, this.cam.cy], this.cam.z - 1, 250);
     else if (a === 'home') this.home();
     else if (a === 'find') this.openFinder();
-    else if (a === 'side') { this.root.classList.toggle('side-min'); this.persist(); }
+    else if (a === 'side') { if (this.sc) this.sc.toggleHud?.(); else { this.root.classList.toggle('side-min'); this.persist(); } }
+    else if (a === 'full') this.adapter.openFull?.(this.getState());
+    else if (a === 'lock') { this.sc?.setLocked?.(!this.sc.locked()); }
     else if (a === 'edit') this.toggleEdit();
     else if (a === 'share') this.adapter.share?.(this.getState());
   }
-  toggleEdit(on = !this.editMode) {
+  toggleEdit(on = !this.editMode, extra = {}) {
+    if (this.sc) { if (on && (this.opts.canEdit ?? this.isGM)) this.adapter.openFull?.(Object.assign(this.getState(), {edit: true}, extra)); return; }
     if (!(this.opts.canEdit ?? this.isGM) || !this.opts.editorFactory) return;
     this.editMode = on;
     if (on) { this.editor = this.opts.editorFactory(this); this.editor.start(); }
@@ -266,8 +294,8 @@ export class AtlasView {
     if (d !== this.cam.dpr) { this.cam.dpr = d; this.renderer.patterns.clear(); }
     this.el.canvas.width = Math.round(r.width * d); this.el.canvas.height = Math.round(r.height * d);
     this.el.canvas.style.width = r.width + 'px'; this.el.canvas.style.height = r.height + 'px';
-    if (first) this.home(true);
-    this.clampView(); this.dirty();
+    if (first && !this.sc) this.home(true);
+    this.clampView(); this.dirty(); if (this.sc) this.sceneTick(true);
   }
   zr() { const z = this.model.atlas.zoom || {}; return [z.min ?? -3, z.max ?? 18]; }
   worldBB() {
@@ -278,6 +306,7 @@ export class AtlasView {
     const p = W(b[0]), q = W(b[1]); return [Math.min(p[0], q[0]), Math.min(p[1], q[1]), Math.max(p[0], q[0]), Math.max(p[1], q[1])];
   }
   clampView() {
+    if (this.sc) return; // Foundry keeps the scene in bounds
     const [mn, mx] = this.zr(); this.cam.z = clamp(this.cam.z, mn, mx);
     const bb = this.worldBB(); if (!bb) return;
     const s = Math.pow(2, this.cam.z), hw = this.cam.W / 2 / s, hh = this.cam.H / 2 / s;
@@ -304,6 +333,7 @@ export class AtlasView {
     else if (instant) { this.cam.cx = 500; this.cam.cy = 400; this.cam.z = 0; }
   }
   animateTo(w, z, ms = 400) {
+    if (this.sc) { const [mn, mx] = this.zr(); return this.sc.panTo(w, clamp(z, mn, mx), ms); }
     cancelAnimationFrame(this.animRaf); const [mn, mx] = this.zr(); z = clamp(z, mn, mx);
     const a = {cx: this.cam.cx, cy: this.cam.cy, z: this.cam.z}, t0 = performance.now(); if (reduceMotion()) ms = 0;
     const step = now => { const u = ms ? Math.min(1, (now - t0) / ms) : 1, e = u < .5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2;
@@ -315,10 +345,11 @@ export class AtlasView {
     this.animRaf = requestAnimationFrame(step);
   }
   focusAt(at, z) { const w = this.model.proj.toWorld(at); this.animateTo(w, z != null ? z : Math.max(this.cam.z, this.zr()[1] - 2.5), 450); }
-  zoomAround(sx, sy, nz) { const b = this.toWorld(sx, sy); this.cam.z = nz; this.clampView(); const a = this.toWorld(sx, sy); this.cam.cx += b[0] - a[0]; this.cam.cy += b[1] - a[1]; this.clampView(); this.dirty(); this.persist(); }
+  zoomAround(sx, sy, nz) { if (this.sc) return; const b = this.toWorld(sx, sy); this.cam.z = nz; this.clampView(); const a = this.toWorld(sx, sy); this.cam.cx += b[0] - a[0]; this.cam.cy += b[1] - a[1]; this.clampView(); this.dirty(); this.persist(); }
 
   /* ================= interaction ================= */
   bindMap() {
+    if (this.sc) return; // pointer input comes from the Foundry board (see scene-layer.js)
     const M = this.el.map, ptrs = new Map(); let drag = null, moved = 0, pinch = null;
     const isUI = e => e.target.closest('.wca-bar,.wca-modebar,.wca-legend,.wca-finder,.wca-pin,.wca-edbar,.wca-layers');
     M.addEventListener('pointerdown', e => {
@@ -388,8 +419,18 @@ export class AtlasView {
   hideTip() { this.el.tip.hidden = true; }
 
   /* ================= drawing loop ================= */
-  dirty() { if (!this.needs && !this.dead) { this.needs = true; this.raf = requestAnimationFrame(() => this.frame()); } }
+  dirty() { if (this.sc) { this.needs = true; return; } if (!this.needs && !this.dead) { this.needs = true; this.raf = requestAnimationFrame(() => this.frame()); } }
   frame() { this.needs = false; if (!this.cam.W || this.dead) return; this.renderer.draw(); this.placeMarkers(); this.drawScale(); }
+  /** Scene mode: called by the host on every Foundry frame. Follows the scene camera and redraws when needed. */
+  sceneTick(force) {
+    if (this.dead || !this.cam.W) return false;
+    const c = this.sc.camera(); if (!c) return false;
+    const moved = c.cx !== this.cam.cx || c.cy !== this.cam.cy || c.z !== this.cam.z;
+    if (!moved && !this.needs && !force) return false;
+    if (moved) { this.cam.cx = c.cx; this.cam.cy = c.cy; this.cam.z = c.z; this.hideTip(); }
+    this.needs = false; this.renderer.draw(); this.placeMarkers(); this.drawScale();
+    return true;
+  }
   setLoop() {
     const want = this.opts.animate !== false && !reduceMotion() && this.renderer.animated(this.rv);
     if (want && !this.loopOn) { this.loopOn = true; let last = 0; const loop = now => { if (!this.loopOn || this.dead) return; if (now - last > 40 && !document.hidden) { last = now; this.T = now / 1000; this.dirty(); } this.loopRaf = requestAnimationFrame(loop); }; this.loopRaf = requestAnimationFrame(loop); }
@@ -493,6 +534,7 @@ export class AtlasView {
     this.detailId = id;
     if (this.editor && this.editor.openItem(id)) return;
     this.renderDetail();
+    this.sc?.showHud?.();
   }
   focusItem(it, coll) {
     if (coll === 'places' || coll === 'labels') { if (it.at) this.focusAt(it.at, it.zoom); return; }
@@ -507,9 +549,14 @@ export class AtlasView {
     if (s.realm) this.setRealm(s.realm, true); if (s.level) this.setLevel(s.level, true);
     if (s.layers) for (const [k, v] of Object.entries(s.layers)) this.layerState.set(this.st.realm + ':' + k, v);
     this.applyView();
-    if (s.view) { this.cam.cx = s.view.cx; this.cam.cy = s.view.cy; this.cam.z = s.view.z; this.clampView(); }
+    if (s.view) { if (this.sc) this.sc.panTo([s.view.cx, s.view.cy], s.view.z, 0); else { this.cam.cx = s.view.cx; this.cam.cy = s.view.cy; this.cam.z = s.view.z; this.clampView(); } }
     if (s.sel && this.model.item(s.sel)) this.open(s.sel, {noFocus: !!s.view}); else { this.detailId = null; this.render(); }
     this.dirty();
+    if (s.edit && !this.sc && this.opts.editorFactory) {
+      if (!this.editMode) this.toggleEdit(true);
+      if (s.editItem && this.model.item(s.editItem)) this.editor?.edit(s.editItem);
+      else if (s.newDomain) this.editor?.startDomain(s.newDomain);
+    }
   }
 
   /* ================= the dossier ================= */
@@ -654,9 +701,9 @@ export class AtlasView {
     const t = this.tierOf(it, coll), known = t >= TIER.BASIC, full = t >= TIER.FULL;
     const color = known ? m.colorOf(it) : '#9a9aa4', f = m.faction(it.faction), cat = m.category(it.cat);
     const H = [];
-    H.push(`<div class="detbar"><button type="button" class="back" data-act="back">${svg('back', 2)} Back to ${esc((this.rv.terms[this.tab] || '').toLowerCase())}</button><span class="dbtns">${(this.opts.canEdit ?? this.isGM) && this.opts.editorFactory ? `<button type="button" class="lnk" data-act="edit-item" title="Edit">${svg('pen')} Edit</button>` : ''}${this.isGM && this.adapter.share ? `<button type="button" class="lnk" data-act="share-item" title="Show this entry to the players">${svg('share')} Show</button>` : ''}</span></div>`);
+    H.push(`<div class="detbar"><button type="button" class="back" data-act="back">${svg('back', 2)} Back to ${esc((this.rv.terms[this.tab] || '').toLowerCase())}</button><span class="dbtns">${(this.opts.canEdit ?? this.isGM) && (this.opts.editorFactory || this.sc) ? `<button type="button" class="lnk" data-act="edit-item" title="Edit">${svg('pen')} Edit</button>` : ''}${this.isGM && this.adapter.share ? `<button type="button" class="lnk" data-act="share-item" title="Show this entry to the players">${svg('share')} Show</button>` : ''}</span></div>`);
     if (!known) {
-      H.push(`<div class="dsub">Unknown</div><h2>${esc(this.nameOf(it, coll))}</h2><p class="lead unknown-note">${esc(it.aliasText || 'You know something is here, but nothing more.')}</p>`);
+      H.push(`<div class="dsub">Unknown</div><h2>${esc(this.nameOf(it, coll))}</h2><p class="lead unknown-note">${esc(it.aliasText || (coll === 'people' ? 'You have heard of them, but know nothing more.' : 'You know something is here, but nothing more.'))}</p>`);
     } else {
       const pills = [];
       if (f) pills.push(`<span class="pill" style="--c:${esc(f.color)}"><span class="sw"></span>${esc(f.name)}</span>`);
@@ -672,7 +719,9 @@ export class AtlasView {
       const kick = [it.kicker || (coll === 'places' && cat ? cat.name : coll === 'auras' ? (it.rating && it.rating.label) || 'Phenomenon' : TYPE_NAMES[coll]), it.kicker ? '' : levelName].filter(Boolean).join(' · ');
       H.push(`<div class="dsub">${esc(kick)}</div><h2>${esc(it.name || '')}</h2>${it.sub ? `<div class="dsub">${esc(it.sub)}</div>` : ''}`);
       H.push(`<div class="meta">${pills.join('')}</div>`);
-      if (it.img) H.push(`<figure class="portrait${coll === 'people' ? '' : ' wide'}"><img src="${esc(this.resolveUrl(it.img))}" alt="${esc(it.name)}" loading="lazy"></figure>`);
+      const pic = it.img || (coll === 'people' ? this.docInfo(it.uuid)?.img : null);
+      if (pic) H.push(`<figure class="portrait${coll === 'people' ? '' : ' wide'}"><img src="${esc(this.resolveUrl(pic))}" alt="${esc(it.name)}" loading="lazy"></figure>`);
+      if (coll === 'people') H.push(this.sheetButton(it));
       if (coll === 'auras' && it.rating && full) H.push(`<div class="bigrating"><b>${esc(it.rating.label || 'Rating')}</b><span>${it.rating.value}</span><small>of ${it.rating.max || 10}</small>${this.ratingBar(Object.assign({warn: false}, it.rating))}</div>`);
       const notes = (it.notes || []).filter(n => m.noteTier(n) <= t);
       const tierTag = n => this.isGM && st.storyteller && m.noteTier(n) > TIER.FULL ? m.tierName(m.noteTier(n)) : '';
@@ -683,7 +732,7 @@ export class AtlasView {
         if (it.facts && it.facts.length && coll !== 'people') { const fs = it.facts.filter(f2 => !(it.tags || []).some(tg => tg.text === `${f2.k} ${stripHtml(f2.v)}`)); if (fs.length) H.push(`<dl class="facts">${fs.map(f2 => `<dt>${esc(f2.k)}</dt><dd>${f2.v || ''}</dd>`).join('')}</dl>`); }
         notes.filter(n => n.kind !== 'law').forEach(n => H.push(this.noteHtml(n, tierTag(n))));
         H.push(this.crossHtml(it, coll));
-        if (it.uuid && this.adapter.openUuid) H.push(`<button type="button" class="cross doc" data-uuid="${esc(it.uuid)}">${svg('book')}<span><b>Open linked document</b><small>${esc(it.uuidName || it.uuid)}</small></span></button>`);
+        if (it.uuid && this.adapter.openUuid && coll !== 'people') { const di = this.docInfo(it.uuid); if (!di || di.canOpen) H.push(`<button type="button" class="cross doc" data-uuid="${esc(it.uuid)}">${svg(di && di.documentName === 'Actor' ? 'sheet' : 'book')}<span><b>${di && di.documentName === 'Actor' ? 'Character sheet' : 'Open linked document'}</b><small>${esc(di ? di.name : (it.uuidName || it.uuid))}</small></span></button>`); }
         const section = (title, ids) => { const rows = [...new Set(ids)].map(i => this.refRow(i)).filter(Boolean); return rows.length ? `<h3>${esc(title)}${rows.length > 3 ? ` · ${rows.length}` : ''}</h3>${rows.join('')}` : ''; };
         if (coll === 'places') {
           const zs = m.containingZones(it, st).filter(z => z.id !== it.zone); if (it.zone) zs.unshift(m.item(it.zone));
@@ -702,7 +751,7 @@ export class AtlasView {
         } else if (coll === 'people') {
           H.push(section('Where to find them', it.at || []));
           H.push(this.domainHtml(it));
-          if (it.relations && it.relations.rows && it.relations.rows.length) H.push(`<h3>${esc(it.relations.title || 'Connections')}</h3><div class="rel">${it.relations.rows.map(([w, a]) => `<span>${esc(w)}</span><span>${esc(a)}</span>`).join('')}</div>`);
+          if (it.relations && it.relations.rows && it.relations.rows.length) H.push(`<h3>${esc(it.relations.title || 'Connections')}</h3><div class="rel">${it.relations.rows.map(r => this.relationRow(r, it)).join('')}</div>`);
         }
         if (it.links && it.links.length) H.push(section('See also', it.links.map(l => l.id).filter(i => !(it.anchor === i))));
       } else H.push(`<p class="lead unknown-note">Nothing more is known yet.</p>`);
@@ -715,11 +764,46 @@ export class AtlasView {
     this.enrichIn(this.el.pane);
     this.root.classList.remove('side-min');
   }
+  /* ----- Foundry Actors ----- */
+  docInfo(uuid) { if (!uuid || !this.adapter.docInfo) return null; try { return this.adapter.docInfo(uuid); } catch (e) { return null; } }
+  /** "Character sheet" button for a person linked to an Actor the viewer may open. */
+  sheetButton(p) {
+    const di = this.docInfo(p.uuid);
+    if (!di) return p.uuid && this.isGM && this.st.storyteller && this.adapter.docInfo ? `<p class="hint">The linked Actor no longer exists.</p>` : '';
+    if (!di.canOpen) return '';
+    return `<button type="button" class="cross doc" data-uuid="${esc(p.uuid)}">${svg('sheet')}<span><b>${di.documentName === 'Actor' ? 'Character sheet' : 'Open linked document'}</b><small>${esc(di.name)}${this.isGM && this.st.storyteller && di.documentName === 'Actor' ? ` · ${di.owners ? esc(di.owners) : 'GM only'}` : ''}</small></span></button>`;
+  }
+  /** A person found by a short name ("Scott", "Gracis") in relation rows; only unambiguous matches. */
+  personByName(name) {
+    const q = String(name || '').trim().toLowerCase(); if (!q) return null;
+    if (!this._nameIdx) {
+      const exact = new Map(), word = new Map();
+      for (const p of Object.values(this.model.atlas.people)) {
+        const n = (p.name || '').toLowerCase(); if (!n) continue;
+        if (!exact.has(n)) exact.set(n, p.id); else exact.set(n, null);
+        for (const w of new Set(n.replace(/[“”"()«»,]/g, ' ').split(/\s+/).filter(x => x.length > 2 && !['the', 'sir', 'von', 'van', 'lady', 'lord', 'mr.', 'mrs.', 'dr.'].includes(x)))) word.set(w, word.has(w) ? null : p.id);
+      }
+      this._nameIdx = {exact, word};
+    }
+    const id = this._nameIdx.exact.get(q) ?? this._nameIdx.word.get(q);
+    return id ? this.model.item(id) : null;
+  }
+  relationRow(r, owner) {
+    const [w, a, ref] = Array.isArray(r) ? r : [r.a, r.b, r.ref];
+    let target = null, actor = null;
+    if (ref && /^Actor\./.test(ref)) actor = ref; else if (ref) target = this.model.item(ref); else target = this.personByName(w);
+    if (target && (target.id === owner.id || !this.model.known(target, 'people', this.st))) target = null;
+    if (target && target.uuid) actor = target.uuid;
+    const ai = actor ? this.docInfo(actor) : null;
+    const nm = target ? `<button type="button" class="rlink" data-go="${esc(target.id)}" title="Open ${esc(this.nameOf(target, 'people'))}">${esc(w || this.nameOf(target, 'people'))}</button>` : esc(w);
+    const sheet = ai && ai.canOpen ? `<button type="button" class="rsheet" data-uuid="${esc(actor)}" title="Character sheet: ${esc(ai.name)}">${svg('sheet')}</button>` : '';
+    return `<span>${nm}${sheet}</span><span>${esc(a)}</span>`;
+  }
   noteHtml(n, tierTag) { return `<div class="scene${n.kind ? ' ' + esc(n.kind) : ''}${this.model.noteTier(n) > TIER.FULL ? ' secret' : ''}">${n.title || tierTag ? `<b>${esc(n.title || '')}${tierTag ? `<span class="tiertag">${esc(tierTag)}</span>` : ''}</b>` : ''}<div class="enrich">${n.html || ''}</div></div>`; }
   domainHtml(p) {
     const m = this.model, L = m.domainLayer();
     const ds = m.domainsOf(p.id).filter(z => m.known(z, 'zones', this.st));
-    const gmEdit = this.isGM && this.st.storyteller && this.opts.editorFactory && L;
+    const gmEdit = this.isGM && this.st.storyteller && (this.opts.editorFactory || this.sc) && L;
     if (!ds.length && !gmEdit) return '';
     return `<h3>Domain</h3>` + ds.map(z => `<div class="zrow">${this.refRow(z.id)}<button type="button" class="eye" data-hide="${esc(z.id)}" aria-pressed="${!this.hiddenItems.has(z.id)}" title="Show or hide this domain on the map">${svg(this.hiddenItems.has(z.id) ? 'eyeoff' : 'share')}</button>${gmEdit ? `<button type="button" class="eye" data-act="edit-domain" data-zone="${esc(z.id)}" title="Edit the shape and details">${svg('pen')}</button>` : ''}</div>`).join('') +
       (gmEdit ? `<button type="button" class="btn small" data-act="new-domain" data-person="${esc(p.id)}">${svg('poly')} ${ds.length ? 'Draw another domain' : 'Draw a domain'}</button>` : '');
@@ -777,8 +861,8 @@ export class AtlasView {
     const hide = t.closest('[data-hide]'); if (hide) { const id = hide.dataset.hide; if (this.hiddenItems.has(id)) this.hiddenItems.delete(id); else { this.hiddenItems.add(id); } const z = this.model.item(id); if (!this.hiddenItems.has(id) && z && z.layer && !this.layerOn(z.layer)) this.setLayer(z.layer, true); this.persist(); this.dirty(); hide.setAttribute('aria-pressed', String(!this.hiddenItems.has(id))); hide.innerHTML = svg(this.hiddenItems.has(id) ? 'eyeoff' : 'share'); return; }
     const rp = t.closest('[data-reveal-page]'); if (rp) { this.detailId = rp.dataset.revealPage; this.renderDetail(); return; }
     const act0 = t.closest('[data-act]');
-    if (act0 && act0.dataset.act === 'new-domain') { if (!this.editMode) this.toggleEdit(true); this.editor?.startDomain(act0.dataset.person); return; }
-    if (act0 && act0.dataset.act === 'edit-domain') { if (!this.editMode) this.toggleEdit(true); this.editor?.edit(act0.dataset.zone); return; }
+    if (act0 && act0.dataset.act === 'new-domain') { if (this.sc) return this.toggleEdit(true, {newDomain: act0.dataset.person}); if (!this.editMode) this.toggleEdit(true); this.editor?.startDomain(act0.dataset.person); return; }
+    if (act0 && act0.dataset.act === 'edit-domain') { if (this.sc) return this.toggleEdit(true, {editItem: act0.dataset.zone}); if (!this.editMode) this.toggleEdit(true); this.editor?.edit(act0.dataset.zone); return; }
     const go = t.closest('[data-go]'); if (go) { this.open(go.dataset.go); return; }
     const link = t.closest('[data-link]'); if (link) { this.open(link.dataset.link); return; }
     const uu = t.closest('[data-uuid]'); if (uu) { this.adapter.openUuid?.(uu.dataset.uuid); return; }
@@ -786,7 +870,7 @@ export class AtlasView {
     const a = act.dataset.act, it = this.model.item(this.detailId);
     if (a === 'back') { this.detailId = null; this.setSel(null); this.render(); }
     else if (a === 'center' && it) this.focusItem(it, this.model.collOf(it.id));
-    else if (a === 'edit-item' && it) { if (!this.editMode) this.toggleEdit(true); this.editor?.edit(it.id); }
+    else if (a === 'edit-item' && it) { if (this.sc) return this.toggleEdit(true, {editItem: it.id}); if (!this.editMode) this.toggleEdit(true); this.editor?.edit(it.id); }
     else if (a === 'share-item' && it) this.adapter.share?.(this.getState());
   }
 

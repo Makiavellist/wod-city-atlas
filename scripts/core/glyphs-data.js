@@ -50,5 +50,10 @@ export const GLYPH = {
   grip:'<circle cx="6" cy="4" r=".8"/><circle cx="10" cy="4" r=".8"/><circle cx="6" cy="8" r=".8"/><circle cx="10" cy="8" r=".8"/><circle cx="6" cy="12" r=".8"/><circle cx="10" cy="12" r=".8"/>',
   unknown:'<circle cx="8" cy="8" r="6.3" stroke-dasharray="2 2"/><path d="M6.2 6.2a1.9 1.9 0 1 1 2.6 1.8c-.5.2-.8.6-.8 1.1v.6"/><path d="M8 11.6v.2"/>',
   scene:'<rect x="1.5" y="3" width="13" height="10" rx="1"/><path d="M1.5 10.5l3.5-3 3 2.5 2.5-2 4 3"/>',
-  users:'<circle cx="6" cy="5.5" r="2.3"/><path d="M1.8 13.5c.5-2.6 2.2-4 4.2-4s3.7 1.4 4.2 4"/><circle cx="11.3" cy="6" r="1.8"/><path d="M11.5 9.6c1.6.2 2.6 1.4 2.9 3.4"/>'
+  users:'<circle cx="6" cy="5.5" r="2.3"/><path d="M1.8 13.5c.5-2.6 2.2-4 4.2-4s3.7 1.4 4.2 4"/><circle cx="11.3" cy="6" r="1.8"/><path d="M11.5 9.6c1.6.2 2.6 1.4 2.9 3.4"/>',
+  lock:'<rect x="3" y="7" width="10" height="7.5" rx="1"/><path d="M5.2 7V5a2.8 2.8 0 0 1 5.6 0v2"/>',
+  unlock:'<rect x="3" y="7" width="10" height="7.5" rx="1"/><path d="M5.2 7V5a2.8 2.8 0 0 1 5.5-.8"/>',
+  window:'<rect x="1.5" y="2.5" width="13" height="11" rx="1"/><path d="M1.5 5.5h13M4 4h.1M6 4h.1"/>',
+  sheet:'<path d="M3.5 1.5h6l3 3v10h-9z"/><path d="M9.5 1.5v3h3M5.5 8h5M5.5 10.5h5M5.5 5.5h2"/>',
+  link:'<path d="M6.8 9.2a2.8 2.8 0 0 0 4 0l2.2-2.2a2.8 2.8 0 0 0-4-4l-.9.9"/><path d="M9.2 6.8a2.8 2.8 0 0 0-4 0L3 9a2.8 2.8 0 0 0 4 4l.9-.9"/>'
 };

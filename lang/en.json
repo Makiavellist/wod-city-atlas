@@ -46,6 +46,14 @@
     "SettingControlHint": "Adds a City Atlas button to the Journal Notes tools on the left.",
     "OpenLauncher": "Open the atlas launcher",
     "OpenLauncherHint": "Lists the atlases in this world and lets the Storyteller create new ones.",
-    "KeyHint": "Open the City Atlas launcher."
+    "KeyHint": "Open the City Atlas launcher.",
+    "SettingSceneMode": "Atlas scenes: how to draw the map",
+    "SettingSceneModeHint": "“Scene background” draws the atlas in place of the scene picture, under tokens, drawings and lighting. Use “Overlay” only if the map does not appear on atlas scenes (it covers tokens).",
+    "SceneUnder": "Scene background (under tokens)",
+    "SceneOver": "Overlay (on top of tokens)",
+    "Dossier": "City Atlas dossier",
+    "ShowInAtlas": "Show in City Atlas",
+    "AtlasShort": "Atlas",
+    "ActorFolder": "City Atlas characters"
   }
 }

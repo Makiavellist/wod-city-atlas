@@ -75,6 +75,7 @@ export class Renderer {
     for (const e of view.effects) if (e.under && this.effectOn(e)) this.effect(e);
     this.drawBackground(view);
     this.drawBase(view);
+    if (v.bare) return; // just the map itself (a neutral scene background)
     for (const e of view.effects) if (!e.under && e.clip && this.effectOn(e)) this.effect(e);
     this.drawEcho(view);
     this.drawZones();

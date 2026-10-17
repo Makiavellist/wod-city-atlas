@@ -8,6 +8,7 @@ import {clone} from '../core/util.js';
 export const MOD = 'wod-city-atlas';
 const PAGE_TEXT = '<p><b>City Atlas data.</b> This page stores part of an interactive map for the <i>World of Darkness City Atlas</i> module. Open the map with the <b>City Atlas</b> button at the top of the Journal sidebar, or the map tool on the left. Please don’t edit or delete this page by hand.</p>';
 const CHUNK = 120;
+const SHARED = new Map();
 
 export const isAtlasEntry = e => !!(e && e.getFlag && e.getFlag(MOD, 'atlas'));
 
@@ -24,6 +25,13 @@ export class JournalStore extends BaseStore {
     ].map(([h, fn]) => [h, Hooks.on(h, fn)]);
   }
   detach() { for (const [h, id] of this._hooks || []) Hooks.off(h, id); this._hooks = []; this.listeners.clear(); }
+  /** One shared store per atlas, so the atlas window and the live scene see each other's edits at once. */
+  static acquire(entry) {
+    let s = SHARED.get(entry.id);
+    if (!s || s.entry !== entry) { s = new JournalStore(entry); SHARED.set(entry.id, s); s._refs = 0; }
+    s._refs++; return s;
+  }
+  release() { this._refs = (this._refs || 1) - 1; if (this._refs <= 0) { SHARED.delete(this.entry.id); this.detach(); } }
 
   _onPage(page, changed, userId) {
     if (page.parent?.id !== this.entry.id) return;
@@ -46,6 +54,8 @@ export class JournalStore extends BaseStore {
   }
   async loadBasemap(resolve) {
     const p = this.atlas.basemap; if (!p) { this.basemap = null; return null; }
+    if (this._bmPath === p && this.basemap) return this.basemap;
+    this._bmPath = p;
     try { const r = await fetch(resolve(p)); this.basemap = r.ok ? await r.json() : null; } catch (e) { console.warn(`${MOD} | base map not found: ${p}`, e); this.basemap = null; }
     return this.basemap;
   }
