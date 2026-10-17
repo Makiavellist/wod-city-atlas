@@ -65,9 +65,10 @@ export class SceneAtlas {
     await this.store.loadBasemap(resolveUrl);
     if (this.dead) return;
     // the map surface sits right above the board and below Foundry's interface
-    this.board = canvas.app.view;
+    this.board = findBoard();
+    document.getElementById('wca-scene-layer')?.remove();
     const L = document.createElement('div'); L.id = 'wca-scene-layer'; this.layer = L;
-    this.board.insertAdjacentElement('afterend', L);
+    if (this.board && this.board.isConnected) this.board.insertAdjacentElement('afterend', L); else document.body.prepend(L);
     this.placeLayer();
     this._onWin = () => this.placeLayer(); window.addEventListener('resize', this._onWin);
     this.mode = this.pickMode();
@@ -89,38 +90,84 @@ export class SceneAtlas {
     this.startTicker();
     this.hud = new AtlasHud(this);
     if (loadHud().open !== false) this.hud.render({force: true});
-    console.log(`${MOD} | atlas “${this.entry.name}” drawn on scene “${this.scene.name}” (${this.mode === 'under' ? 'as the scene background' : 'as an overlay'})`);
+    console.log(`${MOD} | atlas “${this.entry.name}” mounted on scene “${this.scene.name}” (${this.mode === 'under' ? 'as the scene background' : 'as an overlay'})`);
+    // self-check: if nothing could be drawn, fall back to the overlay and say why
+    this._check = setTimeout(() => this.selfCheck(), 2500);
   }
+  /** Everything useful for finding out why a scene shows nothing. */
+  diagnose() {
+    const r = el => { if (!el) return null; const b = el.getBoundingClientRect(); return [Math.round(b.left), Math.round(b.top), Math.round(b.width), Math.round(b.height)]; };
+    const st = canvas.stage, d = canvas.dimensions, v = this.view, mesh = canvas.primary?.background;
+    let cam = null; try { cam = this.camera(); } catch (e) { cam = 'error: ' + e.message; }
+    return {version: game.modules.get(MOD)?.version, mode: this.mode, board: this.board ? `${this.board.tagName}#${this.board.id}` : null, boardRect: r(this.board), boardZ: this.board ? getComputedStyle(this.board).zIndex : null,
+      layerRect: r(this.layer), layerZ: this.layer ? getComputedStyle(this.layer).zIndex : null, viewSize: v ? [v.cam.W, v.cam.H] : null, cam, draws: v?.sceneDraws || 0, ok: v?.sceneOK ?? null,
+      stage: st ? {scale: st.scale.x, pivot: [st.pivot.x, st.pivot.y], position: [st.position.x, st.position.y]} : null,
+      dims: d ? {sceneX: d.sceneX, sceneY: d.sceneY, sceneWidth: d.sceneWidth, sceneHeight: d.sceneHeight} : null, bb: this.bb,
+      resolution: canvas.app?.renderer?.resolution, ticker: !!this._ticker, tickError: this._tickErr ? String(this._tickErr) : null,
+      background: mesh ? {texture: mesh.texture === this.tex ? 'atlas' : 'scene picture', anchor: mesh.anchor ? [mesh.anchor.x, mesh.anchor.y] : null} : null, ownSprite: !!this.ownMesh,
+      pins: this.layer ? this.layer.querySelectorAll('.wca-pin').length : 0, pinsShown: this.layer ? this.layer.querySelectorAll('.wca-pin:not([hidden])').length : 0};
+  }
+  selfCheck() {
+    if (this.dead || !this.view) return;
+    const d = this.diagnose();
+    console.log(`${MOD} | scene check ${JSON.stringify(d)}`);
+    if (d.draws > 0 && !d.tickError) return;
+    if (this.mode === 'under') { this.restoreMesh(); this.setMode('over'); this._check = setTimeout(() => this.selfCheck(), 2500); }
+    if (game.user.isGM) ui.notifications.warn(`City Atlas could not draw the map on this scene${d.tickError ? ` (${d.tickError})` : ''}. Please send the “wod-city-atlas | scene check” line from the console (F12) to the module author.`, {permanent: true});
+  }
+  setMode(m) { this.mode = m; this.layer.classList.remove('mode-under', 'mode-over'); this.layer.classList.add('mode-' + m); this.view?.dirty(); }
 
   pickMode() {
     let want = 'under'; try { want = game.settings.get(MOD, 'sceneMode') || 'under'; } catch (e) {}
     if (want === 'under' && globalThis.PIXI && canvas.primary?.background && canvas.app?.ticker) return 'under';
     return 'over';
   }
+  /** The layer always covers the whole window; the board's own offset (normally 0, 0) is applied in the camera maths. */
   placeLayer() {
-    const r = this.board.getBoundingClientRect(), L = this.layer;
-    Object.assign(L.style, {left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px'});
-    const z = getComputedStyle(this.board).zIndex; L.style.zIndex = z && z !== 'auto' ? z : '';
+    const L = this.layer, b = this.board;
+    Object.assign(L.style, {position: 'fixed', left: '0px', top: '0px', width: '100vw', height: '100vh'});
+    const r = b && b.isConnected ? b.getBoundingClientRect() : null;
+    this.boardOff = r && r.width && r.height ? {x: r.left, y: r.top} : {x: 0, y: 0};
+    const z = b ? getComputedStyle(b).zIndex : ''; L.style.zIndex = z && z !== 'auto' ? z : '';
+    this.view?.resize();
   }
+  size() { return {width: window.innerWidth, height: window.innerHeight}; }
 
   /* ---------- camera: Foundry's stage ↔ atlas world ---------- */
-  k() { const d = canvas.dimensions, bb = this.bb; return d.sceneWidth / (bb[2] - bb[0]); }
+  /** Scene rectangle inside the canvas (with fallbacks for older or unusual dimension objects). */
+  rect() {
+    const d = canvas.dimensions || {}, r = d.sceneRect;
+    const x = d.sceneX ?? r?.x, y = d.sceneY ?? r?.y, w = d.sceneWidth ?? r?.width ?? this.scene.width, h = d.sceneHeight ?? r?.height ?? this.scene.height;
+    return {x: Number.isFinite(x) ? x : 0, y: Number.isFinite(y) ? y : 0, w, h};
+  }
+  k() { const bb = this.bb; return this.rect().w / (bb[2] - bb[0]); }
+  /** Stage transform as layer (= window) pixels: client = scene × s + (ox, oy). */
+  xf() {
+    const st = canvas.stage; if (!st) return null;
+    const s = st.scale.x, o = this.boardOff || {x: 0, y: 0};
+    let t = {s, ox: o.x + st.position.x - st.pivot.x * s, oy: o.y + st.position.y - st.pivot.y * s};
+    if (!Number.isFinite(t.s) || !Number.isFinite(t.ox) || !Number.isFinite(t.oy) || !t.s) { const m = st.worldTransform; if (m) t = {s: m.a, ox: o.x + m.tx, oy: o.y + m.ty}; }
+    return t;
+  }
   camera() {
-    const st = canvas.stage, d = canvas.dimensions, bb = this.bb; if (!st || !d || !bb || !this.view) return null;
-    const s = st.scale.x, k = this.k(), kk = s * k, c = this.view.cam;
-    return {z: Math.log2(kk), cx: bb[0] + (c.W / 2 - st.position.x) / kk + (st.pivot.x - d.sceneX) / k, cy: bb[1] + (c.H / 2 - st.position.y) / kk + (st.pivot.y - d.sceneY) / k};
+    const bb = this.bb, t = this.xf(); if (!t || !bb || !this.view) return null;
+    const R = this.rect(), k = this.k(), kk = t.s * k, c = this.view.cam;
+    // world w → scene px: R.x + (w - bb0) k → client: that × s + ox. Solve for the world point at the layer centre.
+    return {z: Math.log2(kk), cx: bb[0] + ((c.W / 2 - t.ox) / t.s - R.x) / k, cy: bb[1] + ((c.H / 2 - t.oy) / t.s - R.y) / k};
   }
   panTo(w, z, ms) {
-    const d = canvas.dimensions, bb = this.bb, k = this.k();
-    const o = {x: d.sceneX + (w[0] - bb[0]) * k, y: d.sceneY + (w[1] - bb[1]) * k, scale: Math.pow(2, z) / k};
+    const R = this.rect(), bb = this.bb, k = this.k();
+    const o = {x: R.x + (w[0] - bb[0]) * k, y: R.y + (w[1] - bb[1]) * k, scale: Math.pow(2, z) / k};
+    if (![o.x, o.y, o.scale].every(Number.isFinite)) return;
     try { if (ms) canvas.animatePan(Object.assign(o, {duration: ms})); else canvas.pan(o); } catch (e) { console.warn(`${MOD} | pan failed`, e); }
   }
   /** Layer pixel → scene pixel. */
-  toScene(sx, sy) { const st = canvas.stage, s = st.scale.x; return {x: (sx - st.position.x) / s + st.pivot.x, y: (sy - st.position.y) / s + st.pivot.y}; }
+  toScene(sx, sy) { const t = this.xf(); return {x: (sx - t.ox) / t.s, y: (sy - t.oy) / t.s}; }
 
   hostApi() {
     return {
       layer: this.layer,
+      size: () => this.size(),
       camera: () => this.camera(),
       panTo: (w, z, ms) => this.panTo(w, z, ms),
       forwardWheel: e => this.forwardWheel(e),
@@ -134,48 +181,77 @@ export class SceneAtlas {
 
   /* ---------- drawing ---------- */
   startTicker() {
-    this._tick = () => { try { this.tick(); } catch (err) { if (!this._tickErr) { this._tickErr = true; console.error(`${MOD} | scene drawing failed`, err); } } };
+    this._tick = () => { try { this.tick(); } catch (err) { if (!this._tickErr) { this._tickErr = err.message || String(err); console.error(`${MOD} | scene drawing failed`, err); } } };
     const T = canvas.app?.ticker;
-    if (T && globalThis.PIXI) { T.add(this._tick, this, PIXI.UPDATE_PRIORITY?.HIGH ?? 25); this._ticker = T; }
+    // run before Foundry updates the primary group (objects may only be moved before that)
+    const P = globalThis.PIXI?.UPDATE_PRIORITY || {};
+    const prio = Math.max(P.HIGH ?? 25, (P.OBJECTS ?? 0) + 1, (P.PRIMARY ?? 0) + 1);
+    if (T && globalThis.PIXI) { T.add(this._tick, this, prio); this._ticker = T; }
     else { const loop = () => { if (this.dead) return; this._tick(); this._raf = requestAnimationFrame(loop); }; this._raf = requestAnimationFrame(loop); }
   }
   tick() {
     if (this.dead || !this.view) return;
     const drew = this.view.sceneTick();
-    if (this.mode === 'under') this.placeMesh(drew);
+    if (this.mode !== 'under') return;
+    // never hide the scene picture unless the atlas has really been drawn
+    if (!this.view.sceneOK || !this.view.sceneDraws) { if (this.orig) this.restoreMesh(); return; }
+    this.placeMesh(drew);
   }
   placeMesh(drew) {
-    const mesh = canvas.primary?.background;
-    if (!mesh || mesh.destroyed) return;
-    const cv = this.view.el.canvas; if (!cv.width || !cv.height) return;
+    const bg = canvas.primary?.background;
+    const cv = this.view.el.canvas, c = this.view.cam; if (!cv.width || !cv.height || !c.W || !c.H) return;
     if (!this.tex || this.tex.baseTexture?.destroyed) { this.tex = PIXI.Texture.from(cv); drew = true; }
-    if (!this.orig) this.orig = {texture: mesh.texture, x: mesh.position.x, y: mesh.position.y, sx: mesh.scale.x, sy: mesh.scale.y, visible: mesh.visible};
-    if (mesh.texture !== this.tex) { mesh.texture = this.tex; drew = true; }
+    let mesh = this.ownMesh && !this.ownMesh.destroyed ? this.ownMesh : bg;
+    if (!mesh || mesh.destroyed) return;
+    if (mesh === bg && mesh.texture !== this.tex) {
+      // preferred: show the atlas in place of the scene picture
+      const orig = {texture: mesh.texture, x: mesh.position.x, y: mesh.position.y, sx: mesh.scale.x, sy: mesh.scale.y, visible: mesh.visible};
+      try { mesh.texture = this.tex; if (mesh.texture !== this.tex) throw new Error('texture is read-only'); this.orig ||= orig; drew = true; }
+      catch (err) { mesh = this.makeOwnMesh(bg); drew = true; }
+    }
     if (drew) this.tex.baseTexture.update();
-    const st = canvas.stage, s = st.scale.x, c = this.view.cam;
-    const x0 = -st.position.x / s + st.pivot.x, y0 = -st.position.y / s + st.pivot.y, w = c.W / s, h = c.H / s;
+    const t = this.xf(); const x0 = -t.ox / t.s, y0 = -t.oy / t.s, w = c.W / t.s, h = c.H / t.s;
+    if (![x0, y0, w, h].every(Number.isFinite)) return;
     const ax = mesh.anchor?.x ?? 0, ay = mesh.anchor?.y ?? 0;
     mesh.position.set(x0 + ax * w, y0 + ay * h); mesh.scale.set(w / (this.tex.width || cv.width), h / (this.tex.height || cv.height));
     if (!mesh.visible) mesh.visible = true;
     if (mesh.renderable === false) mesh.renderable = true;
+    if (canvas.primary && 'renderDirty' in canvas.primary) canvas.primary.renderDirty = true;
+  }
+  /** Fallback: our own primary sprite just above the scene picture (when the picture's texture can't be swapped). */
+  makeOwnMesh(bg) {
+    const PSM = foundry.canvas?.primary?.PrimarySpriteMesh;
+    if (!PSM) throw new Error('no PrimarySpriteMesh class');
+    let m; try { m = new PSM({name: 'wca-atlas', texture: this.tex}); } catch (e) { m = new PSM(this.tex); }
+    if (m.texture !== this.tex) { try { m.texture = this.tex; } catch (e) {} }
+    const G = canvas.primary.constructor;
+    m.elevation = bg?.elevation ?? G.BACKGROUND_ELEVATION ?? 0;
+    m.sortLayer = bg?.sortLayer ?? G.SORT_LAYERS?.SCENE ?? 0;
+    m.sort = (bg?.sort ?? 0) + 1;
+    canvas.primary.addChild(m);
+    this.ownMesh = m; console.log(`${MOD} | drawing the atlas with its own sprite above the scene picture`);
+    return m;
   }
   restoreMesh() {
+    if (this.ownMesh) { try { this.ownMesh.parent?.removeChild(this.ownMesh); this.ownMesh.destroy({texture: false}); } catch (e) {} this.ownMesh = null; }
     const mesh = canvas?.primary?.background, o = this.orig; this.orig = null;
     if (!mesh || mesh.destroyed || !o) return;
-    try { mesh.texture = o.texture; mesh.position.set(o.x, o.y); mesh.scale.set(o.sx, o.sy); mesh.visible = o.visible; } catch (e) {}
+    try { mesh.texture = o.texture; mesh.position.set(o.x, o.y); mesh.scale.set(o.sx, o.sy); mesh.visible = o.visible; if (canvas.primary && 'renderDirty' in canvas.primary) canvas.primary.renderDirty = true; } catch (e) {}
   }
 
   /* ---------- pointer input from the board ---------- */
+  /** Pointer input arrives on Foundry's board canvas; listen on the document so nothing Foundry does can hide it. */
   bindBoard() {
-    const B = this.board; let down = null;
-    this._pd = e => { down = e.button === 0 ? {x: e.clientX, y: e.clientY, t: performance.now()} : null; };
-    this._pu = e => { const d = down; down = null; if (!d || e.button !== 0) return; if (Math.hypot(e.clientX - d.x, e.clientY - d.y) > 5 || performance.now() - d.t > 700) return; this.clickAt(e); };
-    this._pm = e => { this._last = e; if (!this._hoverRaf) this._hoverRaf = requestAnimationFrame(() => { this._hoverRaf = 0; this.hoverAt(this._last); }); };
+    let down = null;
+    const onBoard = e => { const t = e.target; return t === this.board || (t && t.tagName === 'CANVAS' && t.id === 'board'); };
+    this._pd = e => { down = onBoard(e) && e.button === 0 ? {x: e.clientX, y: e.clientY, t: performance.now()} : null; };
+    this._pu = e => { const d = down; down = null; if (!d || e.button !== 0 || !onBoard(e)) return; if (Math.hypot(e.clientX - d.x, e.clientY - d.y) > 5 || performance.now() - d.t > 700) return; this.clickAt(e); };
+    this._pm = e => { if (!onBoard(e)) { if (this._overBoard) { this._overBoard = false; this._pl(); } return; } this._overBoard = true; this._last = e; if (!this._hoverRaf) this._hoverRaf = requestAnimationFrame(() => { this._hoverRaf = 0; this.hoverAt(this._last); }); };
     this._pl = () => { if (!this.view) return; if (this.view.hover) { this.view.hover = null; this.view.dirty(); } this.view.hideTip(); };
-    B.addEventListener('pointerdown', this._pd); B.addEventListener('pointerup', this._pu); B.addEventListener('pointermove', this._pm); B.addEventListener('pointerleave', this._pl);
+    document.addEventListener('pointerdown', this._pd, true); document.addEventListener('pointerup', this._pu, true); document.addEventListener('pointermove', this._pm, true);
   }
-  unbindBoard() { const B = this.board; if (!B) return; B.removeEventListener('pointerdown', this._pd); B.removeEventListener('pointerup', this._pu); B.removeEventListener('pointermove', this._pm); B.removeEventListener('pointerleave', this._pl); }
-  local(e) { const r = this.layer.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
+  unbindBoard() { document.removeEventListener('pointerdown', this._pd, true); document.removeEventListener('pointerup', this._pu, true); document.removeEventListener('pointermove', this._pm, true); }
+  local(e) { return [e.clientX, e.clientY]; }
   /** Clicks open the atlas only with the plain select tool of the Token or Notes controls, and never on a token. */
   clicksAllowed() {
     const ctl = ui.controls?.control?.name ?? ui.controls?.activeControl; const tool = ui.controls?.tool?.name ?? ui.controls?.activeTool;
@@ -192,7 +268,7 @@ export class SceneAtlas {
     this.view.hoverAt(sx, sy);
   }
   forwardWheel(e) {
-    if (!e.target.closest?.('.wca-pin')) return;
+    if (!e.target.closest?.('.wca-pin') || !this.board) return;
     this.board.dispatchEvent(new WheelEvent('wheel', {deltaX: e.deltaX, deltaY: e.deltaY, deltaMode: e.deltaMode, clientX: e.clientX, clientY: e.clientY, screenX: e.screenX, screenY: e.screenY, ctrlKey: e.ctrlKey, shiftKey: e.shiftKey, altKey: e.altKey, metaKey: e.metaKey, bubbles: true, cancelable: true}));
   }
 
@@ -222,7 +298,7 @@ export class SceneAtlas {
 
   destroy() {
     if (this.dead) return; this.dead = true;
-    try { this._ticker?.remove(this._tick, this); } catch (e) {} cancelAnimationFrame(this._raf);
+    try { this._ticker?.remove(this._tick, this); } catch (e) {} cancelAnimationFrame(this._raf); clearTimeout(this._check);
     this.unbindBoard(); window.removeEventListener('resize', this._onWin);
     this.restoreMesh();
     try { this.tex?.destroy(true); } catch (e) {} this.tex = null;
@@ -233,3 +309,11 @@ export class SceneAtlas {
   }
 }
 void esc;
+
+/** Foundry's board canvas: the #board element, or the PIXI view as a fallback. */
+function findBoard() {
+  const byId = document.getElementById('board');
+  const v = canvas.app?.view || canvas.app?.canvas || null;
+  if (v && v.isConnected) return v;
+  return byId || v;
+}

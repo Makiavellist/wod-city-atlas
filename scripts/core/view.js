@@ -287,7 +287,9 @@ export class AtlasView {
 
   /* ================= camera ================= */
   resize() {
-    const r = this.el.map.getBoundingClientRect(); if (!r.width || !r.height) return;
+    let r = this.el.map.getBoundingClientRect();
+    if (this.sc && this.sc.size) { const z = this.sc.size(); if (z && z.width && z.height) r = z; }
+    if (!r.width || !r.height) return;
     const d = Math.min(2, window.devicePixelRatio || 1);
     const first = !this.cam.W;
     this.cam.W = r.width; this.cam.H = r.height;
@@ -424,11 +426,12 @@ export class AtlasView {
   /** Scene mode: called by the host on every Foundry frame. Follows the scene camera and redraws when needed. */
   sceneTick(force) {
     if (this.dead || !this.cam.W) return false;
-    const c = this.sc.camera(); if (!c) return false;
+    const c = this.sc.camera(); if (!c || !Number.isFinite(c.cx) || !Number.isFinite(c.cy) || !Number.isFinite(c.z)) { this.sceneOK = false; return false; }
     const moved = c.cx !== this.cam.cx || c.cy !== this.cam.cy || c.z !== this.cam.z;
     if (!moved && !this.needs && !force) return false;
     if (moved) { this.cam.cx = c.cx; this.cam.cy = c.cy; this.cam.z = c.z; this.hideTip(); }
     this.needs = false; this.renderer.draw(); this.placeMarkers(); this.drawScale();
+    this.sceneOK = true; this.sceneDraws = (this.sceneDraws || 0) + 1;
     return true;
   }
   setLoop() {

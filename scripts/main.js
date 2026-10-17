@@ -45,6 +45,8 @@ Hooks.once('ready', () => {
     importAtlas: data => createAtlas(data),
     /** The live atlas drawn on the current scene, if any. */
     get scene() { return SceneAtlas.current; },
+    /** Why does an atlas scene look wrong? Run in the console (F12) and send the result. */
+    diagnose() { const d = SceneAtlas.current?.diagnose() ?? {mounted: false, sceneFlag: canvas?.scene?.getFlag(MOD, 'atlas') ?? null}; console.log(`${MOD} | diagnose ${JSON.stringify(d)}`); return d; },
     JournalStore, isAtlasEntry
   };
 });
