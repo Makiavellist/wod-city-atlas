@@ -3,9 +3,12 @@ import {clone, isObj, sortBy, stripHtml, bbOf, inPoly, ringCenter, arcPts, ringA
 
 export const COLLECTIONS = ['realms', 'layers', 'categories', 'factions', 'styles', 'places', 'zones', 'routes', 'labels', 'auras', 'people', 'pages'];
 export const MAP_ITEMS = ['places', 'zones', 'routes', 'labels', 'auras'];
-export const META_KEYS = ['schema', 'title', 'titleHtml', 'description', 'projection', 'bounds', 'home', 'zoom', 'closeBy', 'basemap', 'background', 'theme', 'statuses', 'precisions', 'fonts', 'scale', 'version'];
+export const META_KEYS = ['tiers', 'revealDefault', 'domainLayer', 'domainStatuses', 'scene', 'schema', 'title', 'titleHtml', 'description', 'projection', 'bounds', 'home', 'zoom', 'closeBy', 'basemap', 'background', 'theme', 'statuses', 'precisions', 'fonts', 'scale', 'version'];
 export const TYPE_NAMES = {places: 'Place', zones: 'Zone', routes: 'Route', labels: 'Label', auras: 'Glow', people: 'Person', pages: 'Page', realms: 'Realm', layers: 'Layer', categories: 'Category', factions: 'Faction', styles: 'Style'};
 
+export const DEFAULT_TIERS = ['Hidden', 'Existence', 'Basic', 'Full', 'Secret', 'Deep secret'];
+export const TIER = {HIDDEN: 0, EXIST: 1, BASIC: 2, FULL: 3, SECRET: 4};
+export const STRUCT = ['realms', 'layers', 'categories', 'factions', 'styles'];
 export const DEFAULT_THEME = {panel: '#141117', panel2: '#1c1820', line: '#2e2832', accent: '#b3202a', gold: '#d8b45a', muted: '#a39886', faint: '#6d6459', bone: '#ebe2d0', accentLine: 'rgba(179,32,42,.55)', accentSoft: '#e6a3a3', segOn: '#2a2230', segOnFg: '#ebe2d0', glow: 'rgba(179,32,42,.10)', chrome: 'rgba(20,17,23,.92)', pinBg: ['#231e27', '#0f0d12'], labelHalo: '#000'};
 
 /** Ensure every collection exists and every realm has at least one level. Mutates and returns the atlas. */
@@ -128,14 +131,51 @@ export class AtlasModel {
     if (it.level == null) return true;
     return this.levelShows(st.realm, st.level).includes(it.level);
   }
+  /* ---------- who may see what ----------
+   * st.storyteller: the GM's full view. Otherwise st.as is the user id being shown (a player, or '*' for "every player").
+   * Every item, realm, level, layer and category may carry reveal: {all: tier, users: {userId: tier}}.
+   * Tiers: 0 hidden, 1 existence only, 2 basic, 3 full, 4+ secrets (callouts carry their own tier). */
+  tiers() { return Array.isArray(this.atlas.tiers) && this.atlas.tiers.length > 3 ? this.atlas.tiers : DEFAULT_TIERS; }
+  tierName(t) { const ts = this.tiers(); return t >= 99 ? 'Storyteller' : (ts[t] ?? `Tier ${t}`); }
+  defaultTier(coll) {
+    if (STRUCT.includes(coll)) return TIER.FULL;
+    const d = this.atlas.revealDefault; if (d == null || d === '') return TIER.FULL;
+    if (typeof d === 'object') return +(d[coll] ?? d['*'] ?? TIER.FULL);
+    return +d;
+  }
+  rawTier(it, coll, as) {
+    const r = it.reveal;
+    if (r) { const u = r.users && as != null && as !== '*' ? r.users[as] : undefined; if (u !== undefined && u !== null && u !== '') return +u; if (r.all !== undefined && r.all !== null && r.all !== '') return +r.all; }
+    if (it.gm) return TIER.HIDDEN;
+    return this.defaultTier(coll);
+  }
+  tier(it, coll, st) { if (!it) return 0; if (st.storyteller) return 99; return this.rawTier(it, coll, st.as); }
+  noteTier(n) { return n.tier != null && n.tier !== '' ? +n.tier : (n.gm ? TIER.SECRET : TIER.FULL); }
+  realmVisible(id, st) { const r = this.atlas.realms[id]; return !!r && this.tier(r, 'realms', st) >= 1; }
+  levelVisible(realmId, levelId, st) { const r = this.atlas.realms[realmId]; const l = r && r.levels.find(x => x.id === levelId); return !l || this.tier(l, 'realms', st) >= 1; }
+  visibleRealms(st) { return this.realmList.filter(r => this.realmVisible(r.id, st)); }
+  visibleLevels(realmId, st) { const r = this.atlas.realms[realmId]; return r ? r.levels.filter(l => this.tier(l, 'realms', st) >= 1) : []; }
+  layerVisible(id, st) { const L = this.atlas.layers[id]; return !L || this.tier(L, 'layers', st) >= 1; }
   visible(it, coll, st, {ignoreLayer = false, ignoreCat = false} = {}) {
     if (!it) return false;
-    if (it.gm && !st.gm) return false;
+    if (this.tier(it, coll, st) < 1) return false;
     if (coll === 'people') return this.personIn(it, st);
-    if (coll === 'pages') return this.inRealm(it, st) && this.inLevel(it, st);
+    if (coll === 'pages') return this.inRealm(it, st) && this.inLevel(it, st) && (!it.realm || this.realmVisible(Array.isArray(it.realm) ? it.realm[0] : it.realm, st));
     if (!this.inRealm(it, st) || !this.inLevel(it, st)) return false;
+    if (!st.storyteller) { if (!this.realmVisible(st.realm, st) || !this.levelVisible(st.realm, st.level, st)) return false; if (it.level && !this.levelVisible(st.realm, it.level, st)) return false; }
+    if (it.layer && !this.layerVisible(it.layer, st)) return false;
     if (!ignoreLayer && it.layer && !st.layerOn(it.layer)) return false;
-    if (!ignoreCat && coll === 'places' && it.cat && !st.catOn(it.cat)) return false;
+    if (coll === 'places' && it.cat) { const c = this.atlas.categories[it.cat]; if (c && this.tier(c, 'categories', st) < 1) return false; if (!ignoreCat && !st.catOn(it.cat)) return false; }
+    return true;
+  }
+  /** Can the viewer see this entry at all, anywhere (used for links between realms)? */
+  known(it, coll, st) {
+    if (!it || this.tier(it, coll, st) < 1) return false;
+    if (st.storyteller || coll === 'people' || coll === 'pages') return true;
+    const realmId = Array.isArray(it.realm) ? it.realm[0] : it.realm;
+    if (realmId && !this.realmVisible(realmId, st)) return false;
+    if (realmId && it.level && !this.levelVisible(realmId, it.level, st)) return false;
+    if (it.layer && !this.layerVisible(it.layer, st)) return false;
     return true;
   }
   personIn(p, st) {
@@ -210,6 +250,11 @@ export class AtlasModel {
     }
     this._baseGeo = {proj: this.proj, list}; return list;
   }
+
+  /* ---------- domains ---------- */
+  domainLayer() { return this.atlas.domainLayer || (this.atlas.layers.domains ? 'domains' : null); }
+  domainsOf(personId) { return (this.ownersOf.get(personId) || []).map(i => this.atlas.zones[i]).filter(Boolean); }
+  domainStatuses() { return this.atlas.domainStatuses || {held: {name: 'Held'}, reserve: {name: 'Reserve haven'}, contested: {name: 'Contested', color: '#f0a050'}, vacant: {name: 'Vacant', color: '#a0a0a8'}, hidden: {name: 'Hidden', color: '#c8b4ff'}, hostile: {name: 'Hostile claim', color: '#ff4a4a'}}; }
 
   /* ---------- relations ---------- */
   containingZones(it, st) {

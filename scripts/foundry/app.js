@@ -5,6 +5,7 @@ import {rebasePaths} from '../core/store.js';
 import {normalize} from '../core/model.js';
 import {blankAtlas, LOOKS} from '../core/templates.js';
 import {esc, svg} from '../core/util.js';
+import {renderSnapshot, pinSvg} from '../core/snapshot.js';
 import {JournalStore, MOD, isAtlasEntry} from './journal-store.js';
 
 const {ApplicationV2, DialogV2} = foundry.applications.api;
@@ -32,7 +33,10 @@ function makeAdapter(app) {
     share: game.user.isGM ? state => shareView(app.entry, state) : null,
     saveFile: (name, text) => foundry.utils.saveDataToFile(text, 'application/json', name),
     loadJSON: async path => (await fetch(resolveUrl(path))).json(),
-    pickActors: () => pickActors()
+    pickActors: () => pickActors(),
+    players: () => game.users.filter(u => !u.isGM).map(u => ({id: u.id, name: u.name, color: u.color?.css ?? String(u.color || '')})),
+    notifyReveal: game.user.isGM ? ({ids, name}) => game.socket.emit(`module.${MOD}`, {action: 'reveal', entryId: app.entry.id, ids, name}) : null,
+    exportScene: game.user.isGM ? opts => exportScene(app, opts) : null
   };
 }
 
@@ -70,7 +74,7 @@ export class AtlasApp extends ApplicationV2 {
     const root = document.createElement('div'); content.innerHTML = ''; content.appendChild(root);
     const canEdit = this.entry.isOwner;
     this.view = new AtlasView(root, {
-      store: this.store, isGM: game.user.isGM, canEdit, atlasKey: `${game.world.id}:${this.entry.id}`,
+      store: this.store, isGM: game.user.isGM, canEdit, viewer: {id: game.user.id, name: game.user.name}, atlasKey: `${game.world.id}:${this.entry.id}`,
       animate: game.settings.get(MOD, 'animate'), adapter: makeAdapter(this),
       editorFactory: canEdit ? v => new AtlasEditor(v, {}) : null
     });
@@ -90,6 +94,12 @@ export function shareView(entry, state) {
   ui.notifications.info(L('Shared', 'Shown to the players who can see this atlas.'));
 }
 export function onSocket(msg) {
+  if (msg && msg.action === 'reveal') {
+    if (game.user.isGM || (msg.ids && !msg.ids.includes(game.user.id))) return;
+    const entry = game.journal.get(msg.entryId); if (!entry || !entry.testUserPermission(game.user, 'OBSERVER')) return;
+    ui.notifications.info(`${entry.name}: ${msg.name ? `the Storyteller revealed “${msg.name}”.` : 'the Storyteller revealed something new.'}`);
+    return;
+  }
   if (!msg || msg.action !== 'show') return;
   const entry = game.journal.get(msg.entryId); if (!entry || !entry.testUserPermission(game.user, 'OBSERVER')) return;
   AtlasApp.open(entry, {state: msg.state});
@@ -196,3 +206,46 @@ function actorKicker(a) {
   return [clan, gen && /^\d+$/.test(gen) ? `${ord(+gen)} generation` : gen].filter(Boolean).join(' · ') || undefined;
 }
 void svg;
+
+
+/* ================= atlas → Foundry scene ================= */
+async function ensureDir(path) {
+  const FP = foundry.applications.apps.FilePicker.implementation; let cur = '';
+  for (const part of path.split('/')) { cur = cur ? `${cur}/${part}` : part; try { await FP.createDirectory('data', cur, {}); } catch (e) { /* exists */ } }
+}
+async function uploadFile(dir, file) {
+  const FP = foundry.applications.apps.FilePicker.implementation;
+  const res = await FP.upload('data', dir, file, {}, {notify: false});
+  if (!res || !res.path) throw new Error('Upload failed (check that you may upload files to the world folder).');
+  return res.path;
+}
+/** Render the current realm/level of an open atlas to a picture and create or refresh a Scene with map notes. */
+export async function exportScene(app, o) {
+  const view = app.view, entry = app.entry; const prog = o.progress || (() => {});
+  prog('Rendering the picture…');
+  const snap = await renderSnapshot(view, o);
+  const dir = `worlds/${game.world.id}/wod-city-atlas`;
+  await ensureDir(dir); await ensureDir(`${dir}/icons`);
+  prog('Uploading…');
+  const key = `${entry.id}|${view.st.realm}|${view.st.level}|${o.as}`;
+  const fname = `${entry.id}-${view.st.realm}-${view.st.level}-${(o.as && o.as !== '*' ? o.as : 'all').replace(/\W/g, '')}-${Date.now().toString(36)}.webp`;
+  const path = await uploadFile(dir, new File([snap.blob], fname, {type: 'image/webp'}));
+  const icons = {};
+  for (const g of new Set(snap.places.map(p => p.icon))) icons[g] = await uploadFile(`${dir}/icons`, new File([pinSvg(g)], `pin-${g}.svg`, {type: 'image/svg+xml'}));
+  prog('Building the scene…');
+  let scene = game.scenes.find(sc => sc.getFlag(MOD, 'key') === key);
+  const data = {name: o.name || entry.name, width: snap.width, height: snap.height, padding: 0, background: {src: path}, backgroundColor: view.rv.bg || '#000000',
+    grid: {type: 0}, tokenVision: false, fog: {exploration: false}, flags: {[MOD]: {key, entry: entry.id, realm: view.st.realm, level: view.st.level, as: o.as}}};
+  if (scene) await scene.update(data); else scene = await Scene.create(Object.assign({navigation: true}, data));
+  const old = scene.notes.filter(n => n.getFlag(MOD, 'item')).map(n => n.id);
+  if (old.length) await scene.deleteEmbeddedDocuments('Note', old);
+  if (o.notes !== false && snap.places.length) {
+    const size = Math.max(32, Math.round(Math.max(snap.width, snap.height) / 110));
+    const notes = snap.places.map(p => ({x: Math.round(p.x), y: Math.round(p.y), text: p.name, texture: {src: icons[p.icon], tint: p.color}, iconSize: size, fontSize: Math.round(size * 0.55),
+      textAnchor: CONST.TEXT_ANCHOR_POINTS?.BOTTOM ?? 1, global: true, flags: {[MOD]: {entry: entry.id, item: p.id}}}));
+    for (let i = 0; i < notes.length; i += 100) await scene.createEmbeddedDocuments('Note', notes.slice(i, i + 100));
+  }
+  if (o.activate) await scene.activate(); else await scene.view();
+  ui.notifications.info(`Scene “${scene.name}” is ready.`);
+  return scene;
+}

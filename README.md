@@ -24,11 +24,13 @@ It ships with **Milwaukee by Night (1991)** as a ready-made atlas. That atlas ha
 
 ## Opening an atlas
 
-You can open an atlas in three ways:
+You can open an atlas in these ways:
 
 - Use the **City Atlas** button at the top of the **Journal** sidebar.
 - Use the **map tool** in the Journal Notes scene controls on the left.
 - Click an atlas journal entry (in the *City Atlases* folder). You can turn this off in the module settings.
+- Press **Alt+M** (you can change the key in *Configure Controls*).
+- Go to *Game Settings → Configure Settings → World of Darkness City Atlas → Open the atlas launcher*.
 
 From a macro:
 
@@ -60,6 +62,36 @@ New atlases go into a *City Atlases* journal folder. Players can see an atlas if
 - **Storyteller view** in the layer menu (GM only) lets you preview the map as the players see it.
 - **Show to players** (the eye button, GM only) opens the atlas for every player who can see it, at your current realm, view and selected entry.
 
+## What players see (Storyteller)
+
+Every realm, level, layer, place category, place, zone, route, glow, person and chronicle page can be shown to each player at its own **tier**:
+
+| Tier | The player sees |
+|---|---|
+| 0 · Hidden | nothing |
+| 1 · Existence | a grey "?" pin or outline called *Unknown place* (or a name you choose) |
+| 2 · Basic | name, subtitle, category, faction, picture |
+| 3 · Full | the description, facts, links, people, routes and ordinary callouts |
+| 4+ · Secret | callouts you marked with that tier |
+
+- **One entry:** open it in Storyteller view. At the bottom of its dossier, the *What players see* panel sets the tier for **Everyone** and, if you like, a different tier for each player. The same panel is in its edit form.
+- **Many at once:** *Edit → Player visibility* has a table for realms, levels, layers and categories (shown/hidden per player), the default tier for everything you haven't configured, tier names, and a bulk tool ("all Havens in the Waking realm → Basic for Anna").
+- **Check a view:** *Layers menu → View as* shows the map exactly as a given player (or "every player") sees it.
+- Players get a short notification when you reveal something to them.
+
+## Kindred domains
+
+Every person can own one or more domains (zones on the domain layer). In a Kindred's dossier, the **Domain** section lists their domains with a show/hide eye. In the Storyteller view it also has *Draw a domain* and an edit button for the shape. In the Kindred list, the crown next to a name shows or hides just that Kindred's domain. Domains have a status: held, reserve, contested, vacant, hidden or hostile.
+
+## Showing the map as a Scene
+
+*Edit → Show as a Scene* renders the current realm and level as a Foundry scene, as a chosen player (or every player) would see it:
+
+- The picture becomes the scene background.
+- Every visible place becomes a map note, and double-clicking a note opens that place in the atlas.
+- Running it again refreshes the same scene.
+- Pictures are saved in `worlds/<world>/wod-city-atlas/`.
+
 ## Editing (Storyteller)
 
 Click the **pen** on the right-hand bar. A toolbar appears at the top of the map:
@@ -71,7 +103,7 @@ Click the **pen** on the right-hand bar. A toolbar appears at the top of the map
 | Zone | `Z` | Click corners. Click the first corner again, double-click or press Enter to close the shape. Backspace removes the last corner and Esc cancels. |
 | Route | `R` | Click points, then double-click or press Enter to finish. |
 | Label | `T` | Click to place a text label. |
-| Glow | `G` | Click to place a glow, a shadow, a grey-out (Banality), a vortex or a moon. |
+| Glow | `G` | Click to place a glow, a shadow, a grey-out (Banality), a vortex or a moon. Drag the square handle to resize it. Glows can carry a value (Glamour 4/10, Banality 7/10, Shroud 3/10…) and a description, and are clickable. |
 
 Everything saves as you go, and **Ctrl+Z** undoes. The gear opens **Atlas settings**:
 

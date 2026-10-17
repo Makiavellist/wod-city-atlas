@@ -54,6 +54,11 @@ export function renderField(f, data, ctx) {
       const row = (r, i) => `<div class="lrow" data-row="${i}">${renderFields(f.sub, r || {}, ctx)}<button type="button" class="mini rm" data-rmrow title="Remove">${svg('trash')}</button></div>`;
       return wrap(`<div class="lrows">${rows.map(row).join('')}</div><template>${row({}, 'new')}</template><button type="button" class="mini add" data-addrow>${svg('plus', 2)} ${esc(f.addLabel || 'Add')}</button>`);
     }
+    case 'reveal': {
+      const r = v || {}, tiers = (ctx && ctx.tiers) || ['Hidden', 'Existence', 'Basic', 'Full', 'Secret'], ps = (ctx && ctx.players) || [];
+      const opt = (sel, inherit, defLabel) => (inherit ? `<option value="" ${sel === '' || sel == null ? 'selected' : ''}>${esc(defLabel)}</option>` : '') + tiers.map((n, i) => `<option value="${i}" ${sel !== '' && sel != null && +sel === i ? 'selected' : ''}>${i} · ${esc(n)}</option>`).join('');
+      return wrap(`<div class="revealf"><label><span>Everyone</span><select data-who="*">${opt(r.all, true, f.defLabel || 'default')}</select></label>${ps.map(p => `<label><span>${esc(p.name)}</span><select data-who="${esc(p.id)}">${opt((r.users || {})[p.id], true, 'as everyone')}</select></label>`).join('')}</div>`);
+    }
     case 'stops': return wrap(`<input id="${id}" type="text" value="${esc(v === undefined ? '' : JSON.stringify(v))}" placeholder="2 or [[10,1],[15,4]]">`);
     case 'coords': return wrap(`<input id="${id}" type="text" value="${esc(v ? JSON.stringify(v) : '')}" placeholder="[a, b]">`);
     case 'info': return `<div class="ef ef-info wide">${f.html ? (typeof f.html === 'function' ? f.html(data) : f.html) : ''}</div>`;
@@ -81,6 +86,7 @@ export function readFields(root, fields, base, ctx) {
       case 'refs': v = [...el.querySelectorAll('.chipref')].map(c => c.dataset.id); break;
       case 'ref': v = (el.querySelector('.chipref') || {}).dataset?.id; break;
       case 'json': { const s = el.querySelector('textarea').value.trim(); if (!s) v = undefined; else { try { v = JSON.parse(s); } catch (e) { throw new Error(`${f.label || f.k}: invalid JSON (${e.message})`); } } break; }
+      case 'reveal': { const o = {}; el.querySelectorAll('select[data-who]').forEach(sel => { if (sel.value === '') return; if (sel.dataset.who === '*') o.all = +sel.value; else (o.users ||= {})[sel.dataset.who] = +sel.value; }); v = Object.keys(o).length ? o : undefined; break; }
       case 'stops': { const s = el.querySelector('input').value.trim(); if (!s) v = undefined; else if (/^-?[\d.]+$/.test(s)) v = +s; else { try { v = JSON.parse(s); } catch (e) { throw new Error(`${f.label || f.k}: use a number or [[zoom,width],…]`); } } break; }
       case 'coords': { const s = el.querySelector('input').value.trim(); if (!s) v = undefined; else { try { v = JSON.parse(s); } catch (e) { throw new Error(`${f.label || f.k}: use [a, b]`); } } break; }
       case 'list': { const orig = getPath(base, f.k) || []; v = [...el.querySelectorAll(':scope > .lrows > .lrow')].map(r => readFields(r, f.sub, r.dataset.row !== 'new' && orig[+r.dataset.row] ? orig[+r.dataset.row] : {}, ctx)).filter(o => Object.keys(o).length); break; }

@@ -47,5 +47,8 @@ export const GLYPH = {
   upload:'<path d="M8 10.5V2M4.5 5.5L8 2l3.5 3.5M2.5 13.5h11"/>',
   copy:'<rect x="5" y="5" width="8.5" height="9" rx="1"/><path d="M3 11V2.5h7.5"/>',
   eyeoff:'<path d="M2 2l12 12M6.5 4C7 3.7 7.5 3.5 8 3.5c4 0 6.8 4.5 6.8 4.5s-.8 1.3-2.2 2.6M4.3 5.3C2.3 6.6 1.2 8 1.2 8S4 12.5 8 12.5c1.2 0 2.3-.4 3.2-1"/>',
-  grip:'<circle cx="6" cy="4" r=".8"/><circle cx="10" cy="4" r=".8"/><circle cx="6" cy="8" r=".8"/><circle cx="10" cy="8" r=".8"/><circle cx="6" cy="12" r=".8"/><circle cx="10" cy="12" r=".8"/>'
+  grip:'<circle cx="6" cy="4" r=".8"/><circle cx="10" cy="4" r=".8"/><circle cx="6" cy="8" r=".8"/><circle cx="10" cy="8" r=".8"/><circle cx="6" cy="12" r=".8"/><circle cx="10" cy="12" r=".8"/>',
+  unknown:'<circle cx="8" cy="8" r="6.3" stroke-dasharray="2 2"/><path d="M6.2 6.2a1.9 1.9 0 1 1 2.6 1.8c-.5.2-.8.6-.8 1.1v.6"/><path d="M8 11.6v.2"/>',
+  scene:'<rect x="1.5" y="3" width="13" height="10" rx="1"/><path d="M1.5 10.5l3.5-3 3 2.5 2.5-2 4 3"/>',
+  users:'<circle cx="6" cy="5.5" r="2.3"/><path d="M1.8 13.5c.5-2.6 2.2-4 4.2-4s3.7 1.4 4.2 4"/><circle cx="11.3" cy="6" r="1.8"/><path d="M11.5 9.6c1.6.2 2.6 1.4 2.9 3.4"/>'
 };

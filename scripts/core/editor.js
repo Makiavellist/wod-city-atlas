@@ -1,6 +1,6 @@
 /* The GM editor: drawing tools, item forms, collection managers, import/export and undo. */
 import {esc, svg, clone, uid, safeId, sortBy, GLYPH, segDist, inPoly, clamp} from './util.js';
-import {COLLECTIONS, TYPE_NAMES, normalize} from './model.js';
+import {COLLECTIONS, TYPE_NAMES, normalize, TIER} from './model.js';
 import {renderFields, readFields, bindFields} from './forms.js';
 import {LOOKS, applyLook} from './templates.js';
 
@@ -71,7 +71,10 @@ export class AtlasEditor {
       geo.forEach((ring, ri) => { const W = ring.map(p => this.proj.toWorld(p)); W.forEach((w, pi) => out.push({kind: 'v', ri, pi, w}));
         const n = coll === 'zones' ? W.length : W.length - 1; for (let i = 0; i < n; i++) { const a = W[i], b = W[(i + 1) % W.length]; out.push({kind: 'mid', ri, pi: i + 1, w: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]}); } });
       void g;
-    } else if ((coll === 'labels' || coll === 'auras') && it.at) out.push({kind: 'pt', w: this.proj.toWorld(it.at)});
+    } else if ((coll === 'labels' || coll === 'auras') && it.at) {
+      const c = this.proj.toWorld(it.at); out.push({kind: 'pt', w: c});
+      if (coll === 'auras' && it.radius) out.push({kind: 'rad', w: [c[0] + it.radius / this.proj.mpu(c[1]), c[1]]});
+    }
     return out;
   }
   handleAt(sx, sy) { let best = null, bd = 9; for (const h of this.handles()) { const [x, y] = this.v.toScreen(h.w); const d = Math.hypot(x - sx, y - sy); if (d < bd || (d === bd && h.kind === 'v')) { bd = d; best = h; } } return best; }
@@ -100,6 +103,7 @@ export class AtlasEditor {
     const w = this.screenToWorld(sx, sy), d = this.drag; d.moved = true;
     if (d.type === 'handle') {
       if (d.h.kind === 'pt') d.work.at = this.ll(w);
+      else if (d.h.kind === 'rad') { const c = this.proj.toWorld(d.work.at); d.work.radius = Math.max(1, Math.round(Math.hypot(w[0] - c[0], w[1] - c[1]) * this.proj.mpu(c[1]))); }
       else { const key = d.coll === 'zones' ? 'rings' : 'parts'; d.work[key][d.h.ri][d.h.pi] = this.ll(w); }
     } else if (d.type === 'shape') {
       const key = d.coll === 'zones' ? 'rings' : 'parts'; const dx = w[0] - d.start[0], dy = w[1] - d.start[1];
@@ -156,8 +160,22 @@ export class AtlasEditor {
     const d = this.draw; this.draw = null; this.v.dirty();
     if (!d) return;
     const pts = d.pts.filter((p, i, a) => !i || Math.hypot(p[0] - a[i - 1][0], p[1] - a[i - 1][1]) > 1e-12).map(w => this.ll(w));
-    if (d.kind === 'zones') { if (pts.length < 3) return this.notify('A zone needs at least three corners.', 'warn'); this.create('zones', {rings: [pts]}); }
+    if (d.kind === 'zones') { if (pts.length < 3) return this.notify('A zone needs at least three corners.', 'warn'); this.create('zones', Object.assign({rings: [pts]}, d.preset || {})); }
     else { if (pts.length < 2) return this.notify('A route needs at least two points.', 'warn'); this.create('routes', {parts: [pts]}); }
+  }
+  /** Draw a personal domain for a person: switch to the domain layer's realm, then zone-draw with the owner preset. */
+  startDomain(pid) {
+    const p = this.m.atlas.people[pid]; if (!p) return;
+    const L = this.m.domainLayer(); const layer = L && this.m.atlas.layers[L];
+    const realm = layer && layer.realm ? [].concat(layer.realm)[0] : (this.m.atlas.realms.waking ? 'waking' : this.m.realmList[0].id);
+    if (this.v.st.realm !== realm) this.v.setRealm(realm, true);
+    if (L && !this.v.layerOn(L)) this.v.setLayer(L, true);
+    const r = this.m.realm(realm);
+    const style = this.m.atlas.styles['domain-held'] ? undefined : (this.m.atlas.styles.hatched ? 'hatched' : undefined);
+    this.setTool('zones');
+    this.draw = {kind: 'zones', pts: [], preset: {name: `${p.name.split(/[ ,(]/)[0]}'s domain`, sub: p.name, layer: L || undefined, owners: [pid], faction: p.faction, realm, level: r.levels.length > 1 ? this.v.st.level : undefined, domainStatus: 'held', style, color: undefined, kicker: 'Personal domain', container: true}};
+    this.v.el.edbar.querySelector('.hint').textContent = `Drawing ${p.name}'s domain. Click the corners, then click the first corner or press Enter.`;
+    this.notify(`Draw ${p.name}'s domain on the map.`);
   }
   escape() { if (this.draw) { this.draw = null; this.v.dirty(); return true; } if (this.tool !== 'select') { this.setTool('select'); return true; } if (this.panel && this.panel.type !== 'home') { this.back(); return true; } return false; }
   key(e) {
@@ -191,6 +209,7 @@ export class AtlasEditor {
     if (this.tool === 'select') for (const h of this.handles()) {
       const [a, b] = v.toScreen(h.w); x.beginPath();
       if (h.kind === 'mid') { x.arc(a, b, 3.5, 0, 6.283); x.fillStyle = 'rgba(255,217,138,.25)'; x.fill(); x.strokeStyle = '#ffd98a'; x.lineWidth = 1; x.stroke(); }
+      else if (h.kind === 'rad') { const c = v.toScreen(this.proj.toWorld(this.sel().item.at)); x.save(); x.setLineDash([4, 4]); x.strokeStyle = 'rgba(255,217,138,.7)'; x.lineWidth = 1; x.arc(c[0], c[1], Math.hypot(a - c[0], b - c[1]), 0, 6.283); x.stroke(); x.restore(); x.beginPath(); x.rect(a - 5, b - 5, 10, 10); x.fillStyle = '#ffd98a'; x.fill(); x.strokeStyle = '#1a1510'; x.stroke(); }
       else { x.arc(a, b, h.kind === 'pt' ? 7 : 5, 0, 6.283); x.fillStyle = '#ffd98a'; x.fill(); x.strokeStyle = '#1a1510'; x.lineWidth = 1.5; x.stroke(); }
     }
   }
@@ -244,6 +263,7 @@ export class AtlasEditor {
   catOpts(realm) { return sortBy(Object.values(this.m.atlas.categories).filter(c => !realm || c.realm == null || c.realm === realm), c => c.order ?? 0).map(c => [c.id, c.name + (c.realm && c.realm !== realm ? ` (${c.realm})` : '')]); }
   facOpts() { return sortBy(Object.values(this.m.atlas.factions), f => f.order ?? 0, 'name').map(f => [f.id, f.name]); }
   layerOpts(realm) { return sortBy(Object.values(this.m.atlas.layers).filter(L => L.realm == null || [].concat(L.realm).includes(realm)), l => l.order ?? 0).map(L => [L.id, L.name]); }
+  tierOpts() { return this.m.tiers().map((n, i) => [i, `${i} · ${n}`]); }
   styleOpts() { return Object.keys(this.m.atlas.styles).sort().map(k => [k, k]); }
   precOpts() { return Object.entries(this.m.atlas.precisions || {}).map(([k, p]) => [k, p.name]); }
   statusOpts() { return Object.entries(this.m.atlas.statuses || {}).map(([k, s]) => [k, s.name]); }
@@ -264,10 +284,12 @@ export class AtlasEditor {
       faction: {k: 'faction', t: 'select', label: 'Faction', opts: () => self.facOpts()},
       color: {k: 'color', t: 'color', label: 'Colour', help: 'overrides faction/category'},
       icon: {k: 'icon', t: 'icon', label: 'Icon'},
-      gm: {k: 'gm', t: 'check', label: 'Storyteller only', help: 'hidden from players'},
+      gm: {k: 'reveal', t: 'reveal', label: 'What players see', help: '0 hidden · 1 existence · 2 basic · 3 full · 4+ secrets', wide: true, defLabel: `default (${self.m.tierName(self.m.defaultTier(coll))})`},
+      alias: {k: 'alias', t: 'text', label: 'Name while unknown', help: 'shown at tier 1 (existence only)', ph: coll === 'people' ? 'A stranger in a long coat' : 'A house nobody visits'},
+      aliasText: {k: 'aliasText', t: 'text', label: 'Text while unknown', wide: true, ph: 'You know something is here, but nothing more.'},
       html: {k: 'html', t: 'html', label: 'Description', wide: true},
       img: {k: 'img', t: 'image', label: 'Picture', wide: true},
-      notes: {k: 'notes', t: 'list', label: 'Callouts & secrets', wide: true, addLabel: 'Add callout', sub: [{k: 'title', t: 'text', label: 'Heading'}, {k: 'kind', t: 'select', label: 'Style', opts: NOTE_KINDS, none: 'Plain'}, {k: 'gm', t: 'check', label: 'Storyteller only'}, {k: 'html', t: 'textarea', label: 'Text', wide: true, rows: 3}]},
+      notes: {k: 'notes', t: 'list', label: 'Callouts & secrets', wide: true, addLabel: 'Add callout', sub: [{k: 'title', t: 'text', label: 'Heading'}, {k: 'kind', t: 'select', label: 'Style', opts: NOTE_KINDS, none: 'Plain'}, {k: 'tier', t: 'select', label: 'Revealed at tier', opts: () => self.tierOpts(), none: 'Full (3)', num: true}, {k: 'html', t: 'textarea', label: 'Text', wide: true, rows: 3}]},
       facts: {k: 'facts', t: 'list', label: 'Facts', wide: true, addLabel: 'Add fact', sub: [{k: 'k', t: 'text', label: 'Label'}, {k: 'v', t: 'text', label: 'Value'}]},
       tags: {k: 'tags', t: 'list', label: 'Tags', wide: true, addLabel: 'Add tag', sub: [{k: 'text', t: 'text', label: 'Text'}, {k: 'color', t: 'color', label: 'Colour'}]},
       people: {k: 'people', t: 'refs', label: 'Figures here', wide: true, refs: () => self.refList(['people'])},
@@ -300,7 +322,7 @@ export class AtlasEditor {
     if (typeof s === 'string') d._styleName = s;
     else if (s && (Array.isArray(s) || !this.isSimple(s))) d._styleJson = s;
     else if (s) d._s = {width: s.width, dash: !s.dash ? 'solid' : s.dash[0] <= 2 ? 'dotted' : s.dash[0] >= 10 ? 'long' : 'dashed', fillAlpha: s.fillAlpha, pattern: s.pattern && s.pattern.kind, glyph: s.pattern && s.pattern.glyph, glow: s.glow ? true : undefined, flow: s.flow ? true : undefined};
-    else d._s = {width: coll === 'zones' ? 1.8 : 2.6, dash: coll === 'routes' ? 'dashed' : 'solid', fillAlpha: 0.12};
+    else if (!(coll === 'zones' && d.domainStatus && this.m.atlas.styles['domain-' + d.domainStatus])) d._s = {width: coll === 'zones' ? 1.8 : 2.6, dash: coll === 'routes' ? 'dashed' : 'solid', fillAlpha: 0.12};
     return d;
   }
   isSimple(s) { return Object.keys(s).every(k => ['width', 'dash', 'fillAlpha', 'pattern', 'glow', 'flow'].includes(k)) && (!s.pattern || Object.keys(s.pattern).every(k => ['kind', 'glyph', 'color', 'bg', 'size', 'width'].includes(k))); }
@@ -319,25 +341,28 @@ export class AtlasEditor {
     const C = this.common(coll), self = this, posLabel = this.proj.kind === 'mercator' ? 'Position [lat, lng]' : 'Position [x, y]';
     switch (coll) {
       case 'places': return [{k: 'name', t: 'text', label: 'Name', wide: true}, C.sub, C.realm, C.level, {k: 'cat', t: 'select', label: 'Category', opts: d => self.catOpts(d.realm)}, C.faction, C.layer,
-        {k: 'precision', t: 'select', label: 'Placement', opts: () => self.precOpts(), show: () => self.precOpts().length}, C.color, C.icon, C.gm, {k: 'hidden', t: 'check', label: 'No map pin', help: 'listed but not drawn'},
+        {k: 'precision', t: 'select', label: 'Placement', opts: () => self.precOpts(), show: () => self.precOpts().length}, C.color, C.icon, C.gm, C.alias, C.aliasText, {k: 'hidden', t: 'check', label: 'No map pin', help: 'listed but not drawn'},
         C.html, C.img, C.notes, C.people, {k: 'zone', t: 'ref', label: 'Inside zone', wide: true, refs: () => self.refList(['zones'])}, C.anchor, C.links, C.facts, C.tags, C.uuid,
         {k: 'at', t: 'coords', label: posLabel}, {k: 'zoom', t: 'number', label: 'Focus zoom'}, C.kicker, C.order, C.src];
-      case 'zones': return [{k: 'name', t: 'text', label: 'Name', wide: true}, C.sub, C.realm, C.level, C.layer, C.faction, C.color, ...this.styleFields(), C.gm,
+      case 'zones': return [{k: 'name', t: 'text', label: 'Name', wide: true}, C.sub, C.realm, C.level, C.layer, C.faction, C.color, ...this.styleFields(), C.gm, C.alias, C.aliasText,
+        {k: 'domainStatus', t: 'select', label: 'Domain status', opts: () => Object.entries(self.m.domainStatuses()).map(([k, v]) => [k, v.name]), show: d => d.layer && d.layer === self.m.domainLayer()},
         {k: 'container', t: 'check', label: 'Lists places inside it', help: '“Lies within”'}, {k: 'noLabel', t: 'check', label: 'No name on the map'},
         {k: 'label.text', t: 'text', label: 'Map label text'}, {k: 'label.sub', t: 'text', label: 'Map label second line'}, {k: 'label.minZoom', t: 'number', label: 'Label min zoom'},
         C.html, C.img, {k: 'fillImage.src', t: 'image', label: 'Picture inside the zone', wide: true}, C.notes,
         {k: 'owners', t: 'refs', label: 'Claimed by (domain owners)', wide: true, refs: () => self.refList(['people'])}, C.people,
         {k: 'rating.label', t: 'text', label: 'Rating name', ph: 'Danger'}, {k: 'rating.value', t: 'number', label: 'Rating'}, {k: 'rating.max', t: 'number', label: 'Rating max', ph: '5'}, {k: 'rating.text', t: 'text', label: 'Rating words'},
         {k: 'ref', t: 'ref', label: 'Clicking opens', help: 'show another entry instead', wide: true, refs: () => self.refList(['places'])}, C.anchor, C.links, C.facts, C.tags, C.uuid, C.kicker, {k: 'order', t: 'number', label: 'Draw order', help: 'higher is on top'}, C.src];
-      case 'routes': return [{k: 'name', t: 'text', label: 'Name', wide: true}, C.sub, C.realm, C.level, C.layer, C.faction, C.color, ...this.styleFields(), {k: 'curve', t: 'number', label: 'Curve', help: '0.2 bends each segment'}, C.gm,
+      case 'routes': return [{k: 'name', t: 'text', label: 'Name', wide: true}, C.sub, C.realm, C.level, C.layer, C.faction, C.color, ...this.styleFields(), {k: 'curve', t: 'number', label: 'Curve', help: '0.2 bends each segment'}, C.gm, C.alias,
         C.html, C.notes, {k: 'ends', t: 'refs', label: 'Ends at', wide: true, refs: () => self.refList(['places', 'zones'])}, C.people, C.links, C.facts, C.tags, C.uuid, C.kicker, C.order, C.src];
       case 'labels': return [{k: 'text', t: 'text', label: 'Text', wide: true}, C.realm, C.level, C.layer, {k: 'size', t: 'number', label: 'Size (px)'}, {k: 'font', t: 'select', label: 'Font', opts: [['sc', 'Small caps'], ['head', 'Book serif'], ['body', 'Sans'], ['title', 'Blackletter']], none: 'Default'},
         {k: 'italic', t: 'check', label: 'Italic'}, {k: 'ls', t: 'number', label: 'Letter spacing'}, {k: 'color', t: 'color', label: 'Colour'}, {k: 'halo', t: 'color', label: 'Halo'}, {k: 'glow', t: 'color', label: 'Glow'},
         {k: 'angle', t: 'number', label: 'Angle (°)'}, {k: 'minZoom', t: 'number', label: 'Min zoom'}, {k: 'maxZoom', t: 'number', label: 'Max zoom'}, {k: 'noAvoid', t: 'check', label: 'Always draw (ignore collisions)'}, C.gm, {k: 'at', t: 'coords', label: posLabel}];
       case 'auras': return [{k: 'name', t: 'text', label: 'Name (tooltip)', wide: true}, C.realm, C.level, C.layer, {k: 'mode', t: 'select', label: 'Kind', opts: [['glow', 'Glow'], ['dark', 'Shadow'], ['desat', 'Grey-out (Banality)'], ['vortex', 'Vortex'], ['moon', 'Moon']], none: false},
-        {k: 'color', t: 'color', label: 'Colour'}, {k: 'radius', t: 'number', label: this.proj.kind === 'mercator' ? 'Radius (m)' : 'Radius (map units)'}, {k: 'px', t: 'number', label: 'Minimum radius (px)'}, {k: 'pulse', t: 'check', label: 'Pulse'}, {k: 'flicker', t: 'check', label: 'Flicker'}, C.gm, {k: 'at', t: 'coords', label: posLabel}];
+        {k: 'color', t: 'color', label: 'Colour'}, {k: 'radius', t: 'number', label: this.proj.kind === 'mercator' ? 'Radius (m)' : 'Radius (map units)'}, {k: 'px', t: 'number', label: 'Minimum radius (px)'}, {k: 'pulse', t: 'check', label: 'Pulse'}, {k: 'flicker', t: 'check', label: 'Flicker'},
+        {k: 'rating.label', t: 'text', label: 'Value name', ph: 'Glamour, Banality, Shroud, Gauntlet…'}, {k: 'rating.value', t: 'number', label: 'Value'}, {k: 'rating.max', t: 'number', label: 'Scale max', ph: '10'}, {k: 'rating.text', t: 'text', label: 'Value words', ph: 'a deep well'},
+        {k: 'decor', t: 'check', label: 'Decoration only', help: 'not clickable, not listed'}, C.gm, C.alias, C.html, C.notes, C.facts, {k: 'at', t: 'coords', label: posLabel}];
       case 'people': return [{k: 'name', t: 'text', label: 'Name', wide: true}, {k: 'kicker', t: 'text', label: 'Clan / kind line', wide: true, ph: 'Ventrue · 8th generation'}, {k: 'sub', t: 'text', label: 'Role', wide: true}, C.faction, {k: 'tag', t: 'text', label: 'Short tag', ph: 'Ventrue'},
-        {k: 'status', t: 'select', label: 'Status', opts: () => self.statusOpts()}, C.icon, C.color, C.gm, {k: 'realms', t: 'multi', label: 'Listed under', help: 'which realms and levels show this person', wide: true, opts: () => self.realmKeyOpts()},
+        {k: 'status', t: 'select', label: 'Status', opts: () => self.statusOpts()}, C.icon, C.color, C.gm, C.alias, C.aliasText, {k: 'realms', t: 'multi', label: 'Listed under', help: 'which realms and levels show this person', wide: true, opts: () => self.realmKeyOpts()},
         C.img, C.html, C.notes, {k: 'at', t: 'refs', label: 'Where to find them', wide: true, refs: () => self.refList(['places', 'zones', 'routes'])},
         {k: 'relations.title', t: 'text', label: 'Relations heading', ph: 'Attitudes'}, {k: '_rel', t: 'list', label: 'Relations', wide: true, addLabel: 'Add relation', sub: [{k: 'a', t: 'text', label: 'Who'}, {k: 'b', t: 'text', label: 'Attitude'}]},
         C.facts, C.uuid, C.order, C.src];
@@ -347,11 +372,11 @@ export class AtlasEditor {
         {k: 'html', t: 'html', label: 'Text', wide: true, rows: 12}];
       case 'categories': return [{k: 'name', t: 'text', label: 'Name', wide: true}, {k: 'realm', t: 'select', label: 'Realm', opts: () => self.realmOpts(), none: 'All realms'}, {k: 'levels', t: 'multi', label: 'Only on levels', opts: d => d.realm ? self.levelOpts(d.realm) : self.allLevelOpts(), wide: true},
         {k: 'icon', t: 'icon', label: 'Icon'}, {k: 'color', t: 'color', label: 'Colour', help: 'used when the place has no faction'}, {k: 'order', t: 'number', label: 'Order'},
-        {k: 'pin.border', t: 'select', label: 'Pin ring', opts: [['solid', 'Solid'], ['dashed', 'Dashed'], ['dotted', 'Dotted'], ['double', 'Double']], none: 'Default'}, {k: 'pin.glow', t: 'check', label: 'Pin glows'}, {k: 'pin.anim', t: 'select', label: 'Pin animation', opts: [['pulse', 'Pulse']], none: 'None'}];
+        C.gm, {k: 'pin.border', t: 'select', label: 'Pin ring', opts: [['solid', 'Solid'], ['dashed', 'Dashed'], ['dotted', 'Dotted'], ['double', 'Double']], none: 'Default'}, {k: 'pin.glow', t: 'check', label: 'Pin glows'}, {k: 'pin.anim', t: 'select', label: 'Pin animation', opts: [['pulse', 'Pulse']], none: 'None'}];
       case 'factions': return [{k: 'name', t: 'text', label: 'Name', wide: true}, {k: 'short', t: 'text', label: 'Short name'}, {k: 'color', t: 'color', label: 'Colour'}, {k: 'order', t: 'number', label: 'Order'}, {k: 'html', t: 'html', label: 'Notes', wide: true, rows: 4}];
       case 'layers': return [{k: 'name', t: 'text', label: 'Name', wide: true}, {k: 'realm', t: 'multi', label: 'Realms', help: 'none ticked = every realm', opts: () => self.realmOpts(), wide: true}, {k: 'levels', t: 'multi', label: 'Levels', help: 'none ticked = every level', opts: () => self.allLevelOpts(), wide: true},
-        {k: 'on', t: 'check', label: 'On by default'}, {k: 'icon', t: 'icon', label: 'Map-bar button', none: 'none'}, {k: 'hotkey', t: 'text', label: 'Hotkey', ph: 'd'}, {k: 'order', t: 'number', label: 'Order'}];
-      case 'realms': return [{k: 'name', t: 'text', label: 'Name'}, {k: 'icon', t: 'icon', label: 'Icon'}, {k: 'order', t: 'number', label: 'Order'},
+        {k: 'on', t: 'check', label: 'On by default'}, C.gm, {k: 'icon', t: 'icon', label: 'Map-bar button', none: 'none'}, {k: 'hotkey', t: 'text', label: 'Hotkey', ph: 'd'}, {k: 'order', t: 'number', label: 'Order'}];
+      case 'realms': return [{k: 'name', t: 'text', label: 'Name'}, {k: 'icon', t: 'icon', label: 'Icon'}, {k: 'order', t: 'number', label: 'Order'}, C.gm,
         {k: '_look', t: 'select', label: 'Apply a look', help: 'replaces colours & effects', opts: Object.entries(LOOKS).map(([k, l]) => [k, l.label]), none: '(keep current)'},
         {k: 'kicker', t: 'text', label: 'Kicker', wide: true}, {k: 'date', t: 'text', label: 'Date line', wide: true}, {k: 'banner', t: 'text', label: 'Banner', wide: true}, {k: 'credit', t: 'text', label: 'Map credit', wide: true},
         {k: 'terms.places', t: 'text', label: 'Tab: places'}, {k: 'terms.people', t: 'text', label: 'Tab: people'}, {k: 'terms.zones', t: 'text', label: 'Tab: zones'}, {k: 'terms.pages', t: 'text', label: 'Tab: chronicle'},
@@ -370,6 +395,9 @@ export class AtlasEditor {
   /** Prepare stored data for a form. */
   toForm(coll, it) {
     const d = clone(it) || {};
+    if (d.gm && !d.reveal && !['realms', 'layers', 'categories', 'factions', 'styles'].includes(coll)) { d.reveal = {all: 0}; }
+    delete d.gm;
+    if (Array.isArray(d.notes)) d.notes = d.notes.map(n => { const o = Object.assign({}, n); const t = this.m.noteTier(n); delete o.gm; if (t !== TIER.FULL) o.tier = t; else delete o.tier; return o; });
     if (coll === 'zones' || coll === 'routes') this.styleIn(d, coll);
     if (coll === 'people') d._rel = ((d.relations && d.relations.rows) || []).map(([a, b]) => ({a, b}));
     if (coll === 'realms') { d._levels = (d.levels || []).map(l => Object.assign({}, l, {show: (l.show || []).join(', ')})); }
@@ -393,7 +421,7 @@ export class AtlasEditor {
 
   /* ================= pane ================= */
   ctx() {
-    return {resolveUrl: s => this.v.resolveUrl(s), pickImage: this.A.pickImage ? (cur, cb) => this.A.pickImage(cur, cb) : (cur, cb) => { const p = window.prompt('Image path or URL', cur || ''); if (p != null) cb(p); }, richEditor: this.A.richEditor, data: this.panel && this.panel.data};
+    return {tiers: this.m.tiers(), players: this.v.players(), resolveUrl: s => this.v.resolveUrl(s), pickImage: this.A.pickImage ? (cur, cb) => this.A.pickImage(cur, cb) : (cur, cb) => { const p = window.prompt('Image path or URL', cur || ''); if (p != null) cb(p); }, richEditor: this.A.richEditor, data: this.panel && this.panel.data};
   }
   renderPane() {
     const P = this.panel || {type: 'home'}, pane = this.v.el.pane;
@@ -402,13 +430,15 @@ export class AtlasEditor {
     if (P.type === 'coll') return this.renderCollection(P.coll);
     if (P.type === 'general') return this.renderGeneral();
     if (P.type === 'io') return this.renderIO();
+    if (P.type === 'visibility') return this.renderVisibility();
+    if (P.type === 'scene') return this.renderScene();
     // home
     const a = this.m.atlas, count = c => Object.keys(a[c]).length;
     pane.innerHTML = `<div class="ed"><div class="ed-h"><h2>Edit atlas</h2><p class="hint">Pick a tool on the map (top centre) to add places, zones, routes, labels and glows, or click anything on the map to edit it. Everything is saved as you go; <b>Undo</b> steps back.</p></div>
       <div class="ed-grid">
         ${[['general', 'gear', 'Title, map & view', a.title], ['coll:realms', 'moon', 'Realms & levels', `${count('realms')} realms`], ['coll:layers', 'layers', 'Layers', count('layers')], ['coll:categories', 'pin', 'Place categories', count('categories')],
           ['coll:factions', 'crown', 'Factions & colours', count('factions')], ['coll:people', 'user', 'People', count('people')], ['coll:pages', 'book', 'Chronicle pages', count('pages')], ['coll:styles', 'poly', 'Zone & route styles', count('styles')],
-          ['coll:places', 'pin', 'All places', count('places')], ['coll:zones', 'poly', 'All zones', count('zones')], ['coll:routes', 'line', 'All routes', count('routes')], ['coll:labels', 'text', 'Labels & glows', count('labels') + count('auras')], ['io', 'download', 'Import / export', '']]
+          ['coll:places', 'pin', 'All places', count('places')], ['coll:zones', 'poly', 'All zones', count('zones')], ['coll:routes', 'line', 'All routes', count('routes')], ['coll:labels', 'text', 'Labels & glows', count('labels') + count('auras')], ['visibility', 'users', 'Player visibility', 'realms, layers, bulk reveals'], ...(this.A.exportScene ? [['scene', 'scene', 'Show as a Scene', 'make a Foundry scene']] : []), ['io', 'download', 'Import / export', '']]
           .map(([k, ic, t, n]) => `<button type="button" class="ed-card" data-open="${k}">${svg(ic)}<span><b>${esc(t)}</b><small>${esc(String(n))}</small></span></button>`).join('')}
       </div></div>`;
     pane.onclick = e => { const b = e.target.closest('[data-open]'); if (!b) return; const k = b.dataset.open; this.panel = k.startsWith('coll:') ? {type: 'coll', coll: k.slice(5), from: {type: 'home'}} : {type: k, from: {type: 'home'}}; this.renderPane(); };
@@ -547,6 +577,99 @@ export class AtlasEditor {
       if (b.dataset.ed === 'back') this.back();
       else if (b.dataset.ed === 'sethome') { const c = this.v.cam, s = Math.pow(2, c.z); const p = this.proj; const box = [p.toLL([c.cx - c.W / 2 / s, c.cy + c.H / 2 / s]), p.toLL([c.cx + c.W / 2 / s, c.cy - c.H / 2 / s])].map(q => q.map(p.round)); await this.store.setMeta({home: {box}}); this.notify('Home view set.'); }
       else if (b.dataset.ed === 'detect') { const src = form.querySelector('.ef[data-k="background.src"] input').value; if (!src) return; const im = new Image(); im.onload = () => { form.querySelector('.ef[data-k="background.w"] input').value = im.naturalWidth; form.querySelector('.ef[data-k="background.h"] input').value = im.naturalHeight; }; im.src = this.v.resolveUrl(src); } };
+  }
+
+  /* ================= player visibility ================= */
+  renderVisibility() {
+    const pane = this.v.el.pane, m = this.m, a = m.atlas, ps = this.v.players();
+    const cols = [['*', 'Everyone'], ...ps.map(p => [p.id, p.name])];
+    const vis = (it, who) => { const r = it.reveal || {}; const v = who === '*' ? r.all : (r.users || {})[who]; return v === undefined || v === null ? '' : (+v >= 1 ? 'on' : 'off'); };
+    const cell = (kind, key, it, who) => `<td><select data-vk="${kind}" data-vkey="${esc(key)}" data-who="${esc(who)}"><option value="" ${vis(it, who) === '' ? 'selected' : ''}>${who === '*' ? 'shown' : '—'}</option><option value="on" ${vis(it, who) === 'on' ? 'selected' : ''}>shown</option><option value="off" ${vis(it, who) === 'off' ? 'selected' : ''}>hidden</option></select></td>`;
+    const head = `<tr><th></th>${cols.map(([, n]) => `<th>${esc(n)}</th>`).join('')}</tr>`;
+    const rows = [];
+    for (const r of m.realmList) {
+      rows.push(`<tr class="vr"><td>${svg(r.icon || 'sun')} ${esc(r.name)}</td>${cols.map(([w]) => cell('realm', r.id, r, w)).join('')}</tr>`);
+      if (r.levels.length > 1) for (const l of r.levels) rows.push(`<tr class="vl"><td>↳ ${esc(l.name || l.id)}</td>${cols.map(([w]) => cell('level', r.id + '|' + l.id, l, w)).join('')}</tr>`);
+    }
+    const lrows = sortBy(Object.values(a.layers), L => L.order ?? 0).map(L => `<tr><td>${esc(L.name)}<small>${esc(L.realm ? [].concat(L.realm).map(x => (a.realms[x] || {}).name || x).join(', ') : 'all realms')}</small></td>${cols.map(([w]) => cell('layer', L.id, L, w)).join('')}</tr>`).join('');
+    const crows = sortBy(Object.values(a.categories), c => c.realm || '', c => c.order ?? 0).map(c => `<tr><td>${esc(c.name)}<small>${esc(c.realm ? (a.realms[c.realm] || {}).name || c.realm : 'all realms')}</small></td>${cols.map(([w]) => cell('cat', c.id, c, w)).join('')}</tr>`).join('');
+    const tiers = m.tiers();
+    const def = a.revealDefault == null || a.revealDefault === '' ? 3 : +a.revealDefault;
+    pane.innerHTML = `<div class="ed"><div class="ed-top"><button type="button" class="back" data-ed="back">${svg('back', 2)} Back</button></div><h2>Player visibility</h2>
+      <p class="hint">Decide what each player can see. A hidden realm, level, layer or category hides everything in it. Individual places, zones, people and pages have their own <b>What players see</b> panel, in their dossier (Storyteller view) and in their edit form. Use <b>View as</b> in the layers menu to check a player's view.</p>
+      <h3>Defaults</h3>
+      <label class="vrow">Unconfigured entries are shown to players at <select data-def>${tiers.map((n, i) => `<option value="${i}" ${def === i ? 'selected' : ''}>${i} · ${esc(n)}</option>`).join('')}</select></label>
+      <details class="raw"><summary>Rename the tiers</summary><div class="tiernames">${tiers.map((n, i) => `<label>${i}<input type="text" data-tiername="${i}" value="${esc(n)}"></label>`).join('')}<button type="button" class="mini" data-ed="addtier">${svg('plus', 2)} Add a secret tier</button></div></details>
+      <h3>Realms & levels</h3><div class="vtable"><table>${head}${rows.join('')}</table></div>
+      <h3>Layers</h3><div class="vtable"><table>${head}${lrows}</table></div>
+      <details class="raw"><summary>Place categories (${Object.keys(a.categories).length})</summary><div class="vtable"><table>${head}${crows}</table></div></details>
+      <h3>Reveal many at once</h3>
+      <div class="bulk ed-form">
+        <div class="ef"><label>Entries</label><select data-b="coll">${[['places', 'Places'], ['zones', 'Zones & domains'], ['routes', 'Routes'], ['people', 'People'], ['auras', 'Glows (Glamour, Shroud…)'], ['pages', 'Chronicle pages']].map(([k, n]) => `<option value="${k}">${n}</option>`).join('')}</select></div>
+        <div class="ef"><label>In realm</label><select data-b="realm"><option value="">any</option>${m.realmList.map(r => `<option value="${esc(r.id)}">${esc(r.name)}</option>`).join('')}</select></div>
+        <div class="ef"><label>Layer</label><select data-b="layer"><option value="">any</option>${sortBy(Object.values(a.layers), L => L.order ?? 0).map(L => `<option value="${esc(L.id)}">${esc(L.name)}</option>`).join('')}</select></div>
+        <div class="ef"><label>Category / faction</label><select data-b="group"><option value="">any</option><optgroup label="Categories">${Object.values(a.categories).map(c => `<option value="cat:${esc(c.id)}">${esc(c.name)}</option>`).join('')}</optgroup><optgroup label="Factions">${Object.values(a.factions).map(f => `<option value="fac:${esc(f.id)}">${esc(f.name)}</option>`).join('')}</optgroup></select></div>
+        <div class="ef"><label>For</label><select data-b="who">${cols.map(([w, n]) => `<option value="${esc(w)}">${esc(n)}</option>`).join('')}</select></div>
+        <div class="ef"><label>Set to</label><select data-b="tier"><option value="">clear (use default)</option>${tiers.map((n, i) => `<option value="${i}">${i} · ${esc(n)}</option>`).join('')}</select></div>
+        <div class="ed-actions"><button type="button" class="btn primary" data-ed="bulk">${svg('users')} Apply</button><span class="hint bulkcount"></span></div>
+      </div></div>`;
+    const bulkSel = () => { const g = k => pane.querySelector(`[data-b="${k}"]`).value; const coll = g('coll'), realm = g('realm'), layer = g('layer'), grp = g('group');
+      return Object.values(a[coll]).filter(it => !it.decor && (!realm || (Array.isArray(it.realm) ? it.realm.includes(realm) : it.realm === realm) || (coll === 'people' && (it.realms || []).some(k => k === realm || k.startsWith(realm + ':')))) && (!layer || it.layer === layer) && (!grp || (grp.startsWith('cat:') ? it.cat === grp.slice(4) : it.faction === grp.slice(4)))); };
+    const count = () => { pane.querySelector('.bulkcount').textContent = `${bulkSel().length} entries match`; };
+    count();
+    pane.onchange = async e => {
+      const t = e.target;
+      if (t.dataset.b) return count();
+      if ('def' in t.dataset) { await this.store.setMeta({revealDefault: +t.value}); this.notify(`Unconfigured entries now show players: ${tiers[+t.value]}.`); return; }
+      if (t.dataset.tiername) { const ts = this.m.tiers().slice(); ts[+t.dataset.tiername] = t.value.trim() || ts[+t.dataset.tiername]; await this.store.setMeta({tiers: ts}); return; }
+      if (t.dataset.vk) {
+        const val = t.value === '' ? '' : t.value === 'on' ? 3 : 0, who = t.dataset.who;
+        const apply = it => { const r = clone(it.reveal) || {}; if (who === '*') { if (val === '') delete r.all; else r.all = val; } else { r.users ||= {}; if (val === '') delete r.users[who]; else r.users[who] = val; if (!Object.keys(r.users).length) delete r.users; } if (Object.keys(r).length) it.reveal = r; else delete it.reveal; return it; };
+        if (t.dataset.vk === 'realm') await this.put('realms', apply(clone(a.realms[t.dataset.vkey])));
+        else if (t.dataset.vk === 'level') { const [rid, lid] = t.dataset.vkey.split('|'); const r = clone(a.realms[rid]); const l = r.levels.find(x => x.id === lid); apply(l); await this.put('realms', r); }
+        else if (t.dataset.vk === 'layer') await this.put('layers', apply(clone(a.layers[t.dataset.vkey])));
+        else if (t.dataset.vk === 'cat') await this.put('categories', apply(clone(a.categories[t.dataset.vkey])));
+        this.v.applyView(); this.v.dirty();
+      }
+    };
+    pane.onclick = async e => { const b = e.target.closest('button[data-ed]'); if (!b) return;
+      if (b.dataset.ed === 'back') this.back();
+      else if (b.dataset.ed === 'addtier') { const ts = this.m.tiers().slice(); ts.push(`Secret ${ts.length - 3}`); await this.store.setMeta({tiers: ts}); this.renderVisibility(); }
+      else if (b.dataset.ed === 'bulk') {
+        const list = bulkSel(), who = pane.querySelector('[data-b="who"]').value, tv = pane.querySelector('[data-b="tier"]').value, coll = pane.querySelector('[data-b="coll"]').value;
+        if (!list.length) return this.notify('Nothing matches those filters.', 'warn');
+        if (!await this.confirm('Change visibility?', `${list.length} entries will be set to “${tv === '' ? 'default' : this.m.tierName(+tv)}” for ${who === '*' ? 'everyone' : (ps.find(p => p.id === who) || {}).name}.`)) return;
+        for (const it0 of list) { const it = clone(it0); const r = it.reveal || {}; if (who === '*') { if (tv === '') delete r.all; else r.all = +tv; delete it.gm; } else { r.users ||= {}; if (tv === '') delete r.users[who]; else r.users[who] = +tv; if (!Object.keys(r.users).length) delete r.users; } if (Object.keys(r).length) it.reveal = r; else delete it.reveal; await this.store.setItem(coll, it.id, it); }
+        this.notify(`Updated ${list.length} entries.`);
+        if (tv !== '' && +tv > 0) this.A.notifyReveal?.({ids: who === '*' ? null : [who], name: `${list.length} entries`});
+      }
+    };
+  }
+
+  /* ================= show as a Foundry scene ================= */
+  renderScene() {
+    const pane = this.v.el.pane, ps = this.v.players(), v = this.v;
+    const realm = v.model.realm(v.st.realm), lvl = v.model.level(v.st.realm, v.st.level);
+    pane.innerHTML = `<div class="ed"><div class="ed-top"><button type="button" class="back" data-ed="back">${svg('back', 2)} Back</button></div><h2>Show as a Scene</h2>
+      <p class="hint">Makes a Foundry scene from <b>${esc(realm.name)}${realm.levels.length > 1 ? ' · ' + esc(lvl.name || lvl.id) : ''}</b> as the chosen player would see it. The map becomes the scene background and every visible place becomes a map note: players double-click a note to open it in the atlas. Run it again to refresh the same scene after you edit or reveal things. Switch realm or level first to make scenes of other realms.</p>
+      <form class="ed-form" autocomplete="off">
+        <div class="ef"><label>Area</label><select name="area"><option value="view">What the map shows now</option><option value="all">The whole atlas</option></select></div>
+        <div class="ef"><label>Picture size</label><select name="size"><option value="2048">2048 px</option><option value="4096" selected>4096 px</option><option value="6144">6144 px</option><option value="8192">8192 px (big file)</option></select></div>
+        <div class="ef"><label>As seen by</label><select name="as"><option value="*">Every player (defaults)</option>${ps.map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('')}<option value="gm">Storyteller (everything)</option></select></div>
+        <div class="ef"><label>Scene name</label><input type="text" name="name" value="${esc(v.model.atlas.title)} · ${esc(realm.name)}${realm.levels.length > 1 ? ' · ' + esc(lvl.name || lvl.id) : ''}"></div>
+        <div class="ef ef-check wide"><label><input type="checkbox" name="notes" checked> Add a map note for every visible place</label></div>
+        <div class="ef ef-check wide"><label><input type="checkbox" name="labels" checked> Draw zone and area names into the picture</label></div>
+        <div class="ef ef-check wide"><label><input type="checkbox" name="activate"> Activate the scene for everyone when done</label></div>
+        <div class="ed-actions"><button type="submit" class="btn primary">${svg('scene')} Create / refresh scene</button><span class="hint scenestat"></span></div>
+      </form></div>`;
+    pane.onclick = e => { const b = e.target.closest('button[data-ed]'); if (b && b.dataset.ed === 'back') this.back(); };
+    pane.querySelector('form').onsubmit = async e => {
+      e.preventDefault(); const f = e.target.elements; const stat = pane.querySelector('.scenestat'); const btn = pane.querySelector('button[type=submit]');
+      btn.disabled = true; stat.textContent = 'Rendering…';
+      try { await this.A.exportScene({area: f.area.value, size: +f.size.value, as: f.as.value, name: f.name.value.trim(), notes: f.notes.checked, labels: f.labels.checked, activate: f.activate.checked, progress: t => { stat.textContent = t; }}); stat.textContent = 'Done.'; }
+      catch (err) { console.error(err); this.notify('Could not make the scene: ' + err.message, 'error'); stat.textContent = ''; }
+      finally { btn.disabled = false; }
+    };
   }
 
   /* ================= import / export ================= */

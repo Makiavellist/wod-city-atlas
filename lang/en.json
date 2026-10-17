@@ -43,6 +43,9 @@
     "OwnLimited": "Limited",
     "OwnObserver": "Observer (players can open it)",
     "SettingControl": "Atlas button in scene controls",
-    "SettingControlHint": "Adds a City Atlas button to the Journal Notes tools on the left."
+    "SettingControlHint": "Adds a City Atlas button to the Journal Notes tools on the left.",
+    "OpenLauncher": "Open the atlas launcher",
+    "OpenLauncherHint": "Lists the atlases in this world and lets the Storyteller create new ones.",
+    "KeyHint": "Open the City Atlas launcher."
   }
 }

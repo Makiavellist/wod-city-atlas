@@ -12,7 +12,14 @@ Hooks.once('init', () => {
   game.settings.register(MOD, 'sceneControl', {name: 'WCA.SettingControl', hint: 'WCA.SettingControlHint', scope: 'world', config: true, type: Boolean, default: true, requiresReload: true});
 });
 
+Hooks.once('init', () => {
+  // A second, always-available way in: Game Settings → Configure Settings → World of Darkness City Atlas → "Open the atlas launcher".
+  game.settings.registerMenu(MOD, 'launcher', {name: 'WCA.Open', label: 'WCA.OpenLauncher', hint: 'WCA.OpenLauncherHint', icon: 'fa-solid fa-map-location-dot', type: AtlasLauncher, restricted: false});
+  game.keybindings.register(MOD, 'open', {name: 'WCA.Open', hint: 'WCA.KeyHint', editable: [{key: 'KeyM', modifiers: ['Alt']}], onDown: () => { AtlasLauncher.show(); return true; }});
+});
+
 Hooks.once('ready', () => {
+  console.log(`${MOD} | ready — open the City Atlas from the Journal sidebar, the Journal Notes tools, Alt+M, or game.modules.get('${MOD}').api.open()`);
   game.socket.on(`module.${MOD}`, onSocket);
   const mod = game.modules.get(MOD);
   mod.api = {
@@ -68,4 +75,16 @@ Hooks.on('getJournalEntryContextOptions', (app, options) => {
   options.unshift({name: 'WCA.OpenMap', icon: '<i class="fa-solid fa-map-location-dot"></i>',
     condition: li => { const id = (li instanceof HTMLElement ? li : li[0])?.dataset?.entryId; return isAtlasEntry(game.journal.get(id)); },
     callback: li => { const id = (li instanceof HTMLElement ? li : li[0])?.dataset?.entryId; const e = game.journal.get(id); if (e) AtlasApp.open(e); }});
+});
+
+
+/* Atlas scenes: double-clicking a map note opens the atlas at that place; notes are shown without toggling the Notes layer. */
+Hooks.on('activateNote', (note) => {
+  const f = note?.document?.flags?.[MOD]; if (!f || !f.item) return;
+  const entry = game.journal.get(f.entry); if (!entry) return;
+  AtlasApp.open(entry, {state: {sel: f.item}});
+  return false;
+});
+Hooks.on('canvasReady', (cv) => {
+  try { if (cv.scene?.getFlag(MOD, 'key') && !game.settings.get('core', 'notesDisplayToggle')) game.settings.set('core', 'notesDisplayToggle', true); } catch (e) { /* setting missing in this version */ }
 });

@@ -63,6 +63,9 @@ export function blankAtlas({title = 'New city', image = null, realms = ['waking'
     a.styles['glow-zone'] = {width: 1.4, fillAlpha: 0.12, glow: {width: 8, alpha: 0.2}};
     a.styles['patrol'] = {width: 3, dash: [2, 7]};
     a.styles['road'] = {width: 4, dash: [8, 8], strokeAlpha: 0.6};
+    for (const [k, o] of Object.entries({held: {}, reserve: {width: 1.4}, contested: {stroke: '#f0a050', dash: [7, 4]}, vacant: {stroke: '#a0a0a8', dash: [2, 4], fillAlpha: 0.07}, hidden: {stroke: '#c8b4ff', dash: [1, 4]}, hostile: {stroke: '#ff4a4a', dash: [6, 3], flow: 0.6}}))
+      a.styles['domain-' + k] = Object.assign({width: 2, casing: {color: 'rgba(8,6,10,.75)', width: 3}, fillAlpha: 0.14}, o);
+    a.domainLayer = 'domains'; a.revealDefault = 3;
     a.styles['spirit-road'] = {width: 2.4, dash: [8, 7], flow: 1, glow: {width: 8, alpha: 0.2}};
     a.statuses = {dead: {name: 'Destroyed', mark: '†', fade: true, hideable: true}, torpor: {name: 'In torpor', color: '#cfcfe0'}, missing: {name: 'Missing', color: '#cfcfe0'}, captured: {name: 'Captured', color: '#f6dc9a'}, hiding: {name: 'In hiding', color: '#f6dc9a'}};
     a.precisions = {canon: {name: 'Exact location', border: 'solid', color: '#d8b45a'}, approx: {name: 'Approximate location', border: 'dashed', color: '#cdbfe6'}, placed: {name: 'Storyteller placement', border: 'dotted', color: '#e6a3a3'}};

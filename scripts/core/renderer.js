@@ -84,9 +84,7 @@ export class Renderer {
     for (const e of view.effects) if (!e.under && !e.clip && this.effectOn(e)) this.effect(e);
     // labels collide with markers first
     this.boxes = v.markerBoxes();
-    this.drawZoneLabels();
-    this.drawLabels(view);
-    this.drawFeatureLabels(view);
+    if (!v.noLabels) { this.drawZoneLabels(); this.drawLabels(view); this.drawFeatureLabels(view); }
     if (v.editor) v.editor.drawOverlay(x);
   }
   effectOn(e) { return (!e.layer || this.v.layerOn(e.layer)) && (!e.minZoom || this.cam.z >= e.minZoom); }
@@ -131,8 +129,10 @@ export class Renderer {
   drawZone(zn, opts = {}) {
     const g = this.m.geo(zn, 'zones'); if (!g.rings || !g.rings.length || !this.vis(g.bb, 200)) return;
     const x = this.ctx, z = this.cam.z, on = !opts.echo && (this.v.sel === zn.id || this.v.hover === zn.id || this.v.sel === zn.ref || this.v.hover === zn.ref);
-    const col = opts.color || this.m.colorOf(zn);
-    const passes = opts.echo ? [opts.echo] : this.m.passes(zn.style || {stroke: col, width: 1.6, fill: col, fillAlpha: 0.12});
+    const unknown = !opts.echo && this.m.tier(zn, 'zones', this.v.st) < 2;
+    const col = unknown ? '#9a9aa4' : (opts.color || this.m.colorOf(zn));
+    const st0 = zn.style || (zn.domainStatus && this.m.atlas.styles['domain-' + zn.domainStatus] ? 'domain-' + zn.domainStatus : null);
+    const passes = opts.echo ? [opts.echo] : unknown ? [{stroke: 'rgba(200,200,210,.55)', width: 1.3, dash: [3, 5], fill: '#9a9aa4', fillAlpha: 0.05}] : this.m.passes(st0 || {stroke: col, width: 1.6, fill: col, fillAlpha: 0.12});
     const mk = () => { x.beginPath(); g.rings.forEach(r => this.path(r, true)); };
     const base = opts.alpha ?? 1;
     for (const p of passes) {
@@ -165,7 +165,7 @@ export class Renderer {
   }
   drawEcho(view) {
     const e = view.echo; if (!e || (e.layer && !this.v.layerOn(e.layer))) return;
-    const st = {realm: e.realm, level: e.level || this.m.realm(e.realm).levels[0].id, gm: this.v.st.gm, layerOn: () => true, catOn: () => true};
+    const st = Object.assign({}, this.v.st, {realm: e.realm, level: e.level || this.m.realm(e.realm).levels[0].id, layerOn: () => true, catOn: () => true});
     for (const zn of Object.values(this.m.atlas.zones)) {
       if (!this.m.visible(zn, 'zones', st) || (e.layers && !e.layers.includes(zn.layer))) continue;
       this.drawZone(zn, {echo: {width: 1.2, dash: [2, 5], stroke: this.m.colorOf(zn), fillAlpha: 0, strokeAlpha: e.alpha ?? 0.28}, color: this.m.colorOf(zn)});
@@ -178,8 +178,8 @@ export class Renderer {
     const x = this.ctx, z = this.cam.z, T = this.v.T;
     for (const r of this.routeList()) {
       const g = this.m.geo(r, 'routes'); if (!g.parts || !g.parts.length || !this.vis(g.bb, 60)) continue;
-      const on = this.v.sel === r.id || this.v.hover === r.id, col = this.m.colorOf(r);
-      const passes = this.m.passes(r.style || {stroke: col, width: 2.4, dash: [6, 4]});
+      const on = this.v.sel === r.id || this.v.hover === r.id, unknown = this.m.tier(r, 'routes', this.v.st) < 2, col = unknown ? '#9a9aa4' : this.m.colorOf(r);
+      const passes = unknown ? [{stroke: 'rgba(200,200,210,.5)', width: 1.6, dash: [2, 6]}] : this.m.passes(r.style || {stroke: col, width: 2.4, dash: [6, 4]});
       for (const p of passes) {
         if (p.minZoom && z < p.minZoom || p.maxZoom && z > p.maxZoom) continue;
         let parts = g.parts;
@@ -336,7 +336,7 @@ export class Renderer {
   }
   drawZoneLabels() {
     const z = this.cam.z, s = this.s(), W = this.cam.W, H = this.cam.H;
-    const list = this.zoneList().filter(zn => !zn.noLabel).reverse();
+    const list = this.zoneList().filter(zn => !zn.noLabel && this.m.tier(zn, 'zones', this.v.st) >= 2).reverse();
     for (const zn of list) {
       const g = this.m.geo(zn, 'zones'); if (!g.rings || !g.rings.length) continue;
       const L = zn.label || {}; if (L.minZoom && z < L.minZoom || L.maxZoom && z > L.maxZoom) continue;
@@ -375,6 +375,12 @@ export class Renderer {
     let best = null, bd = 7;
     for (const r of this.routeList()) { if (r.decor) continue; const g = this.m.geo(r, 'routes'); if (!g.parts || !this.vis(g.bb, 20)) continue; for (const p of g.parts) for (let i = 0; i < p.length - 1; i++) { const d = segDist(w, p[i], p[i + 1]) * s; if (d < bd) { bd = d; best = {coll: 'routes', id: r.id}; } } }
     if (best) return best;
+    const mpp = this.mpp();
+    for (const a of Object.values(this.m.atlas.auras)) {
+      if (a.decor || !a.at || !this.m.visible(a, 'auras', this.v.st)) continue;
+      const [ax, ay] = this.ts(this.m.proj.toWorld(a.at)); const R = Math.max(a.px || 24, a.radius ? a.radius / mpp : 0);
+      if (Math.hypot(ax - sx, ay - sy) < Math.max(12, R * 0.35)) return {coll: 'auras', id: a.id};
+    }
     const zs = this.zoneList().reverse();
     for (const zn of zs) { if (zn.noHit) continue; const g = this.m.geo(zn, 'zones'); if (!g.rings || !g.rings.length) continue; if (w[0] < g.bb[0] || w[0] > g.bb[2] || w[1] < g.bb[1] || w[1] > g.bb[3]) continue; if (inPoly(w, g.rings)) return {coll: 'zones', id: zn.ref && this.m.item(zn.ref) ? zn.ref : zn.id, zone: zn.id}; }
     return null;

@@ -1,8 +1,13 @@
+# Builds the Foundry package whenever you publish a GitHub Release.
+# It writes the version, manifest and download URLs into module.json,
+# zips the module and attaches module.json + module.zip to the release.
 name: Release module
 
 on:
   release:
     types: [published]
+  push:
+    tags: ['v*']
 
 permissions:
   contents: write
@@ -15,7 +20,7 @@ jobs:
 
       - name: Stamp version and URLs into module.json
         env:
-          TAG: ${{ github.event.release.tag_name }}
+          TAG: ${{ github.event.release.tag_name || github.ref_name }}
           REPO: ${{ github.repository }}
         run: |
           VERSION="${TAG#v}"
@@ -25,13 +30,16 @@ jobs:
              --arg download "https://github.com/$REPO/releases/download/$TAG/module.zip" \
              '.version=$v | .url=$url | .manifest=$manifest | .download=$download' \
              module.json > module.tmp && mv module.tmp module.json
+          cat module.json
 
       - name: Zip the module
-        run: zip -r module.zip module.json README.md scripts styles fonts lang presets docs
+        run: zip -r module.zip module.json README.md CHANGELOG.md scripts styles fonts lang presets docs
 
       - name: Attach files to the release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.event.release.tag_name || github.ref_name }}
+          name: ${{ github.event.release.tag_name || github.ref_name }}
           files: |
             module.json
             module.zip
