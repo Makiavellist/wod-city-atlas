@@ -1,3 +1,4 @@
 .DS_Store
 Thumbs.db
 module.zip
+__pycache__/

@@ -6,7 +6,7 @@ A city atlas has:
 
 - **Realms.** Each realm is a separate view of the same city: Waking, Dreaming, Shadowlands, Umbra, or anything else you add. Each one has its own colours, effects and crossing button.
 - **Levels** inside a realm, such as Street / Underground / Depths or Near / Deep.
-- **Places.** Pins with categories, factions, rich descriptions, Storyteller-only notes, portraits and links to Foundry Actors, Journals or Scenes.
+- **Places.** Pins with categories, factions, rumours, common knowledge, full descriptions, secrets, Storyteller-only notes, portraits and links to Foundry Actors, Journals or Scenes.
 - **Live scenes.** The atlas can be a Foundry scene that each player sees with their own access, with the full dossier beside it.
 - **Zones.** Domains, territories and spirit zones, with hatched or patterned fills, ratings ("Danger 4/5"), owners and "lies within" lookups.
 - **Routes.** Patrols, trods, byways, moon bridges and tunnels, which can be animated.
@@ -14,7 +14,7 @@ A city atlas has:
 - **People.** The Kindred, Kithain, wraiths, Garou and spirits of the city, listed by faction, with domains, haunts, relations, secrets and linked Actors.
 - **Chronicle pages.** Timelines, hooks and tables, shown in the dossier tab of each realm.
 
-It ships with **Milwaukee by Night (1991)** as a ready-made atlas. That atlas has four realms, Underground and Depths levels, Kindred domains, 331 places, 150 people, 93 zones, 59 routes and 31 chronicle pages.
+It ships with **Milwaukee by Night (1991)** as a ready-made atlas. That atlas has four realms, Underground and Depths levels, Kindred domains, 331 places, 151 people, 93 zones, 59 routes and 31 chronicle pages.
 
 ## Installing
 
@@ -70,20 +70,31 @@ Every realm, level, layer, place category, place, zone, route, glow, person and 
 | Tier | The player sees |
 |---|---|
 | 0 · Hidden | nothing |
-| 1 · Existence | a grey "?" pin or outline called *Unknown place* (or a name you choose) |
-| 2 · Basic | name, subtitle, category, faction, picture |
-| 3 · Full | the description, facts, links, people, relations, routes and ordinary callouts |
+| 1 · Existence | a grey "?" pin or outline with the *name while unknown* and its *rumour* ("A house nobody visits") |
+| 2 · Basic | the real name, subtitle, category, faction, picture and *what is commonly known* |
+| 3 · Full | also the *full description*, facts, links, people, relations, routes and ordinary callouts |
 
 **Secrets** are revealed one by one. Mark a callout or a relation as *secret* (in the edit form, or add a secret relation straight from the dossier); it stays hidden until you reveal it. The *What players see* panel at the bottom of an entry's dossier lists its secrets: reveal each to everyone, or say for each player whether they know it. A player who knows a secret sees it even if they only know the entry exists.
 
 - **One entry:** open it in Storyteller view. At the bottom of its dossier, the *What players see* panel sets the tier for **Everyone** and, if you like, a different tier for each player. The same panel is in its edit form.
 - **Many at once:** *Edit → Player visibility* has a table for realms, levels, layers and categories (shown/hidden per player), the default tier for everything you haven't configured, tier names, and a bulk tool ("all Havens in the Waking realm → Basic for Anna").
 - **Check a view:** *Layers menu (or the Map tab) → View as* shows the map exactly as a given player (or "every player") sees it.
+- **Copy one player's knowledge:** *Edit → Player visibility → Copy one player's knowledge* gives a player exactly the personal reveals another player has.
 - Players get a short notification when you reveal something to them.
+
+Callouts marked **Storyteller only** are never shown to players and are not secrets to reveal: use them for your own notes and roleplaying hints.
+
+### Milwaukee: a neonate's start
+
+In the Milwaukee preset every player starts with the same knowledge, that of a Kindred Embraced a few months ago. They know the Elysia, the hunting grounds, the gangs' turf, the Council and the city's legends and the news of this autumn. They know almost none of the havens, deals and hidden truths, and nothing at all of the Dreaming, the Shadowlands, the Umbra, the Depths, the Lupine packs or the city's changelings. Everything else is there for you to reveal: a rumour, then common knowledge, then the full story, then each secret on its own.
+
+### Updating an existing atlas from the preset
+
+When a new version of the module improves the Milwaukee preset, open your atlas, then *Edit (pen) → Import / export → Update from a bundled preset*. Tick what you want (texts, starting knowledge, pin art, relations, new entries) and press *Update from preset*. Positions, shapes, pictures, Actor links, the reveals you have made for particular players and the players' notes are kept. Entries you created yourself are not touched; entries the preset also has are overwritten in the parts you ticked, so export a backup first if you have edited their texts.
 
 ## Pins
 
-Pins come in shapes (circle, square, diamond, hexagon, octagon, shield, map marker) with dozens of icons. A category sets the shape for its places and a place can override it. *Use the picture as the pin* shows a place's picture (its own, its linked Actor's or a person's there) inside the pin. In Milwaukee every category has its own shape and about half the places have their own icon (churches, bars, docks, factories, parks, police…).
+Pins come in shapes (circle, square, diamond, hexagon, octagon, shield, map marker) with dozens of icons. A category sets the shape for its places and a place can override it. *Use the picture as the pin* shows a place's picture (its own, its linked Actor's or a person's there) inside the pin. In Milwaukee every category has its own shape and nearly every place has its own icon (churches, bars, docks, airports, rats, ghosts, totems, lanterns…).
 
 ## Kindred domains
 
@@ -135,13 +146,13 @@ Everything saves as you go, and **Ctrl+Z** undoes. The gear opens **Atlas settin
 - **Title, map & view:** the map picture and its size, zoom range, home view, scale bar, and statuses and placement kinds.
 - **Realms & levels:** names, dossier tab names, banner lines, crossing button text, colours, a one-click *look* (Waking, Dreaming, Shadowlands, Umbra, Underground, Blood-red), a per-realm picture with a CSS filter, levels, legend and effects.
 - **Layers, Place categories, Factions, Zone & route styles, People, Chronicle pages.**
-- **Import / export:** the whole atlas as JSON, or merging people and lore from another atlas.
+- **Import / export:** the whole atlas as JSON, merging people and lore from another atlas, or updating from a bundled preset.
 
 Tips:
 
 - **Link Foundry documents.** Drag an Actor, Journal entry or Scene from the sidebar onto the map while editing. This creates a pin linked to that document. Shift-drop an Actor to create a person instead. You can also drop a document onto the *Linked Foundry document* box of any form. **People → From Actors…** imports characters in bulk, with portraits and, where the WoD20 sheet provides it, clan and generation.
 - **Crossings.** Give a place in the Umbra an **Anchor** pointing at its waking twin. Both entries then get crossing buttons, and the Dreaming draws a dotted thread between them.
-- **Secrets.** Tick **Storyteller only** on any entry or callout. In chronicle pages, wrap text in `<span class="gm-only">…</span>`.
+- **Secrets.** Mark a callout or relation as secret and reveal it later; set a callout's style to *Storyteller only* for notes players must never see. In chronicle pages, wrap text in `<span class="gm-only">…</span>`, or hide the whole page from players.
 - **Text.** Descriptions accept Foundry enrichers such as `@UUID[Actor.xxx]{Name}`. In chronicle pages, `<button data-link="some-id">` opens an entry.
 
 ## How the data is stored

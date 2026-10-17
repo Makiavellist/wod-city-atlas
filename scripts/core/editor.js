@@ -3,13 +3,14 @@ import {esc, svg, clone, uid, safeId, sortBy, GLYPH, segDist, inPoly, clamp} fro
 import {COLLECTIONS, TYPE_NAMES, normalize, TIER} from './model.js';
 import {renderFields, readFields, bindFields} from './forms.js';
 import {LOOKS, applyLook} from './templates.js';
+import {MERGE_PARTS, planPresetMerge} from './preset-merge.js';
 const SHAPE_OPTS = [['circle', 'Circle'], ['square', 'Square'], ['diamond', 'Diamond'], ['hex', 'Hexagon'], ['octagon', 'Octagon'], ['shield', 'Shield'], ['marker', 'Map marker']];
 
 const TOOLS = [['select', 'cursor', 'Select & move'], ['places', 'pin', 'Add a place'], ['zones', 'poly', 'Draw a zone'], ['routes', 'line', 'Draw a route'], ['labels', 'text', 'Add a label'], ['auras', 'glow', 'Add a glow']];
 const HINTS = {select: 'Click anything to edit it. Drag pins, label handles and shape corners to move them. Shift-drag inside a selected shape moves it all; Alt-click a corner removes it; click a midpoint dot to add one.',
   places: 'Click the map to drop a new place.', zones: 'Click to add corners. Click the first corner, double-click or press Enter to finish. Backspace undoes a corner, Esc cancels.',
   routes: 'Click to add points. Double-click or press Enter to finish. Backspace undoes a point, Esc cancels.', labels: 'Click the map where the label should sit.', auras: 'Click the map to add a glow or shadow.'};
-const NOTE_KINDS = [['scene', 'Callout'], ['law', 'Law / rule'], ['secret', 'Secret (pink)'], ['play', 'Quote']];
+const NOTE_KINDS = [['scene', 'Callout'], ['law', 'Law / rule'], ['secret', 'Secret (pink)'], ['play', 'Quote'], ['st', 'Storyteller only (never shown to players)']];
 const TABS = [['pages', 'Chronicle tab'], ['places', 'Bottom of Places'], ['people', 'Top of People'], ['zones', 'Bottom of Zones']];
 
 export class AtlasEditor {
@@ -285,10 +286,11 @@ export class AtlasEditor {
       faction: {k: 'faction', t: 'select', label: 'Faction', opts: () => self.facOpts()},
       color: {k: 'color', t: 'color', label: 'Colour', help: 'overrides faction/category'},
       icon: {k: 'icon', t: 'icon', label: 'Icon'},
-      gm: {k: 'reveal', t: 'reveal', label: 'What players see', help: '0 hidden · 1 existence · 2 basic · 3 full · 4+ secrets', wide: true, defLabel: `default (${self.m.tierName(self.m.defaultTier(coll))})`},
-      alias: {k: 'alias', t: 'text', label: 'Name while unknown', help: 'shown at tier 1 (existence only)', ph: coll === 'people' ? 'A stranger in a long coat' : 'A house nobody visits'},
-      aliasText: {k: 'aliasText', t: 'text', label: 'Text while unknown', wide: true, ph: 'You know something is here, but nothing more.'},
-      html: {k: 'html', t: 'html', label: 'Description', wide: true},
+      gm: {k: 'reveal', t: 'reveal', label: 'What players see', help: 'Hidden · Existence (name while unknown + rumour) · Basic (+ what is commonly known) · Full (+ full description and callouts). Secrets are revealed one by one below.', wide: true, defLabel: `default (${self.m.tierName(self.m.defaultTier(coll))})`},
+      alias: {k: 'alias', t: 'text', label: 'Name while unknown', help: 'shown while players only know it exists', ph: coll === 'people' ? 'A stranger in a long coat' : 'A house nobody visits'},
+      aliasText: {k: 'aliasText', t: 'text', label: 'Rumour while unknown', wide: true, ph: 'You know something is here, but nothing more.'},
+      brief: {k: 'brief', t: 'html', label: 'What is commonly known', help: 'shown from Basic knowledge on', wide: true, rows: 4},
+      html: {k: 'html', t: 'html', label: 'Full description', help: 'shown with Full knowledge, after the common knowledge', wide: true},
       img: {k: 'img', t: 'image', label: 'Picture', wide: true},
       notes: {k: 'notes', t: 'list', label: 'Callouts & secrets', wide: true, addLabel: 'Add callout', sub: [{k: 'title', t: 'text', label: 'Heading'}, {k: 'kind', t: 'select', label: 'Style', opts: NOTE_KINDS, none: 'Plain'}, {k: 'html', t: 'textarea', label: 'Text', wide: true, rows: 3}, {k: '_sec', t: 'secret', label: 'Secret?', help: 'secrets are revealed one by one, to everyone or to particular players', wide: true}]},
       facts: {k: 'facts', t: 'list', label: 'Facts', wide: true, addLabel: 'Add fact', sub: [{k: 'k', t: 'text', label: 'Label'}, {k: 'v', t: 'text', label: 'Value'}]},
@@ -343,28 +345,28 @@ export class AtlasEditor {
     switch (coll) {
       case 'places': return [{k: 'name', t: 'text', label: 'Name', wide: true}, C.sub, C.realm, C.level, {k: 'cat', t: 'select', label: 'Category', opts: d => self.catOpts(d.realm)}, C.faction, C.layer,
         {k: 'precision', t: 'select', label: 'Placement', opts: () => self.precOpts(), show: () => self.precOpts().length}, C.color, C.icon, {k: 'pin.shape', t: 'select', label: 'Pin shape', opts: SHAPE_OPTS, none: 'As its category'}, {k: 'pin.photo', t: 'check', label: 'Use the picture as the pin', help: 'its own, its linked Actor’s, or a person’s there'}, C.gm, C.alias, C.aliasText, {k: 'hidden', t: 'check', label: 'No map pin', help: 'listed but not drawn'},
-        C.html, C.img, C.notes, C.people, {k: 'zone', t: 'ref', label: 'Inside zone', wide: true, refs: () => self.refList(['zones'])}, C.anchor, C.links, C.facts, C.tags, C.uuid,
+        C.brief, C.html, C.img, C.notes, C.people, {k: 'zone', t: 'ref', label: 'Inside zone', wide: true, refs: () => self.refList(['zones'])}, C.anchor, C.links, C.facts, C.tags, C.uuid,
         {k: 'at', t: 'coords', label: posLabel}, {k: 'zoom', t: 'number', label: 'Focus zoom'}, C.kicker, C.order, C.src];
       case 'zones': return [{k: 'name', t: 'text', label: 'Name', wide: true}, C.sub, C.realm, C.level, C.layer, C.faction, C.color, ...this.styleFields(), C.gm, C.alias, C.aliasText,
         {k: 'domainStatus', t: 'select', label: 'Domain status', opts: () => Object.entries(self.m.domainStatuses()).map(([k, v]) => [k, v.name]), show: d => d.layer && d.layer === self.m.domainLayer()},
         {k: 'container', t: 'check', label: 'Lists places inside it', help: '“Lies within”'}, {k: 'noLabel', t: 'check', label: 'No name on the map'},
         {k: 'label.text', t: 'text', label: 'Map label text'}, {k: 'label.sub', t: 'text', label: 'Map label second line'}, {k: 'label.minZoom', t: 'number', label: 'Label min zoom'},
-        C.html, C.img, {k: 'fillImage.src', t: 'image', label: 'Picture inside the zone', wide: true}, C.notes,
+        C.brief, C.html, C.img, {k: 'fillImage.src', t: 'image', label: 'Picture inside the zone', wide: true}, C.notes,
         {k: 'owners', t: 'refs', label: 'Claimed by (domain owners)', wide: true, refs: () => self.refList(['people'])}, C.people,
         {k: 'rating.label', t: 'text', label: 'Rating name', ph: 'Danger'}, {k: 'rating.value', t: 'number', label: 'Rating'}, {k: 'rating.max', t: 'number', label: 'Rating max', ph: '5'}, {k: 'rating.text', t: 'text', label: 'Rating words'},
         {k: 'ref', t: 'ref', label: 'Clicking opens', help: 'show another entry instead', wide: true, refs: () => self.refList(['places'])}, C.anchor, C.links, C.facts, C.tags, C.uuid, C.kicker, {k: 'order', t: 'number', label: 'Draw order', help: 'higher is on top'}, C.src];
       case 'routes': return [{k: 'name', t: 'text', label: 'Name', wide: true}, C.sub, C.realm, C.level, C.layer, C.faction, C.color, ...this.styleFields(), {k: 'curve', t: 'number', label: 'Curve', help: '0.2 bends each segment'}, C.gm, C.alias,
-        C.html, C.notes, {k: 'ends', t: 'refs', label: 'Ends at', wide: true, refs: () => self.refList(['places', 'zones'])}, C.people, C.links, C.facts, C.tags, C.uuid, C.kicker, C.order, C.src];
+        C.brief, C.html, C.notes, {k: 'ends', t: 'refs', label: 'Ends at', wide: true, refs: () => self.refList(['places', 'zones'])}, C.people, C.links, C.facts, C.tags, C.uuid, C.kicker, C.order, C.src];
       case 'labels': return [{k: 'text', t: 'text', label: 'Text', wide: true}, C.realm, C.level, C.layer, {k: 'size', t: 'number', label: 'Size (px)'}, {k: 'font', t: 'select', label: 'Font', opts: [['sc', 'Small caps'], ['head', 'Book serif'], ['body', 'Sans'], ['title', 'Blackletter']], none: 'Default'},
         {k: 'italic', t: 'check', label: 'Italic'}, {k: 'ls', t: 'number', label: 'Letter spacing'}, {k: 'color', t: 'color', label: 'Colour'}, {k: 'halo', t: 'color', label: 'Halo'}, {k: 'glow', t: 'color', label: 'Glow'},
         {k: 'angle', t: 'number', label: 'Angle (°)'}, {k: 'minZoom', t: 'number', label: 'Min zoom'}, {k: 'maxZoom', t: 'number', label: 'Max zoom'}, {k: 'noAvoid', t: 'check', label: 'Always draw (ignore collisions)'}, C.gm, {k: 'at', t: 'coords', label: posLabel}];
       case 'auras': return [{k: 'name', t: 'text', label: 'Name (tooltip)', wide: true}, C.realm, C.level, C.layer, {k: 'mode', t: 'select', label: 'Kind', opts: [['glow', 'Glow'], ['dark', 'Shadow'], ['desat', 'Grey-out (Banality)'], ['vortex', 'Vortex'], ['moon', 'Moon']], none: false},
         {k: 'color', t: 'color', label: 'Colour'}, {k: 'radius', t: 'number', label: this.proj.kind === 'mercator' ? 'Radius (m)' : 'Radius (map units)'}, {k: 'px', t: 'number', label: 'Minimum radius (px)'}, {k: 'pulse', t: 'check', label: 'Pulse'}, {k: 'flicker', t: 'check', label: 'Flicker'},
         {k: 'rating.label', t: 'text', label: 'Value name', ph: 'Glamour, Banality, Shroud, Gauntlet…'}, {k: 'rating.value', t: 'number', label: 'Value'}, {k: 'rating.max', t: 'number', label: 'Scale max', ph: '10'}, {k: 'rating.text', t: 'text', label: 'Value words', ph: 'a deep well'},
-        {k: 'decor', t: 'check', label: 'Decoration only', help: 'not clickable, not listed'}, C.gm, C.alias, C.html, C.notes, C.facts, {k: 'at', t: 'coords', label: posLabel}];
+        {k: 'decor', t: 'check', label: 'Decoration only', help: 'not clickable, not listed'}, C.gm, C.alias, C.brief, C.html, C.notes, C.facts, {k: 'at', t: 'coords', label: posLabel}];
       case 'people': return [{k: 'name', t: 'text', label: 'Name', wide: true}, {k: 'kicker', t: 'text', label: 'Clan / kind line', wide: true, ph: 'Ventrue · 8th generation'}, {k: 'sub', t: 'text', label: 'Role', wide: true}, C.faction, {k: 'tag', t: 'text', label: 'Short tag', ph: 'Ventrue'},
         {k: 'status', t: 'select', label: 'Status', opts: () => self.statusOpts()}, C.icon, C.color, C.gm, C.alias, C.aliasText, {k: 'realms', t: 'multi', label: 'Listed under', help: 'which realms and levels show this person', wide: true, opts: () => self.realmKeyOpts()},
-        C.img, C.html, C.notes, {k: 'at', t: 'refs', label: 'Where to find them', wide: true, refs: () => self.refList(['places', 'zones', 'routes'])},
+        C.img, C.brief, C.html, C.notes, {k: 'at', t: 'refs', label: 'Where to find them', wide: true, refs: () => self.refList(['places', 'zones', 'routes'])},
         {k: 'uuid', t: 'actor', label: 'Linked Actor', help: 'their character sheet in the Actors tab', wide: true, otherLabel: u => `Other document: ${u}`},
         {k: 'relations.title', t: 'text', label: 'Relations heading', ph: 'Attitudes'}, {k: '_rel', t: 'list', label: 'Relations', wide: true, addLabel: 'Add relation', sub: [{k: 'a', t: 'text', label: 'Who'}, {k: 'b', t: 'text', label: 'Attitude'}, {k: 'ref', t: 'ref', label: 'Links to', help: 'blank = found by name', refs: () => self.refList(['people'])}, {k: '_sec', t: 'secret', label: 'Secret?', wide: true}]},
         C.facts, C.order, C.src];
@@ -386,7 +388,7 @@ export class AtlasEditor {
         {k: 'bg', t: 'color', label: 'Map background'}, {k: 'theme.panel', t: 'color', label: 'Panel'}, {k: 'theme.accent', t: 'color', label: 'Accent'}, {k: 'theme.gold', t: 'color', label: 'Highlight'}, {k: 'theme.bone', t: 'color', label: 'Text'}, {k: 'theme.muted', t: 'color', label: 'Muted text'}, {k: 'theme.line', t: 'color', label: 'Rules'},
         {k: 'background.src', t: 'image', label: 'Own map picture (optional)', wide: true}, {k: 'background.filter', t: 'text', label: 'Picture filter', help: 'CSS filter, e.g. hue-rotate(140deg) brightness(.6)', wide: true},
         {k: '_levels', t: 'list', label: 'Levels (e.g. Street / Underground, Near / Deep)', wide: true, addLabel: 'Add level', sub: [{k: 'id', t: 'text', label: 'Id'}, {k: 'name', t: 'text', label: 'Name'}, {k: 'show', t: 'text', label: 'Shows items of', help: 'comma-separated level ids'}, {k: 'bg', t: 'color', label: 'Background'}, {k: 'kicker', t: 'text', label: 'Kicker'}, {k: 'crossLabel', t: 'text', label: 'Crossing text'}, {k: 'background.src', t: 'image', label: 'Own picture', wide: true}, {k: 'background.filter', t: 'text', label: 'Picture filter', wide: true}, {k: 'effects', t: 'json', label: 'Effects (JSON)', wide: true, rows: 3}]},
-        {k: 'legend', t: 'list', label: 'Legend', wide: true, addLabel: 'Add legend entry', sub: [{k: 'label', t: 'text', label: 'Label'}, {k: 'color', t: 'color', label: 'Colour'}, {k: 'kind', t: 'select', label: 'Swatch', opts: [['fill', 'Hatched box'], ['dash', 'Dashed box'], ['line', 'Line'], ['dot', 'Dot']], none: false}]},
+        {k: 'legend', t: 'list', label: 'Legend', wide: true, addLabel: 'Add legend entry', sub: [{k: 'label', t: 'text', label: 'Label'}, {k: 'color', t: 'color', label: 'Colour'}, {k: 'kind', t: 'select', label: 'Swatch', opts: [['fill', 'Hatched box'], ['dash', 'Dashed box'], ['line', 'Line'], ['dot', 'Dot']], none: false}, {k: 'gm', t: 'check', label: 'Storyteller only'}]},
         {k: 'effects', t: 'json', label: 'Effects (advanced)', help: 'stars, waves, particles, fog, vignette, gradient', wide: true, rows: 4},
         {k: 'styles', t: 'json', label: 'Base-map styles (advanced)', wide: true, rows: 4}, {k: 'echo', t: 'json', label: 'Echo another realm (advanced)', wide: true, rows: 2}];
       case 'styles': return [{k: '_name', t: 'text', label: 'Name', wide: true}, {k: '_body', t: 'json', label: 'Style (JSON: one pass or a list of passes)', wide: true, rows: 14},
@@ -399,7 +401,7 @@ export class AtlasEditor {
     const d = clone(it) || {};
     if (d.gm && !d.reveal && !['realms', 'layers', 'categories', 'factions', 'styles'].includes(coll)) { d.reveal = {all: 0}; }
     delete d.gm;
-    const secIn = n => { const o = Object.assign({}, n); o._sec = {secret: this.m.isSecret(n), reveal: n.reveal || (n.secret === undefined && this.m.isSecret(n) ? {all: 0} : undefined)}; delete o.gm; delete o.tier; delete o.secret; delete o.reveal; return o; };
+    const secIn = n => { const o = Object.assign({}, n); if (o.st) { o.kind = 'st'; delete o.st; } o._sec = {secret: this.m.isSecret(n), reveal: n.reveal || (n.secret === undefined && this.m.isSecret(n) ? {all: 0} : undefined)}; delete o.gm; delete o.tier; delete o.secret; delete o.reveal; return o; };
     if (Array.isArray(d.notes)) d.notes = d.notes.map(secIn);
     if (coll === 'zones' || coll === 'routes') this.styleIn(d, coll);
     if (coll === 'people') d._rel = this.m.relRows(d).map(({i, ...r}) => secIn(r));
@@ -410,7 +412,7 @@ export class AtlasEditor {
   }
   fromForm(coll, d, orig) {
     if (coll === 'zones' || coll === 'routes') this.styleOut(d);
-    const secOut = n => { const o = Object.assign({}, n), sc = o._sec; delete o._sec; delete o.tier; delete o.gm; delete o.secret; delete o.reveal; if (sc && sc.secret) { o.secret = true; o.reveal = sc.reveal || {all: 0}; } for (const k of Object.keys(o)) if (o[k] === undefined || o[k] === '') delete o[k]; return o; };
+    const secOut = n => { const o = Object.assign({}, n), sc = o._sec; delete o._sec; delete o.tier; delete o.gm; delete o.secret; delete o.reveal; delete o.st; if (o.kind === 'st') o.st = true; else if (sc && sc.secret) { o.secret = true; o.reveal = sc.reveal || {all: 0}; } for (const k of Object.keys(o)) if (o[k] === undefined || o[k] === '') delete o[k]; return o; };
     if (Array.isArray(d.notes)) d.notes = d.notes.map(secOut);
     if (coll === 'people') { const rows = (d._rel || []).filter(r => r.a || r.b || r.ref).map(secOut);
       if (d.uuid) { const a = (this.A.actors?.() || []).find(x => x.uuid === d.uuid); if (a) d.uuidName = `Actor: ${a.name}`; } else delete d.uuidName; delete d._rel; if (rows.length) d.relations = Object.assign({}, d.relations || {}, {rows}); else if (d.relations) delete d.relations.rows; if (d.relations && !d.relations.rows) delete d.relations; }
@@ -602,7 +604,7 @@ export class AtlasEditor {
     const lrows = sortBy(Object.values(a.layers), L => L.order ?? 0).map(L => `<tr><td>${esc(L.name)}<small>${esc(L.realm ? [].concat(L.realm).map(x => (a.realms[x] || {}).name || x).join(', ') : 'all realms')}</small></td>${cols.map(([w]) => cell('layer', L.id, L, w)).join('')}</tr>`).join('');
     const crows = sortBy(Object.values(a.categories), c => c.realm || '', c => c.order ?? 0).map(c => `<tr><td>${esc(c.name)}<small>${esc(c.realm ? (a.realms[c.realm] || {}).name || c.realm : 'all realms')}</small></td>${cols.map(([w]) => cell('cat', c.id, c, w)).join('')}</tr>`).join('');
     const tiers = m.tiers();
-    const def = a.revealDefault == null || a.revealDefault === '' ? 3 : +a.revealDefault;
+    const def = m.defaultTier('places');
     pane.innerHTML = `<div class="ed"><div class="ed-top"><button type="button" class="back" data-ed="back">${svg('back', 2)} Back</button></div><h2>Player visibility</h2>
       <p class="hint">Decide what each player can see. A hidden realm, level, layer or category hides everything in it. Individual places, zones, people and pages have their own <b>What players see</b> panel, in their dossier (Storyteller view) and in their edit form. Use <b>View as</b> in the layers menu to check a player's view.</p>
       <h3>Defaults</h3>
@@ -611,6 +613,7 @@ export class AtlasEditor {
       <h3>Realms & levels</h3><div class="vtable"><table>${head}${rows.join('')}</table></div>
       <h3>Layers</h3><div class="vtable"><table>${head}${lrows}</table></div>
       <details class="raw"><summary>Place categories (${Object.keys(a.categories).length})</summary><div class="vtable"><table>${head}${crows}</table></div></details>
+      ${ps.length > 1 ? `<h3>Copy one player's knowledge</h3><p class="hint">Gives a player exactly the personal reveals another player has: entries, realms, layers, categories, secrets and relations. Handy when someone joins mid-chronicle or two characters share what they know.</p><div class="bulk ed-form"><div class="ef"><label>From</label><select data-cp="from">${ps.map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('')}</select></div><div class="ef"><label>To</label><select data-cp="to">${ps.map((p, i) => `<option value="${esc(p.id)}" ${i === 1 ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></div><div class="ef ef-check"><label><input type="checkbox" data-cp="add" checked> Only add (never take knowledge away)</label></div><div class="ed-actions"><button type="button" class="btn" data-ed="copyknow">${svg('copy')} Copy</button></div></div>` : ''}
       <h3>Reveal many at once</h3>
       <div class="bulk ed-form">
         <div class="ef"><label>Entries</label><select data-b="coll">${[['places', 'Places'], ['zones', 'Zones & domains'], ['routes', 'Routes'], ['people', 'People'], ['auras', 'Glows (Glamour, Shroud…)'], ['pages', 'Chronicle pages']].map(([k, n]) => `<option value="${k}">${n}</option>`).join('')}</select></div>
@@ -628,7 +631,7 @@ export class AtlasEditor {
     pane.onchange = async e => {
       const t = e.target;
       if (t.dataset.b) return count();
-      if ('def' in t.dataset) { await this.store.setMeta({revealDefault: +t.value}); this.notify(`Unconfigured entries now show players: ${tiers[+t.value]}.`); return; }
+      if ('def' in t.dataset) { const old = a.revealDefault, o = old && typeof old === 'object' ? Object.assign({}, old) : {labels: 3, pages: 3}; o['*'] = +t.value; await this.store.setMeta({revealDefault: o}); this.notify(`Unconfigured entries now show players: ${tiers[+t.value]}.`); return; }
       if (t.dataset.tiername) { const ts = this.m.tiers().slice(); ts[+t.dataset.tiername] = t.value.trim() || ts[+t.dataset.tiername]; await this.store.setMeta({tiers: ts}); return; }
       if (t.dataset.vk) {
         const val = t.value === '' ? '' : t.value === 'on' ? 3 : 0, who = t.dataset.who;
@@ -642,12 +645,23 @@ export class AtlasEditor {
     };
     pane.onclick = async e => { const b = e.target.closest('button[data-ed]'); if (!b) return;
       if (b.dataset.ed === 'back') this.back();
+      else if (b.dataset.ed === 'copyknow') {
+        const from = pane.querySelector('[data-cp="from"]').value, to = pane.querySelector('[data-cp="to"]').value, add = pane.querySelector('[data-cp="add"]').checked;
+        if (!from || !to || from === to) return this.notify('Choose two different players.', 'warn');
+        const items = copyKnowledge(a, from, to, add);
+        if (!items.length) return this.notify('Nothing to copy.');
+        const nm = id => (ps.find(p => p.id === id) || {}).name || id;
+        if (!await this.confirm('Copy knowledge?', `${nm(to)} will get ${nm(from)}'s personal reveals on ${items.length} entries.`)) return;
+        await this.store.setItems(items); this.v.applyView(); this.v.dirty();
+        this.notify(`${nm(to)} now knows what ${nm(from)} knows.`); this.A.notifyReveal?.({ids: [to], name: `${items.length} entries`});
+      }
       else if (b.dataset.ed === 'addtier') { const ts = this.m.tiers().slice(); ts.push(`Secret ${ts.length - 3}`); await this.store.setMeta({tiers: ts}); this.renderVisibility(); }
       else if (b.dataset.ed === 'bulk') {
         const list = bulkSel(), who = pane.querySelector('[data-b="who"]').value, tv = pane.querySelector('[data-b="tier"]').value, coll = pane.querySelector('[data-b="coll"]').value;
         if (!list.length) return this.notify('Nothing matches those filters.', 'warn');
         if (!await this.confirm('Change visibility?', `${list.length} entries will be set to “${tv === '' ? 'default' : this.m.tierName(+tv)}” for ${who === '*' ? 'everyone' : (ps.find(p => p.id === who) || {}).name}.`)) return;
-        for (const it0 of list) { const it = clone(it0); const r = it.reveal || {}; if (who === '*') { if (tv === '') delete r.all; else r.all = +tv; delete it.gm; } else { r.users ||= {}; if (tv === '') delete r.users[who]; else r.users[who] = +tv; if (!Object.keys(r.users).length) delete r.users; } if (Object.keys(r).length) it.reveal = r; else delete it.reveal; await this.store.setItem(coll, it.id, it); }
+        const items = []; for (const it0 of list) { const it = clone(it0); const r = it.reveal || {}; if (who === '*') { if (tv === '') delete r.all; else r.all = +tv; delete it.gm; } else { r.users ||= {}; if (tv === '') delete r.users[who]; else r.users[who] = +tv; if (!Object.keys(r.users).length) delete r.users; } if (Object.keys(r).length) it.reveal = r; else delete it.reveal; items.push({coll, id: it.id, data: it}); }
+        await this.store.setItems(items);
         this.notify(`Updated ${list.length} entries.`);
         if (tv !== '' && +tv > 0) this.A.notifyReveal?.({ids: who === '*' ? null : [who], name: `${list.length} entries`});
       }
@@ -746,11 +760,17 @@ export class AtlasEditor {
       <label class="btn">${svg('upload')} Import atlas (replace)<input type="file" accept=".json,application/json" hidden data-ed="import"></label>
       <div class="ed-sep"></div>
       <h3>Merge from another atlas</h3><p class="hint">Adds the people, factions, categories and pages of another exported atlas without touching the map.</p>
-      <label class="btn">${svg('upload')} Merge people & lore<input type="file" accept=".json,application/json" hidden data-ed="merge"></label></div>`;
+      <label class="btn">${svg('upload')} Merge people & lore<input type="file" accept=".json,application/json" hidden data-ed="merge"></label>
+      ${this.A.presets ? `<div class="ed-sep"></div><h3>Update from a bundled preset</h3><p class="hint">Brings the newest version of a preset that ships with the module into this atlas: new texts, secrets, starting knowledge or pin art. Positions, shapes, pictures, Actor links and the players' notes are never touched. Entries you created yourself are left alone; entries the preset also has are overwritten in the parts you tick.</p>
+      <div class="ef"><label>Preset</label><select data-preset-pick><option value="">Loading…</option></select></div>
+      <div class="mergeparts">${MERGE_PARTS.map(([k, n, h]) => `<label class="chk"><input type="checkbox" data-part="${k}" checked> <b>${esc(n)}</b> <small>${esc(h)}</small></label>`).join('')}</div>
+      <button type="button" class="btn primary" data-ed="preset-merge">${svg('download')} Update from preset…</button>` : ''}</div>`;
+    if (this.A.presets) this.A.presets().then(list => { const sel = pane.querySelector('[data-preset-pick]'); if (!sel) return; sel.innerHTML = list.map(p => `<option value="${esc(p.id)}" ${p.title && this.m.atlas.title && p.title.startsWith(this.m.atlas.title) ? 'selected' : ''}>${esc(p.title)}</option>`).join('') || '<option value="">No presets</option>'; });
     pane.onclick = e => { const b = e.target.closest('button[data-ed]'); if (!b) return; const a = b.dataset.ed;
       if (a === 'back') this.back();
       else if (a === 'export') this.download(`${safeId(this.m.atlas.title) || 'atlas'}.atlas.json`, JSON.stringify(this.store.exportData(), null, 1));
       else if (a === 'exportbm') this.download(`${safeId(this.m.atlas.title) || 'atlas'}.basemap.json`, JSON.stringify(this.store.basemap));
+      else if (a === 'preset-merge') this.presetMerge(pane);
     };
     pane.onchange = async e => {
       const inp = e.target.closest('input[type=file]'); if (!inp || !inp.files[0]) return;
@@ -767,9 +787,41 @@ export class AtlasEditor {
       inp.value = '';
     };
   }
+  async presetMerge(pane) {
+    const id = pane.querySelector('[data-preset-pick]')?.value; if (!id) return this.notify('Choose a preset first.', 'warn');
+    const parts = [...pane.querySelectorAll('[data-part]:checked')].map(i => i.dataset.part); if (!parts.length) return this.notify('Tick at least one part to update.', 'warn');
+    let preset; try { preset = await this.A.loadPreset(id); } catch (e) { preset = null; } if (!preset) return this.notify('Could not load that preset.', 'error');
+    const plan = planPresetMerge(this.m.atlas, normalize(preset), parts);
+    if (!plan.items.length && !Object.keys(plan.meta).length) return this.notify('This atlas is already up to date with that preset.');
+    const names = MERGE_PARTS.filter(([k]) => parts.includes(k)).map(([, n]) => n).join(', ');
+    if (!await this.confirm('Update from preset?', `${plan.counts.updated} entries will be updated and ${plan.counts.added} added (${names}). Export the atlas first if you want a backup. This cannot be undone with Ctrl+Z.`)) return;
+    const btn = pane.querySelector('[data-ed="preset-merge"]'); if (btn) btn.disabled = true;
+    try {
+      await this.store.setItems(plan.items, (n, t) => { if (btn) btn.textContent = `Updating… ${n}/${t}`; });
+      if (Object.keys(plan.meta).length) await this.store.setMeta(plan.meta);
+      this.undoStack = []; this.notify(`Updated ${plan.counts.updated} and added ${plan.counts.added} entries from the preset.`);
+    } catch (e) { console.error(e); this.notify('The update stopped part-way: ' + (e.message || e), 'error'); }
+    if (btn) { btn.disabled = false; btn.innerHTML = `${svg('download')} Update from preset…`; }
+  }
   download(name, text) {
     if (this.A.saveFile) return this.A.saveFile(name, text);
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], {type: 'application/json'})); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
   }
 }
-void COLLECTIONS; void GLYPH; void clamp;
+/** Copy one player's personal reveals to another. Returns [{coll, id, data}] for the entries that change. */
+function copyKnowledge(a, from, to, onlyAdd) {
+  const out = [];
+  const has = (r, u) => r && r.users && r.users[u] !== undefined && r.users[u] !== '' && r.users[u] !== null;
+  const fix = r => { if (!has(r, from)) { if (!onlyAdd && has(r, to)) { delete r.users[to]; return true; } return false; } const v = +r.users[from], cur = r.users[to]; if (onlyAdd && cur !== undefined && cur !== '' && +cur >= v) return false; r.users[to] = v; return true; };
+  const fixRows = rows => { let ch = false; for (const n of rows || []) if (n && n.reveal && fix(n.reveal)) ch = true; return ch; };
+  for (const coll of COLLECTIONS) for (const it0 of Object.values(a[coll] || {})) {
+    const it = clone(it0); let ch = false;
+    if (it.reveal && fix(it.reveal)) ch = true;
+    if (fixRows(it.notes)) ch = true;
+    if (it.relations && fixRows(it.relations.rows)) ch = true;
+    if (coll === 'realms') for (const l of it.levels || []) if (l.reveal && fix(l.reveal)) ch = true;
+    if (ch) out.push({coll, id: it.id, data: it});
+  }
+  return out;
+}
+void GLYPH; void clamp;

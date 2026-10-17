@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.4.0
+- **The Milwaukee preset is rewritten for play.** Every Waking place, zone, route and character now has three layers of text: a rumour (Existence), what is commonly known (Basic) and the full description (Full), plus separate secrets that you reveal one by one. Texts come from *Milwaukee by Night* and *Milwaukee: The Unclaimed City*; the chronicle's own canon (the Sabbat invasion, Jade Riley, Mother Agatha, the Chapel, the vozhd and the rest) takes priority over both books. The changelings of the Dreaming are rewritten from *The Unclaimed City*; the Shadowlands and the Umbra are split into Basic and Full automatically.
+- **A neonate's start.** All players begin with the same knowledge: the Elysia, hunting grounds, gang turf, the Council and the city's legends, but almost no havens, deals or hidden truths. The Dreaming, the Shadowlands, the Umbra, the Depths, the Lupine pack ranges and everything fae are hidden. Jacob and Esau are now two entries, as the players believe them to be.
+- **Common knowledge field.** Entries have a new *What is commonly known* text, shown from Basic knowledge; the *Full description* follows it with Full knowledge. Search uses the same rules.
+- **Storyteller-only callouts.** A callout can be marked *Storyteller only*: never shown to players, not a secret to reveal. The preset uses them for roleplaying hints.
+- **Update from a bundled preset** (*Edit → Import / export*). Brings this version's texts, secrets, starting knowledge, pin art, relations and new entries into an existing Milwaukee atlas, without touching positions, shapes, pictures, Actor links, personal reveals you have made or the players' notes.
+- **Copy one player's knowledge** (*Edit → Player visibility*): give a newcomer exactly what another player knows.
+- **More pin art.** 35 more icons (aircraft, boats, rats, fish, ghosts, lanterns, totems, bells, mountains and more); about 250 places in every realm have a new or more fitting icon, and a few categories have new shapes.
+- **Chronicle pages for players.** The timeline, the Council table and the other pages now say what a neonate has heard; the complete versions remain as Storyteller pages.
+- Legend entries can be *Storyteller only*. Players no longer see place categories in which they know nothing, so hidden categories do not give themselves away.
+- Fixes: the *Unconfigured entries* menu no longer breaks when the default differs per collection; bulk reveals are saved in one go instead of one entry at a time.
+
 ## 1.3.0
 - **Players only use scenes.** Atlas journal entries are hidden from players, they can't open the atlas window or journal, and they can't change the Storyteller's map. The launcher shows players the atlas scenes they may visit. (World setting *Players may open atlases outside scenes* restores the old behaviour.)
 - **Player notes.** Anyone can add notes to the map from the scene: title, text, icon and colour, visible to *Only me* or *Everyone*. Notes are stored with each user's account and never change the atlas. The Storyteller can delete any note and choose to see private ones.
