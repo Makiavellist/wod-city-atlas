@@ -88,6 +88,7 @@ export class AtlasView {
       <div class="wca-map" aria-label="Map">
         <canvas class="wca-canvas"></canvas>
         <canvas class="wca-fade" hidden></canvas>
+        <div class="wca-crossfx" hidden aria-hidden="true"></div>
         <div class="wca-overlay"></div>
         <div class="wca-tip" hidden></div>
         <div class="wca-modebar"><div class="seg realms" role="radiogroup" aria-label="Realm"></div><div class="seg levels" role="radiogroup" aria-label="Level"></div></div>
@@ -99,6 +100,7 @@ export class AtlasView {
           <button type="button" class="mbtn" data-act="home" title="Show the whole map">${svg('home')}</button>
           <button type="button" class="mbtn" data-act="find" title="Search every layer ( / )">${svg('search')}</button>
           <button type="button" class="mbtn" data-act="note" title="Add a note to the map" hidden>${svg('note')}</button>
+          <button type="button" class="mbtn" data-act="party" title="Where the characters are" hidden>${svg('users')}</button>
           <button type="button" class="mbtn" data-act="hideatlas" title="Hide or show the atlas on the scene" hidden>${svg('scene')}</button>
           <span class="hotlayers"></span>
           <span class="gmbtns"></span>
@@ -112,7 +114,7 @@ export class AtlasView {
         <div class="wca-empty" hidden><b>Nothing here yet</b><span>The Storyteller hasn't revealed this map to you.</span></div>
       </div>`;
     const $ = s => R.querySelector(s);
-    this.el = {side: $('.wca-side'), pane: $('.wca-pane'), map: $('.wca-map'), canvas: $('.wca-canvas'), fade: $('.wca-fade'), overlay: $('.wca-overlay'), tip: $('.wca-tip'),
+    this.el = {side: $('.wca-side'), pane: $('.wca-pane'), map: $('.wca-map'), canvas: $('.wca-canvas'), fade: $('.wca-fade'), crossfx: $('.wca-crossfx'), overlay: $('.wca-overlay'), tip: $('.wca-tip'),
       realms: $('.seg.realms'), levels: $('.seg.levels'), bar: $('.wca-bar'), layers: $('.wca-layers'), legend: $('.wca-legend'), credit: $('.wca-credit'), scale: $('.wca-scale'),
       finder: $('.wca-finder'), fq: $('.wca-finder input'), fres: $('.wca-finder .fres'), edbar: $('.wca-edbar'), empty: $('.wca-empty'), hot: $('.hotlayers'), gmb: $('.gmbtns'), mast: $('.wca-mast')};
     if (this.prefs.side && !this.sc) R.classList.add('side-min');
@@ -226,7 +228,7 @@ export class AtlasView {
   setRealm(id, quiet) {
     if (id === this.st.realm || !this.model.atlas.realms[id]) return;
     if (!this.st.storyteller && !this.model.realmVisible(id, this.st)) return;
-    this.snapshotFade();
+    this.crossing(this.crossKind(this.model.realm(id)));
     this.st.realm = id; const r = this.model.realm(id); this.st.level = (this.st.storyteller ? r.levels : this.model.visibleLevels(id, this.st))[0]?.id || r.levels[0].id;
     this.q = ''; this.hideTip(); this.hover = null;
     this.applyView(); this.persist(); this.sc?.onRealm?.(this.st.realm, this.st.level);
@@ -235,12 +237,32 @@ export class AtlasView {
   setLevel(id, quiet) {
     if (id === this.st.level) return;
     if (!this.st.storyteller && !this.model.levelVisible(this.st.realm, id, this.st)) return;
-    this.snapshotFade(250);
+    { const lv = this.model.realm(this.st.realm).levels, a = lv.findIndex(l => l.id === this.st.level), b = lv.findIndex(l => l.id === id); this.crossing(b > a ? 'descend' : 'ascend', 750); }
     this.st.level = this.model.level(this.st.realm, id).id;
     this.applyView(); this.persist(); this.sc?.onRealm?.(this.st.realm, this.st.level);
     if (!quiet) { if (!this.detailId) this.render(); this.focusRealm(); }
   }
   focusRealm() { const f = this.rv.focus; if (f && f.box && this.cam.z < (f.minZoom ?? 0)) this.fitLL(f.box, 40); }
+  /** Which crossing animation a realm gets: realm.crossFx, or guessed from its id and name. */
+  crossKind(r) {
+    if (r.crossFx) return r.crossFx;
+    const k = `${r.id} ${r.name || ''}`.toLowerCase();
+    return /dream|fae|arcadia/.test(k) ? 'dream' : /shadow|dead|underworld|tempest/.test(k) ? 'shadow' : /umbra|spirit|penumbra/.test(k) ? 'umbra' : 'blood';
+  }
+  /** The crossing animation: the old map dissolves in the manner of the new realm while a veil of its colours washes over. */
+  crossing(kind, ms = 1300) {
+    if (reduceMotion() || !this.cam.W || this.opts.animate === false) return;
+    const f = this.el.fade, fx = this.el.crossfx;
+    try { f.width = this.el.canvas.width; f.height = this.el.canvas.height; f.style.width = this.cam.W + 'px'; f.style.height = this.cam.H + 'px'; const c = f.getContext('2d'); c.clearRect(0, 0, f.width, f.height); c.drawImage(this.el.canvas, 0, 0); } catch (e) {}
+    f.className = 'wca-fade'; f.hidden = false; f.style.animation = 'none'; void f.offsetWidth;
+    f.style.animation = `wca-out-${kind} ${ms}ms ease-in forwards`;
+    const motes = {dream: 22, shadow: 26, umbra: 18, blood: 16, descend: 0, ascend: 0}[kind] ?? 12;
+    let h = '<i class="veil"></i>';
+    for (let i = 0; i < motes; i++) { const x = Math.random() * 100, y = Math.random() * 100, d = Math.random() * ms * 0.45, s = 0.6 + Math.random() * 1.2; h += `<b style="left:${x.toFixed(1)}%;top:${y.toFixed(1)}%;animation-delay:${d.toFixed(0)}ms;--s:${s.toFixed(2)}"></b>`; }
+    fx.className = `wca-crossfx fx-${kind}`; fx.style.setProperty('--fx-ms', ms + 'ms'); fx.innerHTML = h; fx.hidden = false;
+    clearTimeout(this._fadeT); this._fadeT = setTimeout(() => { f.hidden = true; f.style.animation = ''; fx.hidden = true; fx.innerHTML = ''; }, ms + 120);
+    this.dirty();
+  }
   snapshotFade(ms = 650) {
     if (reduceMotion() || !this.cam.W || this.sc) return;
     const f = this.el.fade; f.width = this.el.canvas.width; f.height = this.el.canvas.height; f.style.width = this.cam.W + 'px'; f.style.height = this.cam.H + 'px';
@@ -274,6 +296,7 @@ export class AtlasView {
   }
   renderGmButtons() {
     const canEdit = this.opts.canEdit ?? this.isGM;
+    const pb = this.el.bar.querySelector('[data-act="party"]'); if (pb) pb.hidden = !this.adapter.party;
     const nb = this.el.bar.querySelector('[data-act="note"]'); if (nb) { nb.hidden = !this.adapter.notes; nb.setAttribute('aria-pressed', String(!!this.placing)); }
     const hb = this.el.bar.querySelector('[data-act="hideatlas"]'); if (hb) { hb.hidden = !this.sc; hb.setAttribute('aria-pressed', String(!!this.atlasHidden)); hb.innerHTML = svg(this.atlasHidden ? 'eyeoff' : 'scene'); }
     if (this.sc) {
@@ -313,6 +336,7 @@ export class AtlasView {
     else if (a === 'side') { if (this.sc) this.sc.toggleHud?.(); else { this.root.classList.toggle('side-min'); this.persist(); } }
     else if (a === 'full') this.adapter.openFull?.(this.getState());
     else if (a === 'note') this.startNote(!this.placing);
+    else if (a === 'party') { this.tab = 'map'; this.detailId = null; this.render(); this.sc?.showHud?.(); requestAnimationFrame(() => this.el.pane.querySelector('.mt-party')?.scrollIntoView({block: 'start'})); }
     else if (a === 'hideatlas') this.setAtlasHidden(!this.atlasHidden);
     else if (a === 'maptab') { this.tab = 'map'; this.detailId = null; this.render(); this.sc?.showHud?.(); }
     else if (a === 'lock') { this.sc?.setLocked?.(!this.sc.locked()); }
@@ -436,6 +460,7 @@ export class AtlasView {
     else { this.hideTip(); this.el.map.style.cursor = ''; }
   }
   clickAt(sx, sy, e) {
+    if (this.placingParty) { this.placeParty(this.placingParty, this.toWorld(sx, sy)); return; }
     if (this.placing) { this.placeNote(this.toWorld(sx, sy)); return; }
     if (this.editor && this.editor.click(sx, sy, e)) return;
     const h = this.renderer.hitTest(sx, sy);
@@ -447,7 +472,7 @@ export class AtlasView {
     const k = e.key;
     let done = true;
     if (k === '/' || (k === 'k' && (e.ctrlKey || e.metaKey))) this.openFinder();
-    else if (k === 'Escape') { if (this.placing) this.startNote(false); else if (!this.el.finder.hidden) this.closeFinder(); else if (this.editor && this.editor.escape()) {} else if (this.detailId) { this.detailId = null; this.setSel(null); this.render(); } else done = false; }
+    else if (k === 'Escape') { if (this.placingParty) this.startParty(null); else if (this.placing) this.startNote(false); else if (!this.el.finder.hidden) this.closeFinder(); else if (this.editor && this.editor.escape()) {} else if (this.detailId) { this.detailId = null; this.setSel(null); this.render(); } else done = false; }
     else if (/^[1-9]$/.test(k) && !e.ctrlKey && !e.metaKey && !e.altKey) { const r = (this.st.storyteller ? this.model.realmList : this.model.visibleRealms(this.st))[+k - 1]; if (r) this.setRealm(r.id); else done = false; }
     else if (k === '[' || k === ']') { const lv = this.st.storyteller ? this.model.realm(this.st.realm).levels : this.model.visibleLevels(this.st.realm, this.st); const i = lv.findIndex(l => l.id === this.st.level); const n = lv[clamp(i + (k === ']' ? 1 : -1), 0, lv.length - 1)]; if (n) this.setLevel(n.id); }
     else if (k === '+' || k === '=') this.animateTo([this.cam.cx, this.cam.cy], this.cam.z + 1, 200);
@@ -533,6 +558,19 @@ export class AtlasView {
       el.addEventListener('pointerleave', () => this.hideTip());
       O.appendChild(el);
       this.markers.push({p, el, nm, w: this.model.proj.toWorld(p.at), sx: 0, sy: 0, vis: false, canon: !p.precision || p.precision === 'canon'});
+    }
+    for (const c of this.partyList()) {
+      if (!c.at || c.realm !== st.realm || (c.level && c.level !== st.level)) continue;
+      const el = document.createElement('button'); el.type = 'button'; el.className = 'wca-pin s-party' + (c.mine ? ' mine' : '') + (c.hidden ? ' hiddenpc' : ''); el.dataset.id = 'pc:' + c.uid;
+      el.style.setProperty('--c', c.color || '#d8b45a');
+      el.innerHTML = `<span class="pin">${c.img ? `<img class="pphoto" src="${esc(this.resolveUrl(c.img))}" alt="">` : svg('user', 1.7)}</span><span class="lbl">${esc(c.name)}</span>`;
+      const tip = () => `${c.img ? `<img class="tipimg" src="${esc(this.resolveUrl(c.img))}" alt="">` : ''}<span class="tiptx">${esc(c.name)}<small>${esc(c.player ? c.player + (c.hidden ? ' · hidden from the others' : '') : '')}</small></span>`;
+      el.addEventListener('pointerenter', () => this.showTip(tip(), el));
+      el.addEventListener('pointerleave', () => this.hideTip());
+      el.addEventListener('click', e => { e.stopPropagation(); });
+      el.addEventListener('pointerdown', e => this.partyDrag(e, c, el));
+      O.appendChild(el);
+      this.markers.push({p: {id: 'pc:' + c.uid}, party: c, el, nm: c.name, w: this.model.proj.toWorld(c.at), sx: 0, sy: 0, vis: false, canon: true});
     }
     for (const n of this.visibleNotes()) {
       if (!n.at || n.realm !== st.realm || (n.level && n.level !== st.level)) continue;
@@ -788,6 +826,7 @@ export class AtlasView {
     h += `<div class="grp">Layers <span class="n">${ls.length}</span></div>` + (ls.length ? `<div class="mt-list">${ls.map(L => `<label>${L.icon ? svg(L.icon, 1.7) : '<i></i>'}<span>${esc(L.name || L.id)}</span><input class="tog" type="checkbox" data-layer="${esc(L.id)}" ${this.layerOn(L.id) ? 'checked' : ''}></label>`).join('')}</div>` : '<p class="hint">No layers here.</p>');
     if (cats.length) h += `<div class="grp">Places shown</div><div class="chips" role="group">${cats.map(c => `<button type="button" class="chip" data-cat="${esc(c.id)}" aria-pressed="${!this.catsOff.has(c.id)}" style="--c:${esc(c.color || 'var(--wca-bone)')}">${svg(c.icon || 'pin', 1.7)}${esc(c.name)}</button>`).join('')}</div>`;
     if (this.adapter.notes) h += `<div class="grp">Notes</div><div class="mt-list"><label>${svg('note', 1.7)}<span>Notes others share</span><input class="tog" type="checkbox" data-notes="shared" ${this.notesShared ? 'checked' : ''}></label>${this.isGM ? `<label>${svg('eyeoff', 1.7)}<span>Players' private notes</span><input class="tog" type="checkbox" data-notes="private" ${this.notesPrivate ? 'checked' : ''}></label>` : ''}</div><button type="button" class="btn small" data-act="note-new">${svg('note')} Add a note to the map</button>`;
+    if (this.adapter.party) h += this.partyHtml();
     h += `<div class="grp">View</div><div class="mt-btns"><button type="button" class="btn small" data-act="mt-home">${svg('home')} Whole map</button><button type="button" class="btn small" data-act="mt-find">${svg('search')} Search</button>${this.sc ? `<button type="button" class="btn small" data-act="mt-hide" aria-pressed="${!!this.atlasHidden}">${svg(this.atlasHidden ? 'eyeoff' : 'scene')} ${this.atlasHidden ? 'Show the atlas' : 'Hide the atlas'}</button>` : ''}</div>`;
     if (this.isGM) h += `<div class="grp">Storyteller</div><label class="mt-row">View as<select data-viewas>${this.viewAsOptions().map(([val, n]) => `<option value="${esc(val)}" ${val === (st.storyteller ? 'gm' : st.as) ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></label>` + (this.sc?.setLocked ? `<label class="mt-row">Players follow my realm<input class="tog" type="checkbox" data-mt-lock ${this.sc.locked() ? 'checked' : ''}></label>` : '');
     if ((v.legend || []).length) h += `<div class="grp">Legend</div><div class="mt-legend">${v.legend.map(l => `<span><i class="k-${esc(l.kind || 'fill')}" style="--c:${esc(l.color)}"></i>${esc(l.label)}</span>`).join('')}</div>`;
@@ -799,7 +838,37 @@ export class AtlasView {
     let list = []; try { list = N.list() || []; } catch (e) { return []; }
     return list.filter(n => n.mine || (n.shared ? this.notesShared : (this.isGM && this.notesPrivate)));
   }
-  notesChanged() { this.buildMarkers(); if (this.tab === 'notes' && !this.detailId) this.render(true); else if (String(this.detailId || '').startsWith('note:') && !this._noteDraft) this.renderDetail(); }
+  /* ----- where the characters are: one portrait pin per player, kept in the player's own flags ----- */
+  partyList() { const P = this.adapter.party; if (!P) return []; try { return P.list() || []; } catch (e) { return []; } }
+  canMoveParty(c) { return this.isGM || c.mine; }
+  partyHtml() {
+    const all = this.partyList(), rows = all.filter(c => this.isGM || c.mine || !c.hidden);
+    if (!rows.length) return '';
+    const where = c => { if (!c.at) return 'not on the map'; const r = this.model.atlas.realms[c.realm]; const lv = r && r.levels.length > 1 ? (r.levels.find(l => l.id === c.level) || {}).name : ''; return [r ? r.name : c.realm, lv].filter(Boolean).join(' · '); };
+    return `<div class="grp mt-party">Characters <span class="n">${rows.length}</span></div><div class="mt-pcs">${rows.map(c => `<div class="pcrow" style="--c:${esc(c.color || '#d8b45a')}"><span class="pcimg">${c.img ? `<img src="${esc(this.resolveUrl(c.img))}" alt="">` : svg('user', 1.7)}</span><span class="pcnm"><b>${esc(c.name)}</b><small>${esc(c.player || '')}${c.player ? ' · ' : ''}${esc(where(c))}${c.hidden ? ' · hidden' : ''}</small></span><span class="pcbtns">${c.at ? `<button type="button" class="mini" data-pc-find="${esc(c.uid)}" title="Find on the map">${svg('target')}</button>` : ''}${this.canMoveParty(c) ? `<button type="button" class="mini" data-pc-place="${esc(c.uid)}" title="Place on the map: click where they are">${svg('pin')}</button>` : ''}${this.isGM ? `<button type="button" class="mini" data-pc-hide="${esc(c.uid)}" aria-pressed="${!!c.hidden}" title="${c.hidden ? 'Show to the other players' : 'Hide from the other players'}">${svg(c.hidden ? 'eyeoff' : 'share')}</button>` : ''}${this.canMoveParty(c) && c.at ? `<button type="button" class="mini" data-pc-clear="${esc(c.uid)}" title="Take off the map">${svg('x', 2)}</button>` : ''}</span></div>`).join('')}</div><p class="hint">${this.isGM ? 'Drag a portrait on the map to move it. ' : 'Drag your portrait on the map to move it. '}Portraits come from each player's character.</p>`;
+  }
+  startParty(uid) {
+    this.placingParty = uid || null; const on = !!uid;
+    this.root.classList.toggle('placing', on); this.layerRoot?.classList.toggle('placing', on);
+    if (on) { const c = this.partyList().find(x => x.uid === uid); this.adapter.notify?.(`Click on the map where ${c ? c.name : 'the character'} is (Esc to cancel).`); }
+  }
+  placeParty(uid, w) {
+    this.startParty(null);
+    const at = this.model.proj.toLL(w).map(this.model.proj.round);
+    const c = this.partyList().find(x => x.uid === uid);
+    this.adapter.party.save(uid, {at, realm: this.st.realm, level: this.st.level, hidden: c ? !!c.hidden : false});
+  }
+  partyDrag(e, c, el) {
+    e.stopPropagation(); if (!this.canMoveParty(c) || e.button !== 0) return;
+    e.preventDefault(); this.hideTip();
+    const M = this.el.map, mk = this.markers.find(m => m.party && m.party.uid === c.uid); let moved = false;
+    const mv = ev => { const r = M.getBoundingClientRect(); const w = this.toWorld(ev.clientX - r.left, ev.clientY - r.top); if (mk) { mk.drag = w; moved = true; this.placeMarkers(); } };
+    const up = ev => { window.removeEventListener('pointermove', mv, true); window.removeEventListener('pointerup', up, true); el.classList.remove('dragging');
+      if (moved && mk && mk.drag) { const w = mk.drag; mk.w = w; delete mk.drag; this.adapter.party.save(c.uid, {at: this.model.proj.toLL(w).map(this.model.proj.round), realm: this.st.realm, level: this.st.level, hidden: !!c.hidden}); } };
+    el.classList.add('dragging');
+    window.addEventListener('pointermove', mv, true); window.addEventListener('pointerup', up, true);
+  }
+  notesChanged() { if (this.tab === 'map' && !this.detailId) this.render(true); this.buildMarkers(); if (this.tab === 'notes' && !this.detailId) this.render(true); else if (String(this.detailId || '').startsWith('note:') && !this._noteDraft) this.renderDetail(); }
   startNote(on) {
     this.placing = !!on; this.root.classList.toggle('placing', this.placing); this.layerRoot?.classList.toggle('placing', this.placing);
     this.renderGmButtons();
@@ -1083,6 +1152,13 @@ export class AtlasView {
     const rp = t.closest('[data-reveal-page]'); if (rp) { this.detailId = rp.dataset.revealPage; this.renderDetail(); return; }
     const act0 = t.closest('[data-act]');
     if (act0 && act0.dataset.act === 'note-new') { this.startNote(true); return; }
+    const pcb = e.target.closest('[data-pc-find],[data-pc-place],[data-pc-hide],[data-pc-clear]');
+    if (pcb) { const P = this.adapter.party, d = pcb.dataset, uid = d.pcFind || d.pcPlace || d.pcHide || d.pcClear, c = this.partyList().find(x => x.uid === uid); if (!c) return;
+      if (d.pcFind) { if (c.realm !== this.st.realm) this.setRealm(c.realm, true); if (c.level && c.level !== this.st.level) this.setLevel(c.level, true); this.render(true); this.focusAt(c.at); }
+      else if (d.pcPlace) this.startParty(uid);
+      else if (d.pcHide) P.save(uid, {at: c.at, realm: c.realm, level: c.level, hidden: !c.hidden});
+      else if (d.pcClear) P.remove(uid);
+      return; }
     if (act0 && act0.dataset.act === 'note-del') { const id = String(this.detailId || '').slice(5); const n = this.visibleNotes().find(x => x.id === id); if (n) Promise.resolve(this.adapter.confirm ? this.adapter.confirm('Delete note', `Delete “${n.title || 'Note'}”?`) : true).then(ok => { if (ok) this.adapter.notes.remove(n).then(() => { this.detailId = null; this.render(); this.buildMarkers(); }); }); return; }
     if (act0 && act0.dataset.act === 'mt-home') { this.home(); return; }
     if (act0 && act0.dataset.act === 'mt-find') { this.openFinder(); return; }

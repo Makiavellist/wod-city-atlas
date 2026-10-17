@@ -1,0 +1,103 @@
+/* The Masquerade look for Foundry's own interface. Everything is scoped under body.wca-vtm
+ * (client setting "Masquerade look for Foundry") and only touches colours, borders and type,
+ * never layout, so turning it off restores Foundry exactly. Character sheet contents are left alone. */
+body.wca-vtm {
+  --vtm-black: #0a0608; --vtm-ink: #130b0e; --vtm-ink2: #1c1014; --vtm-line: #3d151b; --vtm-line-hi: #6e1b23;
+  --vtm-blood: #8a0f17; --vtm-blood-hi: #c41b25; --vtm-bone: #eadcc3; --vtm-muted: #a8937b; --vtm-gold: #c9a25a;
+  --vtm-head: 'IM Fell English SC', 'IM Fell English', Georgia, serif; --vtm-title: 'Pirata One', 'IM Fell English', Georgia, serif; --vtm-serif: 'IM Fell English', Georgia, serif;
+}
+/* Foundry v13 theme variables (harmless if a name does not exist in this build) */
+body.wca-vtm.theme-dark, body.wca-vtm .theme-dark {
+  --color-text-primary: #eadcc3; --color-text-secondary: #b9a58c; --color-text-emphatic: #ffffff; --color-text-subtle: #8f7c66;
+  --color-border: #3d151b; --color-border-highlight: #c41b25; --color-fieldset-border: #3d151b;
+  --color-cool-5: #130b0e; --color-cool-4: #1c1014; --color-warm-1: #c41b25; --color-warm-2: #8a0f17;
+  --button-background-color: #1c1014; --button-border-color: #4a1a20; --button-text-color: #eadcc3;
+  --button-hover-background-color: #3a0c12; --button-hover-border-color: #c41b25; --button-hover-text-color: #fff;
+  --control-bg-color: rgba(19, 11, 14, .9); --control-border-color: #4a1a20; --control-icon-color: #d8c6aa;
+  --control-hover-bg-color: #3a0c12; --control-hover-border-color: #c41b25; --control-hover-icon-color: #fff;
+  --control-active-bg-color: #6e0f17; --control-active-border-color: #e0323c; --control-active-icon-color: #fff;
+  --color-scrollbar: #6e1b23; --color-scrollbar-track: #130b0e;
+  --sidebar-background: #0d080a;
+}
+/* a faint bloodshot vignette at the edges of the screen */
+body.wca-vtm #interface { box-shadow: inset 0 0 180px rgba(70, 0, 8, .45); }
+
+/* ----- controls: scene tools, sidebar tabs, scene navigation, macro bar, player list buttons ----- */
+body.wca-vtm .ui-control { background: linear-gradient(180deg, #1d1015, #0c0709); border-color: #4a1a20; color: #d8c6aa; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .04), 0 2px 6px rgba(0, 0, 0, .5); }
+body.wca-vtm .ui-control:hover { background: linear-gradient(180deg, #3a0c12, #1a0709); border-color: #c41b25; color: #fff; box-shadow: 0 0 10px rgba(196, 27, 37, .45); }
+body.wca-vtm .ui-control.active, body.wca-vtm .ui-control[aria-pressed="true"], body.wca-vtm .ui-control.toggle.active { background: radial-gradient(circle at 50% 35%, #a3141e, #4a060b 75%); border-color: #e0323c; color: #fff; box-shadow: 0 0 12px rgba(224, 50, 60, .55); }
+
+/* ----- sidebar & directories ----- */
+body.wca-vtm #sidebar-content, body.wca-vtm #sidebar .tab.sidebar-tab, body.wca-vtm #sidebar .sidebar-tab {
+  background: radial-gradient(120% 40% at 100% 0%, rgba(138, 15, 23, .16), transparent 60%), linear-gradient(180deg, #110a0c, #0a0608); color: var(--vtm-bone); }
+body.wca-vtm #sidebar { border-left: 1px solid var(--vtm-line); }
+body.wca-vtm .directory .directory-header, body.wca-vtm .sidebar-tab .directory-header { border-bottom: 1px solid var(--vtm-line); }
+body.wca-vtm .directory .folder > header, body.wca-vtm .directory .folder-header { background: linear-gradient(90deg, #3a0c12, #1a0a0d 70%) !important; border-top: 1px solid #5a1a20; border-bottom: 1px solid #1a0709; font-family: var(--vtm-head); letter-spacing: .04em; color: var(--vtm-bone); text-shadow: 0 1px 2px #000; }
+body.wca-vtm .directory-item .entry-name, body.wca-vtm .directory-item .document-name, body.wca-vtm .directory-item h4 { font-family: var(--vtm-serif); }
+body.wca-vtm .directory-item:hover { background: linear-gradient(90deg, rgba(138, 15, 23, .28), transparent); }
+body.wca-vtm .directory input[type="search"], body.wca-vtm #sidebar input[type="search"] { background: #0c0709; border-color: #4a1a20; color: var(--vtm-bone); }
+body.wca-vtm #sidebar .header-actions button, body.wca-vtm .directory-footer button { background: linear-gradient(180deg, #2a0d12, #12080a); border: 1px solid #5a1a20; color: var(--vtm-bone); font-family: var(--vtm-head); letter-spacing: .05em; }
+body.wca-vtm #sidebar .header-actions button:hover, body.wca-vtm .directory-footer button:hover { border-color: var(--vtm-blood-hi); box-shadow: 0 0 8px rgba(196, 27, 37, .45); color: #fff; }
+
+/* ----- chat ----- */
+body.wca-vtm #chat-log .chat-message, body.wca-vtm .chat-log .chat-message, body.wca-vtm #chat-notifications .chat-message {
+  background: linear-gradient(180deg, #1a0f12, #110a0c); border: 1px solid var(--vtm-line); border-left: 3px solid var(--vtm-blood); color: var(--vtm-bone); box-shadow: 0 2px 8px rgba(0, 0, 0, .45); }
+body.wca-vtm .chat-message.whisper { border-left-color: #6b4fa0; background: linear-gradient(180deg, #160f1d, #0e0a12); }
+body.wca-vtm .chat-message .message-header .message-sender, body.wca-vtm .chat-message .message-sender { font-family: var(--vtm-head); color: var(--vtm-gold); letter-spacing: .04em; }
+body.wca-vtm .chat-message .message-metadata { color: var(--vtm-muted); }
+body.wca-vtm .chat-message .dice-roll .dice-total { border-color: #6e1b23; background: rgba(138, 15, 23, .18); color: #fff; }
+body.wca-vtm #chat-message, body.wca-vtm .chat-form textarea, body.wca-vtm #chat-form textarea { background: #0c0709; border: 1px solid #4a1a20; color: var(--vtm-bone); font-family: var(--vtm-serif); }
+body.wca-vtm #chat-message:focus, body.wca-vtm .chat-form textarea:focus { border-color: var(--vtm-blood-hi); box-shadow: 0 0 8px rgba(196, 27, 37, .4); }
+
+/* ----- windows: every application's frame and title bar (contents untouched) ----- */
+body.wca-vtm .application, body.wca-vtm .app.window-app { border-color: #5a1a20; box-shadow: 0 0 0 1px #24090c, 0 16px 48px rgba(0, 0, 0, .7), 0 0 30px rgba(110, 15, 23, .25); }
+body.wca-vtm .application > .window-header, body.wca-vtm .app.window-app > .window-header {
+  background: linear-gradient(90deg, #170a0d, #3d0c13 50%, #170a0d); border-bottom: 1px solid var(--vtm-blood); color: var(--vtm-bone); }
+body.wca-vtm .application > .window-header .window-title, body.wca-vtm .app.window-app > .window-header .window-title { font-family: var(--vtm-head); letter-spacing: .06em; text-shadow: 0 1px 3px #000, 0 0 10px rgba(196, 27, 37, .35); }
+body.wca-vtm .application > .window-header .header-control:hover { color: #ff6b6b; }
+/* dialogs and settings windows (not sheets): dark parchment */
+body.wca-vtm .application.dialog .window-content, body.wca-vtm #settings-config .window-content, body.wca-vtm .application.category-browser .window-content { background: linear-gradient(180deg, #160d10, #0d0809); color: var(--vtm-bone); }
+body.wca-vtm .application.dialog footer button, body.wca-vtm .application.dialog .form-footer button { background: linear-gradient(180deg, #2a0d12, #12080a); border: 1px solid #5a1a20; color: var(--vtm-bone); font-family: var(--vtm-head); letter-spacing: .05em; }
+body.wca-vtm .application.dialog footer button:hover, body.wca-vtm .application.dialog .form-footer button:hover { border-color: var(--vtm-blood-hi); color: #fff; box-shadow: 0 0 8px rgba(196, 27, 37, .45); }
+
+/* ----- players, hotbar, scene navigation, notifications, menus, tooltips, pause ----- */
+body.wca-vtm #players, body.wca-vtm aside#players { background: linear-gradient(180deg, rgba(26, 14, 18, .94), rgba(12, 7, 9, .94)); border: 1px solid var(--vtm-line); color: var(--vtm-bone); }
+body.wca-vtm #players .player-name, body.wca-vtm #players li { font-family: var(--vtm-serif); }
+body.wca-vtm #hotbar .slot, body.wca-vtm #action-bar .slot { background: radial-gradient(circle at 50% 30%, #1c1014, #0a0608); border-color: #4a1a20; }
+body.wca-vtm #hotbar .slot:hover, body.wca-vtm #action-bar .slot:hover { border-color: var(--vtm-blood-hi); box-shadow: 0 0 10px rgba(196, 27, 37, .45); }
+body.wca-vtm #scene-navigation .scene, body.wca-vtm #navigation .scene { font-family: var(--vtm-serif); }
+body.wca-vtm #scene-navigation .scene.active, body.wca-vtm #navigation .scene.active { border-color: var(--vtm-blood-hi); box-shadow: 0 0 10px rgba(196, 27, 37, .45); }
+body.wca-vtm #notifications .notification { background: linear-gradient(90deg, #2a0d12, #140a0c); border: 1px solid #5a1a20; border-left: 4px solid var(--vtm-blood-hi); color: var(--vtm-bone); font-family: var(--vtm-serif); box-shadow: 0 6px 20px rgba(0, 0, 0, .6); }
+body.wca-vtm #notifications .notification.warning { border-left-color: #c98a2a; }
+body.wca-vtm #notifications .notification.error { border-left-color: #ff3b3b; background: linear-gradient(90deg, #4a0a10, #170a0c); }
+body.wca-vtm #context-menu, body.wca-vtm .context-menu { background: #120a0d; border: 1px solid #5a1a20; color: var(--vtm-bone); box-shadow: 0 8px 26px rgba(0, 0, 0, .7); }
+body.wca-vtm #context-menu .context-item:hover, body.wca-vtm .context-menu .context-item:hover { background: linear-gradient(90deg, #4a0a10, transparent); color: #fff; }
+body.wca-vtm #tooltip, body.wca-vtm .locked-tooltip { background: #120a0d; border: 1px solid #5a1a20; color: var(--vtm-bone); font-family: var(--vtm-serif); }
+body.wca-vtm #pause img { filter: sepia(1) hue-rotate(-50deg) saturate(6) brightness(.75) drop-shadow(0 0 12px #8a0f17); }
+body.wca-vtm #pause figcaption, body.wca-vtm #pause label { font-family: var(--vtm-title); letter-spacing: .04em; color: #e9d7c0; text-shadow: 0 0 12px #8a0f17, 0 2px 4px #000; }
+body.wca-vtm ::selection { background: rgba(196, 27, 37, .55); color: #fff; }
+
+/* ----- the chronicle clock ----- */
+.wca-clock { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 70; pointer-events: auto; display: flex; flex-direction: column; align-items: center; gap: 4px;
+  font-family: 'IM Fell English', Georgia, serif; color: #eadcc3; user-select: none; }
+.wca-clock .clk-face { display: flex; align-items: center; gap: 10px; padding: 6px 16px 6px 12px; min-width: 230px;
+  background: linear-gradient(180deg, rgba(28, 14, 18, .95), rgba(10, 6, 8, .95)); border: 1px solid #5a1a20; border-radius: 2px;
+  box-shadow: 0 0 0 1px #1a0709, 0 6px 22px rgba(0, 0, 0, .65), inset 0 0 18px rgba(138, 15, 23, .25); position: relative; }
+.wca-clock .clk-face::before, .wca-clock .clk-face::after { content: ''; position: absolute; top: 50%; width: 8px; height: 8px; background: #8a0f17; transform: translateY(-50%) rotate(45deg); box-shadow: 0 0 6px #c41b25; }
+.wca-clock .clk-face::before { left: -5px; } .wca-clock .clk-face::after { right: -5px; }
+.wca-clock .clk-ic { font-size: 22px; line-height: 1; color: #d8c6aa; text-shadow: 0 0 8px rgba(216, 198, 170, .5); }
+.wca-clock .clk-txt { display: grid; line-height: 1.15; }
+.wca-clock .clk-time { font: 22px/1 'Pirata One', 'IM Fell English', Georgia, serif; letter-spacing: .03em; color: #f3e6cf; text-shadow: 0 0 10px rgba(196, 27, 37, .5); }
+.wca-clock .clk-date { font: 12.5px 'IM Fell English SC', 'IM Fell English', Georgia, serif; letter-spacing: .06em; color: #c9b597; }
+.wca-clock .clk-sun { font: italic 12px 'IM Fell English', Georgia, serif; color: #a8937b; }
+.wca-clock.soon .clk-sun { color: #ff8a5a; text-shadow: 0 0 6px rgba(255, 120, 60, .6); }
+.wca-clock.day .clk-face { border-color: #c98a2a; box-shadow: 0 0 0 1px #2a1606, 0 6px 22px rgba(0, 0, 0, .65), inset 0 0 22px rgba(255, 170, 60, .25); }
+.wca-clock.day .clk-ic { color: #ffcf6a; text-shadow: 0 0 10px #ffb43a; }
+.wca-clock.day .clk-sun { color: #ffb45a; }
+.wca-clock .clk-ctl { display: none; gap: 3px; flex-wrap: wrap; justify-content: center; }
+.wca-clock.gm:hover .clk-ctl { display: flex; }
+.wca-clock .clk-ctl button { all: unset; cursor: pointer; padding: 2px 7px; font: 11.5px 'IM Fell English SC', Georgia, serif; letter-spacing: .04em; color: #eadcc3; background: linear-gradient(180deg, #2a0d12, #12080a); border: 1px solid #5a1a20; border-radius: 2px; }
+.wca-clock .clk-ctl button:hover { border-color: #c41b25; color: #fff; box-shadow: 0 0 6px rgba(196, 27, 37, .5); }
+.wca-clockform { display: grid; gap: 10px; padding: 4px 2px; }
+.wca-clockform label { display: grid; grid-template-columns: 60px 1fr; align-items: center; gap: 8px; }
+.wca-clockform .hint { margin: 0; font-size: 12px; opacity: .75; }

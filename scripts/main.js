@@ -4,6 +4,7 @@ import {SceneAtlas, showDiagnosis} from './foundry/scene-layer.js';
 import {JournalStore, MOD, isAtlasEntry} from './foundry/journal-store.js';
 import {rebasePaths} from './core/store.js';
 import {blankAtlas} from './core/templates.js';
+import {Clock, registerClockSettings} from './foundry/clock.js';
 
 Hooks.once('init', () => {
   game.settings.register(MOD, 'animate', {name: 'WCA.SettingAnimate', hint: 'WCA.SettingAnimateHint', scope: 'client', config: true, type: Boolean, default: true});
@@ -11,6 +12,9 @@ Hooks.once('init', () => {
   game.settings.register(MOD, 'defaultOwnership', {name: 'WCA.SettingOwnership', hint: 'WCA.SettingOwnershipHint', scope: 'world', config: true, type: String, default: 'OBSERVER',
     choices: {NONE: 'WCA.OwnNone', LIMITED: 'WCA.OwnLimited', OBSERVER: 'WCA.OwnObserver'}});
   game.settings.register(MOD, 'playerWindow', {name: 'WCA.SettingPlayerWindow', hint: 'WCA.SettingPlayerWindowHint', scope: 'world', config: true, type: Boolean, default: false});
+  game.settings.register(MOD, 'partyVisible', {name: 'Players see each other on the atlas', hint: 'Each player’s character has a portrait pin on atlas scenes. Off: players only see their own (the Storyteller sees all).', scope: 'world', config: true, type: Boolean, default: true});
+  game.settings.register(MOD, 'vtmTheme', {name: 'Masquerade look for Foundry', hint: 'Restyles Foundry’s own interface (sidebar, chat, windows, controls) in black, bone and blood. Character sheets are not touched.', scope: 'client', config: true, type: Boolean, default: true, onChange: v => document.body.classList.toggle('wca-vtm', !!v)});
+  registerClockSettings();
   game.settings.register(MOD, 'sceneControl', {name: 'WCA.SettingControl', hint: 'WCA.SettingControlHint', scope: 'world', config: true, type: Boolean, default: true, requiresReload: true});
 });
 
@@ -20,7 +24,10 @@ Hooks.once('init', () => {
   game.keybindings.register(MOD, 'open', {name: 'WCA.Open', hint: 'WCA.KeyHint', editable: [{key: 'KeyM', modifiers: ['Alt']}], onDown: () => { if (SceneAtlas.current) SceneAtlas.current.toggleHud(); else AtlasLauncher.show(); return true; }});
 });
 
+Hooks.once('setup', () => { try { document.body.classList.toggle('wca-vtm', !!game.settings.get(MOD, 'vtmTheme')); } catch (e) {} });
+
 Hooks.once('ready', () => {
+  try { document.body.classList.toggle('wca-vtm', !!game.settings.get(MOD, 'vtmTheme')); Clock.render(); } catch (e) { console.error(`${MOD} | clock`, e); }
   console.log(`${MOD} | ready — open the City Atlas from the Journal sidebar, the Journal Notes tools, Alt+M, or game.modules.get('${MOD}').api.open()`);
   game.socket.on(`module.${MOD}`, onSocket);
   const mod = game.modules.get(MOD);
@@ -46,6 +53,8 @@ Hooks.once('ready', () => {
     get scene() { return SceneAtlas.current; },
     /** Why does an atlas scene look wrong? Run in the console (F12) and send the result. */
     diagnose() { const d = SceneAtlas.current?.diagnose() ?? {mounted: false, version: game.modules.get(MOD)?.version, foundry: game.version, sceneFlag: canvas?.scene?.getFlag(MOD, 'atlas') ?? null}; console.log(`${MOD} | diagnose ${JSON.stringify(d)}`); showDiagnosis(d); return d; },
+    /** The chronicle clock: api.clock.advance(60), api.clock.set(Date.UTC(1991, 9, 31, 22, 0)), api.clock.nextDusk(). */
+    clock: Clock,
     JournalStore, isAtlasEntry
   };
 });

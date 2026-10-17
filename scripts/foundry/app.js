@@ -46,7 +46,34 @@ export function makeAdapter(app) {
     createActors: game.user.isGM ? (list, o) => createActors(list, o) : null,
     // personal notes on the map, kept in each user's own flags (players can write those, not the atlas)
     notes: notesApi(app),
-    onNotes: cb => { const id = Hooks.on('updateUser', (u, ch) => { if (ch?.flags?.[MOD] !== undefined) cb(); }); return () => Hooks.off('updateUser', id); }
+    party: partyApi(app),
+    onNotes: cb => { const id = Hooks.on('updateUser', (u, ch) => { if (ch?.flags?.[MOD] !== undefined || ch?.character !== undefined || ch?.avatar !== undefined) cb(); }); const id2 = Hooks.on('updateActor', (a, ch) => { if (ch?.img !== undefined || ch?.name !== undefined) cb(); }); return () => { Hooks.off('updateUser', id); Hooks.off('updateActor', id2); }; }
+  };
+}
+/** Where each player's character is on this atlas, kept in that user's flags (the GM may move anyone). */
+function partyApi(app) {
+  const eid = () => app.entry?.id;
+  const img = u => { const a = u.character; const i = a && a.img && !DEFAULT_ICON.test(a.img) ? a.img : null; return i || (u.avatar && !DEFAULT_ICON.test(u.avatar) ? u.avatar : null); };
+  return {
+    list() {
+      const seeAll = game.user.isGM, others = game.settings.get(MOD, 'partyVisible');
+      const out = [];
+      for (const u of game.users) {
+        const pos = (u.getFlag?.(MOD, 'pos') || {})[eid()] || null; const mine = u.id === game.user.id;
+        if (u.isGM && !pos) continue;
+        if (!seeAll && !mine && (!others || !pos || pos.hidden)) continue;
+        out.push({uid: u.id, name: u.character?.name || u.name, player: u.character ? u.name : '', img: img(u), color: u.color?.css ?? (typeof u.color === 'string' ? u.color : undefined), mine, at: pos?.at || null, realm: pos?.realm, level: pos?.level, hidden: !!pos?.hidden});
+      }
+      return out;
+    },
+    async save(uid, pos) {
+      const u = game.users.get(uid); if (!u || (u.id !== game.user.id && !game.user.isGM)) return;
+      await u.update({[`flags.${MOD}.pos.${eid()}`]: {at: pos.at, realm: pos.realm, level: pos.level || null, hidden: !!pos.hidden, t: Date.now()}});
+    },
+    async remove(uid) {
+      const u = game.users.get(uid); if (!u || (u.id !== game.user.id && !game.user.isGM)) return;
+      await u.update({[`flags.${MOD}.pos.-=${eid()}`]: null});
+    }
   };
 }
 function notesApi(app) {

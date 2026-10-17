@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.5.0
+Built on 1.3.0 / 1.4.1 (the 1.4.0 changes stay withdrawn).
+- **Crossing animations.** Switching realms plays a short animation in the new realm's manner: golden and lilac sparks for the Dreaming, falling ash for the Shadowlands, Gauntlet ripples for the Umbra, blood seeping through for the waking city. Going down a level sinks into the dark; going up rises out of it. Works on atlas scenes and in the atlas window. Each realm can choose its animation (*Edit → Realms & levels → Crossing animation*); the *Animate the map* setting or the system's reduced-motion preference turns them off.
+- **Chronicle clock.** The in-game date and time sit at the top of the screen for everyone, with the hours until dawn (or until dusk, in daylight) worked out for the chronicle city, US daylight saving included. The Storyteller hovers it for −1h, −10m, +10m, +1h, *Dusk*, *Dawn* and a pen to set any date and time. It never moves by itself. Settings: show/hide and 24-hour time per player; latitude, longitude and time zone for the world. Macros: `game.modules.get('wod-city-atlas').api.clock.advance(60)`.
+- **Characters on the map.** Each player's character appears on atlas scenes as a round portrait pin (the Actor's picture, ringed in the player's colour, with a name plate). Players drag their own; the Storyteller drags anyone, and can place, find, hide from the others or take a character off the map from the new *Characters* list in the Map tab (or the people button on the scene toolbar). Positions are stored per atlas in each user's data. World setting *Players see each other on the atlas*.
+- **A Masquerade look for Foundry.** Foundry's own interface (scene controls, sidebar and directories, chat, window title bars, dialogs, player list, macro bar, notifications, menus, the pause screen) is restyled in black, bone and blood with gothic type and a faint bloodshot vignette. Character sheets are not touched. Client setting *Masquerade look for Foundry* turns it off.
+- The atlas dossier gets matching touches: a blood-red rule under the title, glowing tabs, drop capitals, diamond section marks.
+
 ## 1.4.1
 - **Rolled back to 1.3.0.** This release is identical to 1.3.0; the 1.4.0 changes (rewritten Milwaukee texts, neonate start, update-from-preset) are withdrawn.
 
