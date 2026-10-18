@@ -188,7 +188,16 @@ export class SceneAtlas {
   bindBoard() {
     let down = null;
     const onBoard = e => { const t = e.target; return t === this.board || (t && t.tagName === 'CANVAS' && t.id === 'board'); };
-    this._pd = e => { down = onBoard(e) && e.button === 0 ? {x: e.clientX, y: e.clientY, t: performance.now()} : null; };
+    this._pd = e => {
+      down = null; if (!onBoard(e) || e.button !== 0 || !this.view) return;
+      // pins sit above the zones: a press on a pin is the atlas's, not Foundry's (no drag-select box, no token deselect)
+      const [sx, sy] = this.local(e), mk = this.view.markerAt(sx, sy);
+      if (mk && !this.tokenAt(sx, sy, e)) {
+        e.stopPropagation(); e.preventDefault();
+        if (mk.party && this.view.canMoveParty(mk.party)) { this.view.partyDrag(e, mk.party, mk.el, true); return; }
+      }
+      down = {x: e.clientX, y: e.clientY, t: performance.now()};
+    };
     this._pu = e => { const d = down; down = null; if (!d || e.button !== 0 || !onBoard(e)) return; if (Math.hypot(e.clientX - d.x, e.clientY - d.y) > 5 || performance.now() - d.t > 700) return; this.clickAt(e); };
     this._pm = e => { if (!onBoard(e)) { if (this._overBoard) { this._overBoard = false; this._pl(); } return; } this._overBoard = true; this._last = e; if (!this._hoverRaf) this._hoverRaf = requestAnimationFrame(() => { this._hoverRaf = 0; this.hoverAt(this._last); }); };
     this._pl = () => { if (!this.view) return; if (this.view.hover) { this.view.hover = null; this.view.dirty(); } this.view.hideTip(); };

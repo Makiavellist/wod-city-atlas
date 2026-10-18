@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.7.0
+- **Drag character portraits straight on the scene.** Press on a portrait and drag; no tool or mode needed. The press is taken by the atlas, so Foundry no longer starts a selection box or deselects tokens under a pin. A plain click still opens the character's sheet.
+- **The Umbra, reworked as old woods.** Dark moss-green night, drifting canopy shadows, fireflies and falling leaves, paper grain and a deep vignette; streets and shores drawn like faded ink. Wild spirit zones are hand-inked (dashed borders, leaf, claw, paw and moon marks, rust hatching for the Wyrm); the Weaver's places stay crisp, blue and modern as a deliberate contrast. Pins, routes and the legend follow. The crossing into the Umbra is a slow fall of dark green mist and leaves with the city fading to sepia. The dossier and (with the Masquerade look) Foundry's own windows, sidebar, chat and clock turn to old paper in the Umbra.
+- **Kindred taint is now readable.** The dark circles in the Umbra mark Kindred taint: the dead patches vampire havens and hunting grounds leave in the spirit world. They now look like rot, and each has a name and a short description on hover and click.
+- **MASQUERADE VIOLATION.** A new Storyteller-only button (the red theatre masks) in the Token and Notes tool columns flashes a full-screen alert on every player's screen: a cracking, bleeding mask, the words in red, a drum roll. Shift-click to add a line of text underneath. It fades after a few seconds or on a click. Macro: `game.modules.get('wod-city-atlas').api.breach()`.
+- Existing atlases: *Edit → Import / export → Refresh realm looks* now also brings in category colours and the Kindred taint.
+
 ## 1.6.0
 - **Fix: pins and character portraits could not be clicked on an atlas scene; the zone behind them opened instead.** Pins now always win over the zones and domains behind them, and a click that selects a Foundry token no longer opens the zone under it.
 - **Clicking a character's portrait** opens that character's sheet (for the Storyteller and the owner).

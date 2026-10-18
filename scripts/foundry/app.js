@@ -223,6 +223,7 @@ export function shareView(entry, state) {
   ui.notifications.info(L('Shared', 'Shown to the players who can see this atlas.'));
 }
 export function onSocket(msg) {
+  if (msg && msg.action === 'breach') { import('./breach.js').then(m => m.showBreach({text: msg.text || ''})); return; }
   if (msg && msg.action === 'reveal') {
     if (game.user.isGM || (msg.ids && !msg.ids.includes(game.user.id))) return;
     const entry = game.journal.get(msg.entryId); if (!entry || !entry.testUserPermission(game.user, 'OBSERVER')) return;

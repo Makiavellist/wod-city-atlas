@@ -747,7 +747,7 @@ export class AtlasEditor {
       <div class="ed-sep"></div>
       <h3>Merge from another atlas</h3><p class="hint">Adds the people, factions, categories and pages of another exported atlas without touching the map.</p>
       <label class="btn">${svg('upload')} Merge people & lore<input type="file" accept=".json,application/json" hidden data-ed="merge"></label>
-      ${this.A.loadPreset ? `<div class="ed-sep"></div><h3>Realm looks from the preset</h3><p class="hint">Copies the colours, effects and map styles of every realm (and the styles and colours of the spirit zones) from the bundled Milwaukee preset into this atlas. Nothing else changes: no texts, positions, visibility or entries.</p><button type="button" class="btn" data-ed="looks">${svg('image')} Refresh realm looks</button>` : ''}</div>`;
+      ${this.A.loadPreset ? `<div class="ed-sep"></div><h3>Realm looks from the preset</h3><p class="hint">Copies the colours, effects and map styles of every realm (and the styles and colours of the spirit zones, place categories and the Umbra's Kindred taint) from the bundled Milwaukee preset into this atlas. Nothing else changes: no texts, positions, visibility or entries.</p><button type="button" class="btn" data-ed="looks">${svg('image')} Refresh realm looks</button>` : ''}</div>`;
     pane.onclick = e => { const b = e.target.closest('button[data-ed]'); if (!b) return; const a = b.dataset.ed;
       if (a === 'back') this.back();
       else if (a === 'export') this.download(`${safeId(this.m.atlas.title) || 'atlas'}.atlas.json`, JSON.stringify(this.store.exportData(), null, 1));
@@ -780,6 +780,8 @@ export class AtlasEditor {
       await this.store.setItem('realms', rid, d);
     }
     for (const [sid, ps] of Object.entries(pre.styles)) if (a.styles[sid] && JSON.stringify(a.styles[sid]) !== JSON.stringify(ps)) await this.store.setItem('styles', sid, clone(ps));
+    for (const [cid, pc] of Object.entries(pre.categories)) { const c = a.categories[cid]; if (c && pc.color && c.color !== pc.color) await this.store.setItem('categories', cid, Object.assign(clone(c), {color: pc.color})); }
+    for (const [gid, pg] of Object.entries(pre.auras)) { const g = a.auras[gid]; if (!g || g.layer !== 'taint' || pg.layer !== 'taint') continue; const d = clone(g); for (const k of ['color', 'ring', 'mode', 'decor', 'name', 'kicker', 'html']) { if (pg[k] !== undefined) d[k] = clone(pg[k]); } await this.store.setItem('auras', gid, d); }
     for (const [zid, pz] of Object.entries(pre.zones)) { const z = a.zones[zid]; if (!z || z.realm !== pz.realm) continue; if (z.color !== pz.color || JSON.stringify(z.style) !== JSON.stringify(pz.style)) { const d = clone(z); d.color = pz.color; d.style = clone(pz.style); await this.store.setItem('zones', zid, d); } }
     this.v.applyView(); this.v.dirty(); this.notify('Realm looks refreshed from the preset.');
   }

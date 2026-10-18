@@ -262,6 +262,20 @@ export class Renderer {
         else g = x.createLinearGradient(0, 0, 0, H);
         (e.stops || [[0, 'rgba(0,0,0,0)'], [1, 'rgba(0,0,0,.4)']]).forEach(([o, col]) => g.addColorStop(o, col)); x.fillStyle = g; x.fillRect(0, 0, W, H); break;
       }
+      case 'grain': {
+        // paper and ink grain: a small noise tile repeated over the map (hand-drawn, rustic realms)
+        let pat = this.effectCache.get('grain:' + (e.tone || 'dark'));
+        if (!pat) { const cv = document.createElement('canvas'); cv.width = cv.height = 180; const g = cv.getContext('2d'); const r = rng(4242); const img = g.createImageData(180, 180); for (let i = 0; i < img.data.length; i += 4) { const v = r(); const on = v > 0.5; img.data[i] = img.data[i + 1] = img.data[i + 2] = on ? 235 : 0; img.data[i + 3] = Math.floor(Math.pow(Math.abs(v - 0.5) * 2, 3) * 255); } g.putImageData(img, 0, 0); pat = x.createPattern(cv, 'repeat'); this.effectCache.set('grain:' + (e.tone || 'dark'), pat); }
+        x.globalAlpha = e.alpha ?? 0.06; x.fillStyle = pat; x.fillRect(0, 0, W, H); x.globalAlpha = 1; break;
+      }
+      case 'canopy': {
+        // slow shadows of leaves and branches drifting over the map
+        const key = 'canopy:' + (e.count || 14); let bl = this.effectCache.get(key);
+        if (!bl) { const r = rng(1313); bl = Array.from({length: e.count || 14}, () => ({x: r(), y: r(), s: 0.12 + r() * 0.22, ph: r() * 6.28, k: r()})); this.effectCache.set(key, bl); }
+        const col = e.color || 'rgba(4,10,5,.38)', M = Math.max(W, H);
+        for (const b of bl) { const px = b.x * W + Math.sin(T * 0.05 + b.ph) * M * 0.02, py = b.y * H + Math.cos(T * 0.04 + b.ph) * M * 0.015, rr = b.s * M; const g = x.createRadialGradient(px, py, 0, px, py, rr); g.addColorStop(0, col); g.addColorStop(0.6, withAlpha(col, 0.45)); g.addColorStop(1, withAlpha(col, 0)); x.fillStyle = g; x.fillRect(px - rr, py - rr, rr * 2, rr * 2); }
+        break;
+      }
       case 'fog': x.fillStyle = e.color || 'rgba(0,0,0,.3)'; x.fillRect(0, 0, W, H); break;
       case 'vignette': { const g = x.createRadialGradient(W / 2, H / 2, Math.min(W, H) * (e.inner ?? 0.33), W / 2, H / 2, Math.max(W, H) * (e.outer ?? 0.76)); g.addColorStop(0, withAlpha(e.color || '#000', 0)); g.addColorStop(1, e.color || 'rgba(0,0,0,.5)'); x.fillStyle = g; x.fillRect(0, 0, W, H); break; }
       case 'waves': {
@@ -287,6 +301,7 @@ export class Renderer {
         for (const p of ps) {
           const px = ((p.x * W + Math.sin(T * 0.35 + p.ph) * drift) % W + W) % W, py = ((((p.y + dir * T * sp * p.s) % 1) + 1) % 1) * H;
           if (e.shape === 'streak') { x.fillStyle = e.color || 'rgba(160,190,210,.25)'; x.fillRect(px, py, 1, 4 + p.s * 4); }
+          else if (e.shape === 'leaf') { const cols = e.colors || ['rgba(140,160,80,.5)']; x.save(); x.translate(px, py); x.rotate(T * 0.6 * (p.k ? 1 : -1) + p.ph); x.fillStyle = cols[p.k % cols.length]; x.beginPath(); x.ellipse(0, 0, p.r * 2.6, p.r * 1.1, 0, 0, 6.283); x.fill(); x.restore(); }
           else if (e.shape === 'glow') { const cc = (e.colors || ['255,255,255'])[p.k % (e.colors || [1]).length]; const f = 0.4 + 0.6 * Math.abs(Math.sin(T * 1.1 + p.ph)); const rr = p.r * 3; const g = x.createRadialGradient(px, py, 0, px, py, rr); g.addColorStop(0, `rgba(${cc},${0.55 * f})`); g.addColorStop(1, `rgba(${cc},0)`); x.fillStyle = g; x.fillRect(px - rr, py - rr, 2 * rr, 2 * rr); }
           else { x.fillStyle = e.color || 'rgba(200,205,198,.22)'; x.beginPath(); x.arc(px, py, p.r, 0, 6.283); x.fill(); }
         }
@@ -296,7 +311,7 @@ export class Renderer {
     if (e.clip) x.restore();
   }
   animated(view) {
-    if (view.effects.some(e => ['stars', 'waves', 'particles'].includes(e.type) && (e.twinkle !== false))) return true;
+    if (view.effects.some(e => ['stars', 'waves', 'particles', 'canopy'].includes(e.type) && (e.twinkle !== false))) return true;
     const st = this.v.st;
     if (Object.values(this.m.atlas.auras).some(a => (a.pulse || a.flicker || a.mode === 'vortex') && this.m.inRealm(a, st) && this.m.inLevel(a, st))) return true;
     if (Object.values(this.m.atlas.routes).some(r => this.m.inRealm(r, st) && this.m.inLevel(r, st) && this.m.passes(r.style).some(p => p.flow || p.flicker))) return true;

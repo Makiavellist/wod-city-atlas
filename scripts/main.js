@@ -6,6 +6,7 @@ import {rebasePaths} from './core/store.js';
 import {blankAtlas} from './core/templates.js';
 import {Clock, registerClockSettings} from './foundry/clock.js';
 import {CalendarApp, Events, registerCalendarSettings} from './foundry/calendar.js';
+import {broadcastBreach, showBreach} from './foundry/breach.js';
 
 Hooks.once('init', () => {
   game.settings.register(MOD, 'animate', {name: 'WCA.SettingAnimate', hint: 'WCA.SettingAnimateHint', scope: 'client', config: true, type: Boolean, default: true});
@@ -60,6 +61,8 @@ Hooks.once('ready', () => {
     clock: Clock,
     /** The chronicle calendar: api.calendar.show(), api.events.visible(). */
     calendar: CalendarApp, events: Events,
+    /** The red alert: api.breach() for everyone (GM), api.breach(true) to add a line of text. */
+    breach: withText => broadcastBreach(withText), showBreach,
     JournalStore, isAtlasEntry
   };
 });
@@ -74,6 +77,16 @@ Hooks.on('getSceneControlButtons', controls => {
   const tok = controls.tokens;
   if (tok && tok.tools && tok !== group) tok.tools.wcaHud = {name: 'wcaHud', title: 'WCA.Dossier', icon: 'fa-solid fa-book-atlas', order: Object.keys(tok.tools).length, button: true, visible: true,
     onChange: () => { if (SceneAtlas.current) SceneAtlas.current.toggleHud(); else AtlasLauncher.show(); }};
+});
+
+/* The Storyteller's "MASQUERADE VIOLATION" alarm, on the Token and Notes tool columns (works with or without an atlas). */
+Hooks.on('getSceneControlButtons', controls => {
+  if (!game.user.isGM) return;
+  for (const g of [controls.tokens, controls.notes]) {
+    if (!g || !g.tools) continue;
+    g.tools.wcaBreach = {name: 'wcaBreach', title: 'Masquerade violation! (shows on every screen; Shift-click to add a line)', icon: 'fa-solid fa-masks-theater wca-breach-tool', order: 900, button: true, visible: true,
+      onChange: (event) => broadcastBreach(!!event?.shiftKey)};
+  }
 });
 
 /* A "City Atlas" button at the top of the Journal sidebar. */

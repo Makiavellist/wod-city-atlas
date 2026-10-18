@@ -253,12 +253,12 @@ export class AtlasView {
   /** The crossing animation: the old map dissolves in the manner of the new realm while a veil of its colours washes over. */
   crossing(kind, ms = 1300) {
     if (reduceMotion() || !this.cam.W || this.opts.animate === false) return;
-    if (kind === 'umbra') ms = Math.max(ms, 2300);
+    if (kind === 'umbra') ms = Math.max(ms, 2600);
     const f = this.el.fade, fx = this.el.crossfx;
     try { f.width = this.el.canvas.width; f.height = this.el.canvas.height; f.style.width = this.cam.W + 'px'; f.style.height = this.cam.H + 'px'; const c = f.getContext('2d'); c.clearRect(0, 0, f.width, f.height); c.drawImage(this.el.canvas, 0, 0); } catch (e) {}
     f.className = 'wca-fade'; f.hidden = false; f.style.animation = 'none'; void f.offsetWidth;
     f.style.animation = `wca-out-${kind} ${ms}ms ease-in forwards`;
-    const motes = {dream: 22, shadow: 26, umbra: 10, blood: 16, descend: 0, ascend: 0}[kind] ?? 12;
+    const motes = {dream: 22, shadow: 26, umbra: 26, blood: 16, descend: 0, ascend: 0}[kind] ?? 12;
     let h = '<i class="veil"></i>';
     for (let i = 0; i < motes; i++) { const x = Math.random() * 100, y = Math.random() * 100, d = Math.random() * ms * 0.45, s = 0.6 + Math.random() * 1.2; h += `<b style="left:${x.toFixed(1)}%;top:${y.toFixed(1)}%;animation-delay:${d.toFixed(0)}ms;--s:${s.toFixed(2)}"></b>`; }
     fx.className = `wca-crossfx fx-${kind}`; fx.style.setProperty('--fx-ms', ms + 'ms'); fx.innerHTML = h; fx.hidden = false;
@@ -473,8 +473,8 @@ export class AtlasView {
   partyClick(c) { if (c.uuid && this.adapter.openUuid && (this.isGM || c.mine)) this.adapter.openUuid(c.uuid); else if (c.at) this.focusAt(c.at); }
   hoverAt(sx, sy) {
     const mk = this.markerAt(sx, sy);
-    if (mk) { if (this.hover) { this.hover = null; this.dirty(); } this.el.map.style.cursor = 'pointer'; if (this._tipFor !== mk) { this._tipFor = mk; mk.el.dispatchEvent(new PointerEvent('pointerenter')); } return; }
-    this._tipFor = null;
+    if (mk) { if (this.hover) { this.hover = null; this.dirty(); } this.el.map.style.cursor = mk.party && this.canMoveParty(mk.party) ? 'grab' : 'pointer'; if (this.sc) document.body.style.cursor = this.el.map.style.cursor; if (this._tipFor !== mk) { this._tipFor = mk; mk.el.dispatchEvent(new PointerEvent('pointerenter')); } return; }
+    this._tipFor = null; if (this.sc && document.body.style.cursor) document.body.style.cursor = '';
     const h = this.renderer.hitTest(sx, sy); const id = h ? (h.zone || h.id) : null;
     if (id !== this.hover) { this.hover = id; this.dirty(); }
     if (h) { const it = this.model.item(h.id); const coll = this.model.collOf(h.id); this.showTip(this.tipHtml(it, coll), null, sx, sy); this.el.map.style.cursor = 'pointer'; }
@@ -880,13 +880,14 @@ export class AtlasView {
     const c = this.partyList().find(x => x.uid === uid);
     this.adapter.party.save(uid, {at, realm: this.st.realm, level: this.st.level, hidden: c ? !!c.hidden : false});
   }
-  partyDrag(e, c, el) {
+  partyDrag(e, c, el, fromBoard = false) {
     e.stopPropagation(); if (!this.canMoveParty(c) || e.button !== 0) return;
+    const sx0 = e.clientX, sy0 = e.clientY;
     e.preventDefault(); this.hideTip();
     const M = this.el.map, mk = this.markers.find(m => m.party && m.party.uid === c.uid); let moved = false;
-    const mv = ev => { const r = M.getBoundingClientRect(); const w = this.toWorld(ev.clientX - r.left, ev.clientY - r.top); if (mk) { mk.drag = w; moved = true; this.placeMarkers(); } };
+    const mv = ev => { if (!moved && Math.hypot(ev.clientX - sx0, ev.clientY - sy0) < 4) return; ev.stopPropagation(); const r = M.getBoundingClientRect(); const w = this.toWorld(ev.clientX - r.left, ev.clientY - r.top); if (mk) { mk.drag = w; moved = true; this.placeMarkers(); } };
     const up = ev => { window.removeEventListener('pointermove', mv, true); window.removeEventListener('pointerup', up, true); el.classList.remove('dragging');
-      if (moved) el._dragged = true;
+      if (moved) el._dragged = true; else if (fromBoard) this.partyClick(c);
       if (moved && mk && mk.drag) { const w = mk.drag; mk.w = w; delete mk.drag; this.adapter.party.save(c.uid, {at: this.model.proj.toLL(w).map(this.model.proj.round), realm: this.st.realm, level: this.st.level, hidden: !!c.hidden}); } };
     el.classList.add('dragging');
     window.addEventListener('pointermove', mv, true); window.addEventListener('pointerup', up, true);
