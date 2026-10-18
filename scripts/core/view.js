@@ -26,6 +26,37 @@ function pinBody(shape, border = 'solid', width, bg) {
   return `<svg class="pbg" viewBox="0 0 32 32" aria-hidden="true"><g style="fill:${fill};stroke:var(--c);stroke-width:${border === 'double' ? w + 1.6 : w};${dash}">${d}</g><g style="fill:${hi};opacity:.55;stroke:none;transform:scale(.62);transform-origin:16px 13px">${d}</g>${dbl}</svg>`;
 }
 
+/** Crossing into the Umbra: vines that grow in from the edges of the map, putting out leaves as they go. */
+const VINE_LEAVES = ['#55702b', '#6a8234', '#465e24', '#7a8a39', '#5c7a2e', '#8c6c2a', '#9a7a32'];
+function vinesSvg(W, H, ms) {
+  const R = Math.random, M = Math.min(W, H), grow = ms * 0.5, out = [];
+  const starts = [[0, 0], [W, 0], [0, H], [W, H], [W * (0.3 + R() * 0.4), 0], [0, H * (0.3 + R() * 0.4)], [W, H * (0.3 + R() * 0.4)], [W * (0.3 + R() * 0.4), H]];
+  const leafD = L => { const w = L * 0.36; return `M0 0C${(L * .25).toFixed(1)} ${(-w).toFixed(1)} ${(L * .7).toFixed(1)} ${(-w * .9).toFixed(1)} ${L.toFixed(1)} 0C${(L * .7).toFixed(1)} ${(w * .9).toFixed(1)} ${(L * .25).toFixed(1)} ${w.toFixed(1)} 0 0Z`; };
+  const vine = (x0, y0, ang, len, width, delay, depth) => {
+    // a wandering stem of a few curves, sampled so leaves can sit along it
+    const n = 4, seg = len / n; let x = x0, y = y0, a = ang, d = `M${x0.toFixed(1)} ${y0.toFixed(1)}`; const pts = [[x0, y0, a]];
+    for (let i = 0; i < n; i++) {
+      const bend = (R() - 0.5) * 1.3, a1 = a + bend * 0.5, a2 = a + bend;
+      const c1 = [x + Math.cos(a1 + (i % 2 ? 0.7 : -0.7)) * seg * 0.45, y + Math.sin(a1 + (i % 2 ? 0.7 : -0.7)) * seg * 0.45];
+      const e = [x + Math.cos(a2) * seg, y + Math.sin(a2) * seg], c2 = [e[0] - Math.cos(a2 + (i % 2 ? -0.6 : 0.6)) * seg * 0.4, e[1] - Math.sin(a2 + (i % 2 ? -0.6 : 0.6)) * seg * 0.4];
+      d += `C${c1[0].toFixed(1)} ${c1[1].toFixed(1)} ${c2[0].toFixed(1)} ${c2[1].toFixed(1)} ${e[0].toFixed(1)} ${e[1].toFixed(1)}`;
+      for (let k = 1; k <= 6; k++) { const t = k / 6, u = 1 - t; const px = u * u * u * x + 3 * u * u * t * c1[0] + 3 * u * t * t * c2[0] + t * t * t * e[0], py = u * u * u * y + 3 * u * u * t * c1[1] + 3 * u * t * t * c2[1] + t * t * t * e[1];
+        const dx = 3 * u * u * (c1[0] - x) + 6 * u * t * (c2[0] - c1[0]) + 3 * t * t * (e[0] - c2[0]), dy = 3 * u * u * (c1[1] - y) + 6 * u * t * (c2[1] - c1[1]) + 3 * t * t * (e[1] - c2[1]); pts.push([px, py, Math.atan2(dy, dx)]); }
+      x = e[0]; y = e[1]; a = a2;
+    }
+    const st = `style="--d:${delay.toFixed(0)}ms"`;
+    out.push(`<path class="st" pathLength="1" d="${d}" stroke="#141a0a" stroke-width="${(width + 2.4).toFixed(1)}" fill="none" stroke-linecap="round" ${st}/><path class="st" pathLength="1" d="${d}" stroke="#3d4a20" stroke-width="${width.toFixed(1)}" fill="none" stroke-linecap="round" ${st}/>`);
+    pts.forEach(([px, py, pa], i) => {
+      if (!i || i % 2) return; const f = i / (pts.length - 1), L = (22 - f * 10) * (depth ? 0.75 : 1) * (0.8 + R() * 0.45), side = (i / 2) % 2 ? 1 : -1;
+      const deg = (pa + side * (0.75 + R() * 0.5)) * 180 / Math.PI, col = VINE_LEAVES[Math.floor(R() * VINE_LEAVES.length)];
+      out.push(`<g transform="translate(${px.toFixed(1)} ${py.toFixed(1)}) rotate(${deg.toFixed(0)})"><path class="lf" d="${leafD(L)}" fill="${col}" stroke="#141a0a" stroke-width="1" style="--d:${(delay + f * grow * 0.9).toFixed(0)}ms"/></g>`);
+      if (!depth && i === 12) vine(px, py, pa + side * 0.9, len * 0.35, width * 0.6, delay + f * grow * 0.8, 1);
+    });
+  };
+  for (const [x0, y0] of starts) { const a = Math.atan2(H / 2 - y0, W / 2 - x0) + (R() - 0.5) * 0.9; vine(x0, y0, a, M * (0.3 + R() * 0.2), 4 + R() * 2.5, R() * ms * 0.12, 0); }
+  return `<svg class="vines" viewBox="0 0 ${W.toFixed(0)} ${H.toFixed(0)}" preserveAspectRatio="none" aria-hidden="true">${out.join('')}</svg>`;
+}
+
 export class AtlasView {
   /**
    * @param {HTMLElement} root
@@ -184,7 +215,7 @@ export class AtlasView {
   /* ================= realm / level ================= */
   applyView(first) {
     this.rv = this.model.view(this.st.realm, this.st.level);
-    const t = this.rv.theme, R = this.root, RS = this.roots();
+    const t = this.rv.theme, RS = this.roots();
     const set = (k, v) => RS.forEach(r => r.style.setProperty('--wca-' + k, v));
     set('panel', t.panel); set('panel2', t.panel2); set('line', t.line); set('accent', t.accent); set('gold', t.gold); set('muted', t.muted); set('faint', t.faint); set('bone', t.bone);
     set('accent-line', t.accentLine); set('accent-soft', t.accentSoft); set('seg-on', t.segOn); set('seg-on-fg', t.segOnFg); set('glow', t.glow); set('chrome', t.chrome);
@@ -261,6 +292,7 @@ export class AtlasView {
     const motes = {dream: 22, shadow: 26, umbra: 26, blood: 16, descend: 0, ascend: 0}[kind] ?? 12;
     let h = '<i class="veil"></i>';
     for (let i = 0; i < motes; i++) { const x = Math.random() * 100, y = Math.random() * 100, d = Math.random() * ms * 0.45, s = 0.6 + Math.random() * 1.2; h += `<b style="left:${x.toFixed(1)}%;top:${y.toFixed(1)}%;animation-delay:${d.toFixed(0)}ms;--s:${s.toFixed(2)}"></b>`; }
+    if (kind === 'umbra') h += vinesSvg(this.cam.W, this.cam.H, ms);
     fx.className = `wca-crossfx fx-${kind}`; fx.style.setProperty('--fx-ms', ms + 'ms'); fx.innerHTML = h; fx.hidden = false;
     clearTimeout(this._fadeT); this._fadeT = setTimeout(() => { f.hidden = true; f.style.animation = ''; fx.hidden = true; fx.innerHTML = ''; }, ms + 120);
     this.dirty();
@@ -530,7 +562,7 @@ export class AtlasView {
   frame() { this.needs = false; if (!this.cam.W || this.dead) return; this.renderer.draw(); this.placeMarkers(); this.drawScale(); }
   /** Scene mode: called by the host on every Foundry frame. Follows the scene camera and redraws when needed. */
   sceneTick(force) {
-    if (this.dead || !this.cam.W) return false;
+    if (this.dead || !this.cam.W || !this.rv) return false;
     const c = this.sc.camera(); if (!c || !Number.isFinite(c.cx) || !Number.isFinite(c.cy) || !Number.isFinite(c.z)) { this.sceneOK = false; return false; }
     const moved = c.cx !== this.cam.cx || c.cy !== this.cam.cy || c.z !== this.cam.z;
     if (!moved && !this.needs && !force) return false;

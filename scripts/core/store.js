@@ -8,6 +8,14 @@ export class BaseStore {
   emit(info = {}) { for (const cb of this.listeners) { try { cb(info); } catch (e) { console.error('wod-city-atlas | listener', e); } } }
   /** Apply a change locally (optimistic), then persist. */
   async setItem(coll, id, data) { if (!COLLECTIONS.includes(coll)) throw new Error('Unknown collection ' + coll); const d = clone(data); d.id = id; this.atlas[coll][id] = d; this.emit({coll, id}); await this._persistItem(coll, id, d); }
+  /** Many items at once: [[coll, id, data], …]. Applied locally, announced once, written one collection at a time. */
+  async setItems(list) {
+    const by = new Map();
+    for (const [coll, id, data] of list) { if (!COLLECTIONS.includes(coll)) throw new Error('Unknown collection ' + coll); const d = clone(data); d.id = id; this.atlas[coll][id] = d; if (!by.has(coll)) by.set(coll, {}); by.get(coll)[id] = d; }
+    this.emit({many: true});
+    for (const [coll, items] of by) await this._persistItems(coll, items);
+  }
+  async _persistItems(coll, items) { for (const [id, d] of Object.entries(items)) await this._persistItem(coll, id, d); }
   async deleteItem(coll, id) { delete this.atlas[coll][id]; this.emit({coll, id, deleted: true}); await this._persistDelete(coll, id); }
   async setMeta(patch) { for (const [k, v] of Object.entries(patch)) { if (!META_KEYS.includes(k)) continue; if (v === undefined || v === null) delete this.atlas[k]; else this.atlas[k] = clone(v); } normalize(this.atlas); this.emit({meta: true}); await this._persistMeta(); }
   async replaceAll(atlas, basemap) { this.atlas = normalize(clone(atlas)); if (basemap !== undefined) this.basemap = basemap; this.emit({all: true, basemap: basemap !== undefined}); await this._persistAll(); }

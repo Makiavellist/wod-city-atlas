@@ -1,5 +1,5 @@
 /* Canvas renderer for an atlas view. Draws base geography, zones, glows, routes, effects and labels. */
-import {zw, rgba, withAlpha, glyphPath, inPoly, segDist, rng, bbOf} from './util.js';
+import {zw, withAlpha, glyphPath, inPoly, segDist, rng, bbOf} from './util.js';
 
 export const FONTS = {
   title: "'Pirata One', 'UnifrakturCook', Georgia, serif",
@@ -7,6 +7,27 @@ export const FONTS = {
   sc: "'IM Fell English SC', 'IM Fell English', Georgia, serif",
   body: "'Alegreya Sans', 'Gill Sans', 'Trebuchet MS', system-ui, sans-serif"
 };
+
+/** A stable pseudo-random number in [-1, 1] for a point of the map. */
+function hash2(x, y) { const v = Math.sin(x * 12.9898 * 1e3 + y * 78.233 * 1e3) * 43758.5453; return (v - Math.floor(v)) * 2 - 1; }
+
+/** Tree crowns for the 'forest' effect: a few painted variants, drawn once and stamped many times. */
+function treeSprites(cols) {
+  const out = [];
+  for (let v = 0; v < 8; v++) {
+    const S = 128, cv = document.createElement('canvas'); cv.width = cv.height = S; const x = cv.getContext('2d'); const r = rng(311 + v * 97);
+    const base = cols[v % cols.length], lobes = 6 + Math.floor(r() * 4), L = [];
+    for (let i = 0; i < lobes; i++) { const a = r() * 6.283, d = r() * S * 0.17; L.push([S / 2 + Math.cos(a) * d, S / 2 + Math.sin(a) * d * 0.85, S * (0.12 + r() * 0.09)]); }
+    L.sort((p, q) => p[1] - q[1]);
+    // the shadow it throws, the dark edge of the crown, the lobes lit from the upper left, a few bright leaves
+    x.fillStyle = 'rgba(0,0,0,.42)'; x.beginPath(); x.ellipse(S * 0.56, S * 0.6, S * 0.33, S * 0.27, 0, 0, 6.283); x.fill();
+    x.fillStyle = withAlpha(base[0], 1); for (const [cx, cy, rr] of L) { x.beginPath(); x.arc(cx, cy, rr + 2.2, 0, 6.283); x.fill(); }
+    for (const [cx, cy, rr] of L) { const g = x.createRadialGradient(cx - rr * 0.4, cy - rr * 0.45, rr * 0.05, cx, cy, rr); g.addColorStop(0, withAlpha(base[2], 0.95)); g.addColorStop(0.45, withAlpha(base[1], 1)); g.addColorStop(1, withAlpha(base[0], 1)); x.fillStyle = g; x.beginPath(); x.arc(cx, cy, rr, 0, 6.283); x.fill(); }
+    for (let i = 0; i < 10; i++) { const a = -2.4 + r() * 1.6, d = S * (0.08 + r() * 0.18); x.fillStyle = withAlpha(base[2], 0.25 + r() * 0.35); x.beginPath(); x.ellipse(S / 2 + Math.cos(a) * d, S / 2 + Math.sin(a) * d, S * (0.012 + r() * 0.02), S * (0.008 + r() * 0.012), r() * 3, 0, 6.283); x.fill(); }
+    out.push(cv);
+  }
+  return out;
+}
 
 export class Renderer {
   constructor(view) {
@@ -25,7 +46,29 @@ export class Renderer {
   ts(w) { const c = this.cam, s = this.s(); return [(w[0] - c.cx) * s + c.W / 2, (w[1] - c.cy) * s + c.H / 2]; }
   vis(bb, pad = 40) { if (!bb) return false; const c = this.cam, s = this.s(); const x0 = (bb[0] - c.cx) * s + c.W / 2, x1 = (bb[2] - c.cx) * s + c.W / 2, y0 = (bb[1] - c.cy) * s + c.H / 2, y1 = (bb[3] - c.cy) * s + c.H / 2; return !(x1 < -pad || x0 > c.W + pad || y1 < -pad || y0 > c.H + pad); }
   mpp() { return this.m.proj.mpu(this.cam.cy) / this.s(); }
-  path(w, close) { const c = this.cam, s = this.s(), ox = c.W / 2 - c.cx * s, oy = c.H / 2 - c.cy * s, x = this.ctx; x.moveTo(w[0][0] * s + ox, w[0][1] * s + oy); for (let i = 1; i < w.length; i++) x.lineTo(w[i][0] * s + ox, w[i][1] * s + oy); if (close) x.closePath(); }
+  /** Add a polyline (world coordinates) to the current path. rough > 0 draws it by hand: each segment bows a little,
+   *  by an amount fixed to the map (it does not crawl while panning); seed varies the hand between strokes. */
+  path(w, close, rough = 0, seed = 0) {
+    const c = this.cam, s = this.s(), ox = c.W / 2 - c.cx * s, oy = c.H / 2 - c.cy * s, x = this.ctx;
+    if (!rough) { x.moveTo(w[0][0] * s + ox, w[0][1] * s + oy); for (let i = 1; i < w.length; i++) x.lineTo(w[i][0] * s + ox, w[i][1] * s + oy); if (close) x.closePath(); return; }
+    // long sides are split into short pieces (counted at whole zoom steps, so the line does not shimmer while zooming)
+    const n = w.length, last = close ? n : n - 1, zq = Math.pow(2, Math.floor(c.z));
+    let px = w[0][0] * s + ox, py = w[0][1] * s + oy; x.moveTo(px, py);
+    for (let i = 0; i < last; i++) {
+      const a = w[i], b = w[(i + 1) % n], qx = b[0] * s + ox, qy = b[1] * s + oy, dx = qx - px, dy = qy - py, len = Math.hypot(dx, dy);
+      if (len < 3) { x.lineTo(qx, qy); px = qx; py = qy; continue; }
+      const m = Math.max(1, Math.min(28, Math.round(Math.hypot(b[0] - a[0], b[1] - a[1]) * zq / 30))), nx = -dy / len, ny = dx / len, amp = Math.min(rough, len / m * 0.3);
+      let ex0 = px, ey0 = py;
+      for (let j = 0; j < m; j++) {
+        const t1 = (j + 1) / m, hj = hash2(a[0] + b[0] * 0.37 + j * 0.0131 + seed * 0.731, a[1] + b[1] * 0.37 - j * 0.0177 - seed * 0.419);
+        const jt = j < m - 1 ? 0.45 * amp * hash2(a[1] + j * 0.0213 + seed, b[0] - j * 0.0119) : 0;
+        const ex = px + dx * t1 + nx * jt, ey = py + dy * t1 + ny * jt, k = amp * hj;
+        x.quadraticCurveTo((ex0 + ex) / 2 + nx * k, (ey0 + ey) / 2 + ny * k, ex, ey); ex0 = ex; ey0 = ey;
+      }
+      px = qx; py = qy;
+    }
+    if (close) x.closePath();
+  }
   font(key) { const f = this.m.atlas.fonts || {}; return f[key] || FONTS[key] || FONTS.body; }
   image(src) {
     if (!src) return null;
@@ -71,8 +114,8 @@ export class Renderer {
   draw() {
     const v = this.v, x = this.ctx, c = this.cam, view = v.rv;
     x.setTransform(c.dpr, 0, 0, c.dpr, 0, 0); x.globalAlpha = 1; x.globalCompositeOperation = 'source-over'; x.lineCap = 'round'; x.lineJoin = 'round'; x.setLineDash([]);
-    // clearBase: the plain map is already underneath (a Foundry scene picture), so only draw what is on top of it
-    const fx = !v.clearBase;
+    // clearBase: the plain map is already underneath (a Foundry scene picture), so only draw what is on top of it.
+    // The realm's moving atmosphere (mist, leaves, motes, water) is never in the picture, so it is always drawn here.
     if (v.clearBase) x.clearRect(0, 0, c.W, c.H);
     else {
       x.fillStyle = view.bg; x.fillRect(0, 0, c.W, c.H);
@@ -81,13 +124,13 @@ export class Renderer {
       this.drawBase(view);
     }
     if (v.bare) return; // just the map itself (a neutral scene background)
-    if (fx) for (const e of view.effects) if (!e.under && e.clip && this.effectOn(e)) this.effect(e);
+    for (const e of view.effects) if (!e.under && e.clip && this.effectOn(e)) this.effect(e);
     this.drawEcho(view);
     this.drawZones();
     this.drawAuras();
     this.drawRoutes();
     this.drawThreads(view);
-    if (fx) for (const e of view.effects) if (!e.under && !e.clip && this.effectOn(e)) this.effect(e);
+    for (const e of view.effects) if (!e.under && !e.clip && this.effectOn(e)) this.effect(e);
     // labels collide with markers first
     this.boxes = v.markerBoxes();
     if (!v.noLabels) { this.drawZoneLabels(); this.drawLabels(view); this.drawFeatureLabels(view); }
@@ -117,7 +160,7 @@ export class Renderer {
         if (p.minZoom && z < p.minZoom || p.maxZoom && z > p.maxZoom) continue;
         if (p.layer && !this.v.layerOn(p.layer)) continue;
         x.beginPath();
-        if (f.rings) f.rings.forEach(r => this.path(r, true)); else f.lines.forEach(l => { if (l.length > 1) this.path(l); });
+        if (f.rings) f.rings.forEach(r => this.path(r, true, p.rough)); else f.lines.forEach(l => { if (l.length > 1) this.path(l, false, p.rough); });
         x.globalAlpha = p.alpha ?? 1;
         if (f.rings && (p.fill || p.pattern)) { x.fillStyle = p.pattern ? this.pattern(p.pattern) : p.fill; x.fill('evenodd'); if (p.pattern && p.fill) { x.fillStyle = p.fill; x.fill('evenodd'); } }
         if (p.stroke) { x.strokeStyle = p.stroke; x.lineWidth = zw(p.width ?? 1, z) * (p.add !== undefined && p.mul === false ? 1 : (f.w || 1)) + (p.add || 0); x.setLineDash(p.dash || []); x.lineDashOffset = p.flow ? -this.v.T * 14 * p.flow : 0; x.stroke(); x.setLineDash([]); x.lineDashOffset = 0; }
@@ -139,10 +182,12 @@ export class Renderer {
     const col = unknown ? '#9a9aa4' : (opts.color || this.m.colorOf(zn));
     const st0 = zn.style || (zn.domainStatus && this.m.atlas.styles['domain-' + zn.domainStatus] ? 'domain-' + zn.domainStatus : null);
     const passes = opts.echo ? [opts.echo] : unknown ? [{stroke: 'rgba(200,200,210,.55)', width: 1.3, dash: [3, 5], fill: '#9a9aa4', fillAlpha: 0.05}] : this.m.passes(st0 || {stroke: col, width: 1.6, fill: col, fillAlpha: 0.12});
-    const mk = () => { x.beginPath(); g.rings.forEach(r => this.path(r, true)); };
+    let rough = 0;
+    const mk = (sd = 0) => { x.beginPath(); g.rings.forEach(r => this.path(r, true, rough, sd)); };
     const base = opts.alpha ?? 1;
     for (const p of passes) {
       if (p.minZoom && z < p.minZoom || p.maxZoom && z > p.maxZoom) continue;
+      rough = p.rough || 0;
       mk();
       const fa = p.fillAlpha ?? (p.fill ? 1 : 0);
       if (fa > 0 || p.fill) {
@@ -157,7 +202,10 @@ export class Renderer {
       if (p.casing) { x.globalAlpha = base; x.strokeStyle = p.casing.color; x.lineWidth = zw(p.width ?? 1.6, z) + (p.casing.width || 3); x.setLineDash([]); x.stroke(); }
       if (p.stroke !== null && (p.width ?? 1) > 0.02) {
         x.globalAlpha = base * (p.strokeAlpha ?? 1) * (on && p.strokeAlpha ? 1 / p.strokeAlpha : 1);
-        x.strokeStyle = p.stroke || col; x.lineWidth = zw(p.width ?? 1.6, z) + (on ? 2 : 0); x.setLineDash(p.dash || []); x.lineDashOffset = p.flow ? -this.v.T * 8 * p.flow : 0; x.stroke(); x.setLineDash([]); x.lineDashOffset = 0;
+        x.strokeStyle = p.stroke || col; x.lineWidth = zw(p.width ?? 1.6, z) + (on ? 2 : 0); x.setLineDash(p.dash || []); x.lineDashOffset = p.flow ? -this.v.T * 8 * p.flow : 0; x.stroke();
+        // sketched: the same line gone over again by hand, a little off
+        if (p.sketch && rough) for (let j = 1; j <= p.sketch; j++) { mk(j); x.globalAlpha *= 0.55; x.lineWidth = Math.max(0.6, x.lineWidth * 0.6); x.stroke(); }
+        x.setLineDash([]); x.lineDashOffset = 0;
       } else if (on && p.hoverStroke) { x.globalAlpha = base; x.strokeStyle = col; x.lineWidth = 2; x.setLineDash([3, 6]); x.stroke(); x.setLineDash([]); }
     }
     if (this.v.sel === zn.id && !opts.echo) { mk(); x.globalAlpha = 1; x.strokeStyle = 'rgba(255,240,210,.35)'; x.lineWidth = 1; x.stroke(); }
@@ -191,10 +239,12 @@ export class Renderer {
         let parts = g.parts;
         if (p.broken) parts = parts.flatMap(w => [w.slice(0, Math.max(2, Math.floor(w.length * 0.42))), w.slice(Math.ceil(w.length * 0.58))]).filter(w => w.length > 1);
         const fl = p.flicker ? 0.55 + 0.45 * Math.abs(Math.sin(T * 2.6 + r.id.length)) : 1;
-        const mk = () => { x.beginPath(); parts.forEach(w => this.path(w)); };
+        const mk = (sd = 0) => { x.beginPath(); parts.forEach(w => this.path(w, false, p.rough || 0, sd)); };
         if (p.glow) { mk(); x.globalAlpha = (p.glow.alpha ?? 0.16) * fl * (on ? 2 : 1); x.strokeStyle = p.glow.color || p.stroke || col; x.lineWidth = zw(p.width ?? 2, z) + (p.glow.width || 7) + (on ? 4 : 0); x.stroke(); }
         if (p.casing) { mk(); x.globalAlpha = 1; x.strokeStyle = p.casing.color; x.lineWidth = zw(p.width ?? 2, z) + (p.casing.width || 4) + (on ? 2 : 0); x.stroke(); }
-        mk(); x.globalAlpha = (p.strokeAlpha ?? 1) * fl; x.strokeStyle = p.stroke || col; x.lineWidth = zw(p.width ?? 2, z) + (on ? 1.8 : 0); x.setLineDash(p.dash || []); x.lineDashOffset = p.flow ? -T * 14 * p.flow : 0; x.stroke(); x.setLineDash([]); x.lineDashOffset = 0;
+        mk(); x.globalAlpha = (p.strokeAlpha ?? 1) * fl; x.strokeStyle = p.stroke || col; x.lineWidth = zw(p.width ?? 2, z) + (on ? 1.8 : 0); x.setLineDash(p.dash || []); x.lineDashOffset = p.flow ? -T * 14 * p.flow : 0; x.stroke();
+        if (p.sketch && p.rough) for (let j = 1; j <= p.sketch; j++) { mk(j); x.globalAlpha *= 0.55; x.lineWidth = Math.max(0.6, x.lineWidth * 0.6); x.stroke(); }
+        x.setLineDash([]); x.lineDashOffset = 0;
         if (p.nodes) { x.fillStyle = p.nodes.color || col; x.globalAlpha = 1; parts.forEach(w => w.forEach(q => { const [sx, sy] = this.ts(q); x.beginPath(); x.arc(sx, sy, p.nodes.r || 2, 0, 6.283); x.fill(); })); }
         x.globalAlpha = 1;
       }
@@ -225,6 +275,7 @@ export class Renderer {
       if (sx < -R * 1.2 || sy < -R * 1.2 || sx > this.cam.W + R * 1.2 || sy > this.cam.H + R * 1.2) continue;
       const f = a.flicker ? 0.85 + 0.1 * Math.sin(T * 7.1 + sx) + 0.06 * Math.sin(T * 13.3 + sy) : a.pulse ? 0.85 + 0.15 * Math.sin(T * 1.3 + sx * 0.01) : 1;
       const r0 = R * (a.flicker ? f : 1);
+      if (a.mode === 'blot') { this.blot(a, sx, sy, R); continue; }
       if (a.mode === 'moon') {
         x.save(); x.beginPath(); x.arc(sx, sy, R, 0, 6.283); x.fillStyle = a.color || '#f4f1ff'; x.fill(); x.clip(); x.beginPath(); x.arc(sx + R * 0.62, sy - R * 0.18, R * 0.92, 0, 6.283); x.fillStyle = a.shade || 'rgba(6,40,62,.88)'; x.fill(); x.restore(); continue;
       }
@@ -243,6 +294,18 @@ export class Renderer {
       if (a.ring) { x.beginPath(); x.arc(sx, sy, r0 * 0.62, 0, 6.283); x.strokeStyle = a.ring; x.lineWidth = 1; x.setLineDash([2, 3]); x.stroke(); x.setLineDash([]); }
       if (a.mode === 'vortex') for (let j = 0; j < 3; j++) { x.beginPath(); const rot = T * 0.6 * (j % 2 ? 1 : -1) + j * 2.09; for (let t = 0; t < 7; t += 0.2) { const rr = R * (1 - t / 7 * 0.9); const X = sx + Math.cos(t + rot) * rr, Y = sy + Math.sin(t + rot) * rr; t ? x.lineTo(X, Y) : x.moveTo(X, Y); } x.strokeStyle = a.swirl || 'rgba(200,95,125,.45)'; x.lineWidth = 1.1; x.stroke(); }
     }
+  }
+
+  /** A patch of rot: an uneven stain with a ragged rim and a few spots around it, the same shape every time. */
+  blot(a, sx, sy, R) {
+    const x = this.ctx; let sd = 0; for (const ch of String(a.id)) sd = (sd * 31 + ch.charCodeAt(0)) % 9973; const r = rng(sd + 7);
+    const n = 15, pts = []; for (let i = 0; i < n; i++) { const t = i / n * 6.283, k = 0.68 + r() * 0.42; pts.push([sx + Math.cos(t) * R * k, sy + Math.sin(t) * R * k * 0.9]); }
+    const shape = (sc = 1) => { x.beginPath(); const m = (i) => { const p = pts[i % n], q = pts[(i + 1) % n]; return [sx + ((p[0] + q[0]) / 2 - sx) * sc, sy + ((p[1] + q[1]) / 2 - sy) * sc]; }; let s0 = m(n - 1); x.moveTo(s0[0], s0[1]); for (let i = 0; i < n; i++) { const p = pts[i], e = m(i); x.quadraticCurveTo(sx + (p[0] - sx) * sc, sy + (p[1] - sy) * sc, e[0], e[1]); } x.closePath(); };
+    const col = a.color || 'rgba(30,14,6,.7)';
+    const g = x.createRadialGradient(sx, sy, 0, sx, sy, R); g.addColorStop(0, col); g.addColorStop(0.65, withAlpha(col, 0.8)); g.addColorStop(1, withAlpha(col, 0.25));
+    shape(); x.fillStyle = g; x.fill();
+    if (a.ring) { x.strokeStyle = a.ring; x.lineWidth = 1.2; x.setLineDash([3, 2, 1, 2]); x.stroke(); x.setLineDash([]); shape(0.55); x.globalAlpha = 0.5; x.lineWidth = 0.8; x.stroke(); x.globalAlpha = 1; }
+    x.fillStyle = withAlpha(col, 0.9); for (let i = 0; i < 4; i++) { const t = r() * 6.283, d = R * (1.05 + r() * 0.35), rr = R * (0.06 + r() * 0.08); x.beginPath(); x.arc(sx + Math.cos(t) * d, sy + Math.sin(t) * d, rr, 0, 6.283); x.fill(); }
   }
 
   /* ---------- effects ---------- */
@@ -276,6 +339,17 @@ export class Renderer {
         for (const b of bl) { const px = b.x * W + Math.sin(T * 0.05 + b.ph) * M * 0.02, py = b.y * H + Math.cos(T * 0.04 + b.ph) * M * 0.015, rr = b.s * M; const g = x.createRadialGradient(px, py, 0, px, py, rr); g.addColorStop(0, col); g.addColorStop(0.6, withAlpha(col, 0.45)); g.addColorStop(1, withAlpha(col, 0)); x.fillStyle = g; x.fillRect(px - rr, py - rr, rr * 2, rr * 2); }
         break;
       }
+      case 'forest': { const F = this.forestLayer(e); if (F) { const s = this.s(), d = c.dpr, dx = (F.cam.cx - c.cx) * s - F.pad, dy = (F.cam.cy - c.cy) * s - F.pad; x.save(); x.setTransform(1, 0, 0, 1, 0, 0); x.globalAlpha = e.alpha ?? 1; x.drawImage(F.cv, Math.round(dx * d), Math.round(dy * d)); x.restore(); } break; }
+      case 'mist': {
+        // slow banks of mist drifting across the map
+        const n = e.count || 5, col = e.color || 'rgba(150,170,140,.06)', sp = e.speed ?? 1;
+        for (let i = 0; i < n; i++) {
+          const dir = i % 2 ? 1 : -1, w = W * (0.55 + 0.25 * ((i * 37) % 10) / 10), h = H * (0.10 + 0.05 * (i % 3));
+          const px = ((((i * 0.31 + dir * T * 0.006 * sp) % 1.6) + 1.6) % 1.6 - 0.3) * W, py = H * (i + 0.5) / n + Math.sin(T * 0.05 * sp + i * 1.9) * H * 0.04;
+          x.save(); x.translate(px, py); x.scale(1, h / w); const g = x.createRadialGradient(0, 0, 0, 0, 0, w / 2); g.addColorStop(0, col); g.addColorStop(1, withAlpha(col, 0)); x.fillStyle = g; x.fillRect(-w / 2, -w / 2, w, w); x.restore();
+        }
+        break;
+      }
       case 'fog': x.fillStyle = e.color || 'rgba(0,0,0,.3)'; x.fillRect(0, 0, W, H); break;
       case 'vignette': { const g = x.createRadialGradient(W / 2, H / 2, Math.min(W, H) * (e.inner ?? 0.33), W / 2, H / 2, Math.max(W, H) * (e.outer ?? 0.76)); g.addColorStop(0, withAlpha(e.color || '#000', 0)); g.addColorStop(1, e.color || 'rgba(0,0,0,.5)'); x.fillStyle = g; x.fillRect(0, 0, W, H); break; }
       case 'waves': {
@@ -301,7 +375,13 @@ export class Renderer {
         for (const p of ps) {
           const px = ((p.x * W + Math.sin(T * 0.35 + p.ph) * drift) % W + W) % W, py = ((((p.y + dir * T * sp * p.s) % 1) + 1) % 1) * H;
           if (e.shape === 'streak') { x.fillStyle = e.color || 'rgba(160,190,210,.25)'; x.fillRect(px, py, 1, 4 + p.s * 4); }
-          else if (e.shape === 'leaf') { const cols = e.colors || ['rgba(140,160,80,.5)']; x.save(); x.translate(px, py); x.rotate(T * 0.6 * (p.k ? 1 : -1) + p.ph); x.fillStyle = cols[p.k % cols.length]; x.beginPath(); x.ellipse(0, 0, p.r * 2.6, p.r * 1.1, 0, 0, 6.283); x.fill(); x.restore(); }
+          else if (e.shape === 'leaf') {
+            // a pointed leaf with its midrib, tumbling as it falls
+            const cols = e.colors || ['rgba(140,160,80,.5)'], L = p.r * 3.2 * (e.size || 1), w = L * 0.42;
+            x.save(); x.translate(px, py); x.rotate(T * 0.5 * (p.k ? 1 : -1) + p.ph); x.scale(1, 0.35 + 0.65 * Math.abs(Math.cos(T * 0.9 + p.ph)));
+            x.fillStyle = cols[p.k % cols.length]; x.beginPath(); x.moveTo(-L, 0); x.quadraticCurveTo(-L * 0.1, -w * 1.5, L, 0); x.quadraticCurveTo(-L * 0.1, w * 1.5, -L, 0); x.fill();
+            x.strokeStyle = 'rgba(20,14,6,.35)'; x.lineWidth = 0.6; x.beginPath(); x.moveTo(-L * 1.25, 0); x.lineTo(L * 0.85, 0); x.stroke(); x.restore();
+          }
           else if (e.shape === 'glow') { const cc = (e.colors || ['255,255,255'])[p.k % (e.colors || [1]).length]; const f = 0.4 + 0.6 * Math.abs(Math.sin(T * 1.1 + p.ph)); const rr = p.r * 3; const g = x.createRadialGradient(px, py, 0, px, py, rr); g.addColorStop(0, `rgba(${cc},${0.55 * f})`); g.addColorStop(1, `rgba(${cc},0)`); x.fillStyle = g; x.fillRect(px - rr, py - rr, 2 * rr, 2 * rr); }
           else { x.fillStyle = e.color || 'rgba(200,205,198,.22)'; x.beginPath(); x.arc(px, py, p.r, 0, 6.283); x.fill(); }
         }
@@ -310,8 +390,61 @@ export class Renderer {
     }
     if (e.clip) x.restore();
   }
+  /** The 'forest' effect: tree crowns over the land, fixed to the map, painted once per camera position. */
+  forestLayer(e) {
+    const z = this.cam.z;
+    const key = 'forest:' + this.m.rev + ':' + JSON.stringify([e.count, e.avoid, e.dense, e.colors, e.clear, e.shore, e.water]);
+    let F = this.effectCache.get(key);
+    if (!F) {
+      const a = this.m.atlas, P = this.m.proj; if (!a.bounds) return null;
+      const p0 = P.toWorld(a.bounds[0]), p1 = P.toWorld(a.bounds[1]), bb = [Math.min(p0[0], p1[0]), Math.min(p0[1], p1[1]), Math.max(p0[0], p1[0]), Math.max(p0[1], p1[1])];
+      const polys = cls => this.m.baseGeo().filter(f => cls.includes(f.c) && f.rings);
+      const avoid = polys(e.avoid || ['lake']), dense = polys(e.dense || []);
+      const inside = (q, fs) => fs.some(f => q[0] >= f.bb[0] && q[0] <= f.bb[2] && q[1] >= f.bb[1] && q[1] <= f.bb[3] && inPoly(q, f.rings));
+      // e.shore: a coastline (base-map line class) with water to its east, carried on past its ends
+      const coast = e.shore ? this.m.baseGeo().filter(f => f.c === e.shore && f.lines).flatMap(f => f.lines).flat().sort((A, B) => A[1] - B[1]) : [];
+      const wet = q => { if (!coast.length) return false; if (q[1] <= coast[0][1]) return q[0] > coast[0][0]; if (q[1] >= coast[coast.length - 1][1]) return q[0] > coast[coast.length - 1][0];
+        let i = 1; while (i < coast.length - 1 && coast[i][1] < q[1]) i++; const A = coast[i - 1], B = coast[i], t = (q[1] - A[1]) / ((B[1] - A[1]) || 1); return q[0] > A[0] + (B[0] - A[0]) * t; };
+      const N0 = e.count || 9000, S0 = Math.sqrt((bb[2] - bb[0]) * (bb[3] - bb[1]) / N0), f1 = 6.283 / (S0 * 23), f2 = 6.283 / (S0 * 31), f3 = 6.283 / (S0 * 13), clear = e.clear ?? 0.3;
+      const tier = (S, seed, under) => {
+        const r = rng(seed), out = [];
+        for (let y = bb[1]; y < bb[3]; y += S) for (let xx = bb[0]; xx < bb[2]; xx += S) {
+          const q = [xx + (r() - 0.5) * S * 0.95, y + (r() - 0.5) * S * 0.95], k = r(), v = Math.floor(r() * 8), rr = 0.55 + r() * 0.55;
+          if (inside(q, avoid) || wet(q)) continue;
+          const thick = inside(q, dense), n = (Math.sin(q[0] * f1 + 1.7) * Math.sin(q[1] * f2 + 0.4) + 0.6 * Math.sin((q[0] - q[1]) * f3)) / 1.6; // -1..1, low = clearing
+          if (!thick && n < -clear + (k - 0.5) * 0.5 + (under ? 0.08 : 0)) continue;
+          out.push({w: q, r: S * rr * (thick ? 1.15 : 1), v});
+        }
+        return out.sort((A, B) => A.w[1] - B.w[1]);
+      };
+      // three sizes of tree: the large ones read at a distance, the smaller ones take over as the map is zoomed in
+      // the water beyond the coast, out to the edge of the map (the base map's lake may stop short of it)
+      const sea = e.water && coast.length ? [[coast[0][0], bb[1] - 1], ...coast, [coast[coast.length - 1][0], bb[3] + 1], [bb[2] + 1, bb[3] + 1], [bb[2] + 1, bb[1] - 1]] : null;
+      F = {sea, tiers: [{S: S0, seed: 2027, list: null}, {S: S0 / 2.2, seed: 4049, list: null}, {S: S0 / 4.8, seed: 6067, list: null}], tier, cv: null, at: '',
+        sprites: treeSprites(e.colors || [['#0c1e10', '#1b3a1e', '#4d6c34'], ['#0e2018', '#1d3c29', '#56713c'], ['#121f0c', '#283f18', '#6e7c3a']])};
+      this.effectCache.set(key, F);
+    }
+    // painted with a margin around the view, so panning only slides the picture; zooming paints it again
+    const c = this.cam, s0 = this.s(), pad = c.W * c.H > 5e6 ? 0 : Math.round(Math.max(c.W, c.H) * 0.25), view = [c.z, c.W, c.H, c.dpr].join(',');
+    if (!F.cv) F.cv = document.createElement('canvas');
+    const slid = F.cam && F.at === view && Math.abs((F.cam.cx - c.cx) * s0) < pad * 0.9 && Math.abs((F.cam.cy - c.cy) * s0) < pad * 0.9;
+    if (!slid) {
+      const cv = F.cv, Wp = Math.round((c.W + pad * 2) * c.dpr), Hp = Math.round((c.H + pad * 2) * c.dpr); if (cv.width !== Wp || cv.height !== Hp) { cv.width = Wp; cv.height = Hp; }
+      const g = cv.getContext('2d'); g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, cv.width, cv.height); g.setTransform(c.dpr, 0, 0, c.dpr, c.dpr * pad, c.dpr * pad);
+      const s = this.s(), sc = e.scale || 1, top = e.maxZoom ? Math.max(0.45, Math.min(1, e.maxZoom + 1 - z)) : 1;
+      const stamp = (T, alpha) => { if (alpha <= 0.01) return; T.list ||= F.tier(T.S, T.seed, T !== F.tiers[0]); g.globalAlpha = alpha; const o = this.ts([0, 0]);
+        for (const t of T.list) { const R = t.r * s * sc; if (R < 0.7) continue; const sx = o[0] + t.w[0] * s, sy = o[1] + t.w[1] * s; if (sx < -R * 1.4 - pad || sy < -R * 1.4 - pad || sx > c.W + R * 1.4 + pad || sy > c.H + R * 1.4 + pad) continue; g.drawImage(F.sprites[t.v], sx - R * 1.3, sy - R * 1.3, R * 2.6, R * 2.6); } };
+      // each finer tier fades in over the coarser one, which goes only once it is fully covered: never two see-through layers
+      const z1 = e.underZoom ?? 12.4, ramp = (a, b) => Math.max(0, Math.min(1, (z - a) / (b - a)));
+      const a0 = 1 - ramp(z1 + 1.6, z1 + 2.6), a1 = ramp(z1, z1 + 1) * (1 - ramp(z1 + 3, z1 + 4)), a2 = ramp(z1 + 1.4, z1 + 2.4);
+      if (F.sea) { const o = this.ts([0, 0]); g.globalAlpha = 1; g.beginPath(); F.sea.forEach(([wx, wy], i) => { const px = o[0] + wx * s, py = o[1] + wy * s; if (i) g.lineTo(px, py); else g.moveTo(px, py); }); g.closePath(); g.fillStyle = e.water; g.fill(); }
+      stamp(F.tiers[0], a0 * top); stamp(F.tiers[1], a1 * top); stamp(F.tiers[2], a2 * top);
+      F.at = view; F.cam = {cx: c.cx, cy: c.cy}; F.pad = pad;
+    }
+    return F;
+  }
   animated(view) {
-    if (view.effects.some(e => ['stars', 'waves', 'particles', 'canopy'].includes(e.type) && (e.twinkle !== false))) return true;
+    if (view.effects.some(e => ['stars', 'waves', 'particles', 'canopy', 'mist'].includes(e.type) && (e.twinkle !== false))) return true;
     const st = this.v.st;
     if (Object.values(this.m.atlas.auras).some(a => (a.pulse || a.flicker || a.mode === 'vortex') && this.m.inRealm(a, st) && this.m.inLevel(a, st))) return true;
     if (Object.values(this.m.atlas.routes).some(r => this.m.inRealm(r, st) && this.m.inLevel(r, st) && this.m.passes(r.style).some(p => p.flow || p.flicker))) return true;
@@ -366,10 +499,10 @@ export class Renderer {
       if (x < -100 || y < -30 || x > W + 100 || y > H + 30) continue;
       const col = this.m.colorOf(zn), on = this.v.sel === zn.id || this.v.hover === zn.id, fs = L.size || (sz > 340 ? 14 : 12);
       const text = (L.text || zn.name || '').toUpperCase(); if (!text) continue;
-      const opt = {font: `${fs}px ${this.font('sc')}`, ls: L.ls ?? 3, color: col, halo: 'rgba(8,8,10,.9)', hw: 4, avoid: true, h: fs + (L.sub ? 22 : 6), glow: on ? col : null};
+      const opt = {font: `${L.italic ? 'italic ' : ''}${fs}px ${this.font(L.font || 'sc')}`, ls: L.ls ?? 3, color: L.color || col, halo: L.halo || 'rgba(8,8,10,.9)', hw: 4, avoid: true, h: fs + (L.sub ? 22 : 6), glow: on ? col : (L.glow || null)};
       let ok = false;
       for (const dy of [0, 24, -24, 48]) { if (this.text(text, x, y + dy, opt)) { ok = true; y += dy; break; } }
-      if (ok && L.sub && !(L.subMinZoom && z < L.subMinZoom)) this.text(L.sub, x, y + fs + 2, {font: `italic 12px ${this.font('head')}`, color: L.subColor || 'rgba(235,225,205,.75)', halo: 'rgba(8,8,10,.9)', hw: 3, h: 11});
+      if (ok && L.sub && !(L.subMinZoom && z < L.subMinZoom)) this.text(L.sub, x, y + fs + 2, {font: `italic 12px ${this.font(L.subFont || 'head')}`, color: L.subColor || 'rgba(235,225,205,.75)', halo: L.halo || 'rgba(8,8,10,.9)', hw: 3, h: 11});
     }
   }
   drawFeatureLabels(view) {

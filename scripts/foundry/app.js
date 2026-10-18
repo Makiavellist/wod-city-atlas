@@ -5,7 +5,8 @@ import {rebasePaths} from '../core/store.js';
 import {normalize} from '../core/model.js';
 import {blankAtlas, LOOKS} from '../core/templates.js';
 import {esc, svg} from '../core/util.js';
-import {renderSnapshot} from '../core/snapshot.js';
+import {renderSnapshot, lookSig} from '../core/snapshot.js';
+import {planLooks, applyLooks, fromPreset} from '../core/looks.js';
 import {JournalStore, MOD, isAtlasEntry} from './journal-store.js';
 import {SceneAtlas} from './scene-layer.js';
 
@@ -34,7 +35,7 @@ export function makeAdapter(app) {
     share: game.user.isGM ? state => shareView(app.entry, state) : null,
     saveFile: (name, text) => foundry.utils.saveDataToFile(text, 'application/json', name),
     loadJSON: async path => (await fetch(resolveUrl(path))).json(),
-    loadPreset: game.user.isGM ? async id => { const p = (await loadPresets()).find(x => x.id === id); if (!p) return null; return rebasePaths(await (await fetch(resolveUrl(`modules/${MOD}/${p.atlas}`))).json(), `modules/${MOD}/` + p.atlas.replace(/[^/]+$/, '')); } : null,
+    loadPreset: game.user.isGM ? id => presetAtlas(id) : null,
     pickActors: () => pickActors(),
     players: () => game.users.filter(u => !u.isGM).map(u => ({id: u.id, name: u.name, color: u.color?.css ?? String(u.color || '')})),
     notifyReveal: game.user.isGM ? ({ids, name}) => game.socket.emit(`module.${MOD}`, {action: 'reveal', entryId: app.entry.id, ids, name}) : null,
@@ -213,6 +214,7 @@ export class AtlasApp extends ApplicationV2 {
     this._unsubBm = this.store.onChange(async info => { if ((info.all || info.meta) && this.store.atlas.basemap !== this._bm) { this._bm = this.store.atlas.basemap; await this.store.loadBasemap(resolveUrl); this.view.onStoreChange({basemap: true}); } });
     this._bm = this.store.atlas.basemap;
     if (this.pending) { this.view.applyState(this.pending); this.pending = null; }
+    if (this.entry.isOwner) upgradeLooks(this.entry, this.store);
   }
   _onClose(options) { super._onClose?.(options); if (!SceneAtlas.current) resetUiTheme(); try { this._unsubBm?.(); this.view?.destroy(); } catch (e) {} this.store?.release(); this.store = null; this._mounted = false; }
 }
@@ -304,6 +306,37 @@ export class AtlasLauncher extends ApplicationV2 {
   }
 }
 
+/** A bundled preset's atlas, with its picture paths pointing into the module. */
+async function presetAtlas(id) { const p = (await loadPresets()).find(x => x.id === id); if (!p) return null; return rebasePaths(await (await fetch(resolveUrl(`modules/${MOD}/${p.atlas}`))).json(), `modules/${MOD}/` + p.atlas.replace(/[^/]+$/, '')); }
+const isLeadGM = () => game.user.isGM && (!game.users.activeGM || game.users.activeGM.isSelf);
+
+/** A new version of the module brought a new look for an atlas made from the preset: offer it, once. */
+const LOOKS_ASKED = new Set();
+export async function upgradeLooks(entry, store) {
+  try {
+    if (!isLeadGM() || !store?.canEdit || LOOKS_ASKED.has(entry.id) || !fromPreset(store.atlas)) return false;
+    LOOKS_ASKED.add(entry.id);
+    const pre = normalize(await presetAtlas(store.atlas.preset || 'milwaukee') || {});
+    if (!pre.looks || (store.atlas.looks || 0) >= pre.looks) return false;
+    const plan = planLooks(store.atlas, pre, {realms: pre.looksRealms || null});
+    if (!plan.items.length) { await store.setMeta(plan.meta); return false; }
+    const names = (pre.looksRealms || Object.keys(pre.realms)).map(r => (store.atlas.realms[r] || pre.realms[r] || {}).name || r).join(', ');
+    const ok = await DialogV2.confirm({window: {title: 'City Atlas: a new look'}, rejectClose: false, modal: true,
+      content: `<p>This version of the City Atlas redraws <b>${esc(names)}</b>. Give <b>${esc(entry.name)}</b> the new look?</p><p class="hint">Only colours, effects and map styles change (${plan.items.length} entries). Texts, positions and what players can see stay as they are. You can do it later from <i>Edit → Import / export → Refresh realm looks</i>.</p>`,
+      yes: {label: 'Use the new look'}, no: {label: 'Keep the old one'}});
+    if (ok) { await applyLooks(store, plan); ui.notifications.info(`${entry.name}: ${names} now has its new look.`); return true; }
+    await store.setMeta(plan.meta); return false;
+  } catch (err) { console.warn(`${MOD} | could not update the atlas look`, err); return false; }
+}
+
+/** Upload a rendered map picture into the world's folder. */
+export async function uploadPicture(entry, blob) {
+  const dir = `worlds/${game.world.id}/wod-city-atlas`;
+  await ensureDir(dir);
+  return uploadFile(dir, new File([blob], `${entry.id}-base-${Date.now().toString(36)}.webp`, {type: 'image/webp'}));
+}
+export {isLeadGM};
+
 async function loadPresets() { try { return await (await fetch(resolveUrl(`modules/${MOD}/presets/index.json`))).json(); } catch (e) { return []; } }
 function metaDesc(e) { try { const m = JSON.parse(e.getFlag(MOD, 'meta') || '{}'); return m.description ? m.description.slice(0, 110) + (m.description.length > 110 ? '…' : '') : (m.projection === 'mercator' ? 'Geographic map' : 'Image map'); } catch (err) { return ''; } }
 
@@ -380,13 +413,11 @@ export async function exportScene(app, o) {
   const maxZoom = Math.min(16, Math.max(3, Math.pow(2, zmax) / k));
   prog('Rendering the plain map…');
   const snap = await renderSnapshot(view, {bb, size: Math.min(4096, Math.max(W, H)), bare: true, as: 'gm', labels: false});
-  const dir = `worlds/${game.world.id}/wod-city-atlas`;
-  await ensureDir(dir);
   prog('Uploading…');
-  const path = await uploadFile(dir, new File([snap.blob], `${entry.id}-base-${Date.now().toString(36)}.webp`, {type: 'image/webp'}));
+  const path = await uploadPicture(entry, snap.blob);
   prog('Building the scene…');
   let scene = o.sceneId ? game.scenes.get(o.sceneId) : null;
-  const flag = {entry: entry.id, bb, realm: view.st.realm, level: view.st.level, bgRealm: view.st.realm, bgLevel: view.st.level, lock: !!o.lock, maxZoom, v: 3};
+  const flag = {entry: entry.id, bb, realm: view.st.realm, level: view.st.level, bgRealm: view.st.realm, bgLevel: view.st.level, lock: !!o.lock, maxZoom, v: 3, sig: lookSig(view.model, view.st.realm, view.st.level)};
   const data = {name: o.name || entry.name, width: W, height: H, padding: 0.1, background: {src: path}, backgroundColor: view.rv.bg || '#000000',
     grid: {type: 0}, tokenVision: false, fog: {exploration: false}, environment: {darknessLevel: 0, globalLight: {enabled: true}}, flags: {[MOD]: {atlas: flag}}};
   if (scene) {

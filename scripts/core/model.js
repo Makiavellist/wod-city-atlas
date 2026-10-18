@@ -1,9 +1,9 @@
 /* The atlas data model: normalisation, projection, realm/level resolution, visibility and lookups. */
-import {clone, isObj, sortBy, stripHtml, bbOf, inPoly, ringCenter, arcPts, ringArea} from './util.js';
+import {isObj, sortBy, stripHtml, bbOf, inPoly, ringCenter, arcPts, ringArea} from './util.js';
 
 export const COLLECTIONS = ['realms', 'layers', 'categories', 'factions', 'styles', 'places', 'zones', 'routes', 'labels', 'auras', 'people', 'pages'];
 export const MAP_ITEMS = ['places', 'zones', 'routes', 'labels', 'auras'];
-export const META_KEYS = ['tiers', 'revealDefault', 'domainLayer', 'domainStatuses', 'scene', 'schema', 'title', 'titleHtml', 'description', 'projection', 'bounds', 'home', 'zoom', 'closeBy', 'basemap', 'background', 'theme', 'statuses', 'precisions', 'fonts', 'scale', 'version'];
+export const META_KEYS = ['tiers', 'revealDefault', 'domainLayer', 'domainStatuses', 'scene', 'schema', 'title', 'titleHtml', 'description', 'projection', 'bounds', 'home', 'zoom', 'closeBy', 'basemap', 'background', 'theme', 'statuses', 'precisions', 'fonts', 'scale', 'version', 'preset', 'looks'];
 export const TYPE_NAMES = {places: 'Place', zones: 'Zone', routes: 'Route', labels: 'Label', auras: 'Glow', people: 'Person', pages: 'Page', realms: 'Realm', layers: 'Layer', categories: 'Category', factions: 'Faction', styles: 'Style'};
 
 export const DEFAULT_TIERS = ['Hidden', 'Existence', 'Basic', 'Full'];
@@ -17,7 +17,12 @@ export function normalize(a) {
   a.schema ??= 1;
   a.title ??= 'Untitled atlas';
   a.projection ??= 'plane';
-  for (const c of COLLECTIONS) { if (Array.isArray(a[c])) a[c] = Object.fromEntries(a[c].map(o => [o.id, o])); a[c] = isObj(a[c]) ? a[c] : {}; for (const [k, v] of Object.entries(a[c])) { if (!isObj(v)) delete a[c][k]; else v.id = k; } }
+  for (const c of COLLECTIONS) {
+    if (Array.isArray(a[c])) a[c] = Object.fromEntries(a[c].map(o => [o.id, o])); a[c] = isObj(a[c]) ? a[c] : {};
+    // a named style may be a list of passes: keep it as {passes: […]} so it survives like any other entry
+    if (c === 'styles') for (const [k, v] of Object.entries(a[c])) if (Array.isArray(v)) a[c][k] = {passes: v};
+    for (const [k, v] of Object.entries(a[c])) { if (!isObj(v)) delete a[c][k]; else v.id = k; }
+  }
   if (!Object.keys(a.realms).length) a.realms.waking = {id: 'waking', name: 'Waking', icon: 'sun', order: 0};
   for (const r of Object.values(a.realms)) { if (!Array.isArray(r.levels) || !r.levels.length) r.levels = [{id: 'main', name: r.name || 'Main', show: ['main']}]; r.levels.forEach(l => { l.show = Array.isArray(l.show) && l.show.length ? l.show : [l.id]; }); }
   a.zoom ??= a.projection === 'mercator' ? {min: 3, max: 18} : {min: -3, max: 4};

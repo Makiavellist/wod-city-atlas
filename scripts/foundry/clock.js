@@ -5,6 +5,7 @@ import {MOD} from './journal-store.js';
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const DEFAULT = {t: Date.UTC(1991, 9, 26, 23, 0)};
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
 
 /* Time is kept as a "wall clock" value: the UTC fields of t are the local date and time in the chronicle city. */
 const parts = t => { const d = new Date(t); return {y: d.getUTCFullYear(), mo: d.getUTCMonth(), d: d.getUTCDate(), h: d.getUTCHours(), mi: d.getUTCMinutes(), wd: d.getUTCDay()}; };
@@ -35,7 +36,8 @@ function sunHours(y, mo, d, lat, lon, std) {
   };
   return {rise: calc(true), set: calc(false)};
 }
-function where() { return {lat: Number(game.settings.get(MOD, 'clockLat')) || 43.04, lon: Number(game.settings.get(MOD, 'clockLon')) || -87.91, std: Number(game.settings.get(MOD, 'clockTz')) || -6}; }
+/** The chronicle city's place and time zone (0 is a real answer: the equator, Greenwich, UTC). */
+function where() { const num = (k, d) => { const v = Number(game.settings.get(MOD, k)); return Number.isFinite(v) ? v : d; }; return {lat: num('clockLat', 43.04), lon: num('clockLon', -87.91), std: num('clockTz', -6)}; }
 /** Wall-clock timestamps of the dawn and dusk around t. */
 function sunAround(t) {
   const {lat, lon, std} = where(), p = parts(t);
@@ -46,7 +48,7 @@ function sunAround(t) {
   const nextDusk = t < set0 ? set0 : at(1, 'set');
   return {day, nextDawn, nextDusk};
 }
-const fmtSpan = ms => { const m = Math.max(0, Math.round(ms / 6e4)); const h = Math.floor(m / 60); return h ? `${h}h ${String(m % 60).padStart(2, '0')}m` : `${m}m`; };
+const fmtSpan = ms => { if (!Number.isFinite(ms)) return '—'; const m = Math.max(0, Math.round(ms / 6e4)); const h = Math.floor(m / 60); return h ? `${h}h ${String(m % 60).padStart(2, '0')}m` : `${m}m`; };
 const fmtTime = (t, h24) => { const p = parts(t); if (h24) return `${String(p.h).padStart(2, '0')}:${String(p.mi).padStart(2, '0')}`; const h = p.h % 12 || 12; return `${h}:${String(p.mi).padStart(2, '0')} ${p.h < 12 ? 'AM' : 'PM'}`; };
 
 export const Clock = {
@@ -74,7 +76,7 @@ export const Clock = {
     const p = parts(this.get().t), key = `${p.y}-${String(p.mo + 1).padStart(2, '0')}-${String(p.d).padStart(2, '0')}`;
     let evs = []; try { evs = (game.settings.get(MOD, 'events') || []).filter(e => e.date === key && (gm || e.vis === 'all' || (e.vis === 'some' && (e.users || []).includes(game.user.id)))); } catch (e) {}
     el.classList.toggle('day', d.day); el.classList.toggle('soon', soon); el.classList.toggle('gm', gm);
-    el.innerHTML = `<div class="clk-face"><span class="clk-ic" aria-hidden="true">${d.day ? '☀' : '☾'}</span><div class="clk-txt"><b class="clk-time">${d.time}</b><span class="clk-date">${d.date}</span><span class="clk-sun">${d.sun}</span></div><button type="button" class="clk-cal" data-clk="cal" title="Calendar${evs.length ? ` · tonight: ${evs.map(e => e.title).join(', ').replace(/"/g, '&quot;')}` : ''}"><i class="fa-solid fa-calendar-days"></i>${evs.length ? `<b>${evs.length}</b>` : ''}</button></div>` +
+    el.innerHTML = `<div class="clk-face"><span class="clk-ic" aria-hidden="true">${d.day ? '☀' : '☾'}</span><div class="clk-txt"><b class="clk-time">${d.time}</b><span class="clk-date">${d.date}</span><span class="clk-sun">${d.sun}</span></div><button type="button" class="clk-cal" data-clk="cal" title="Calendar${evs.length ? ` · tonight: ${esc(evs.map(e => e.title).join(', '))}` : ''}"><i class="fa-solid fa-calendar-days"></i>${evs.length ? `<b>${evs.length}</b>` : ''}</button></div>` +
       (gm ? `<div class="clk-ctl"><button type="button" data-clk="-60" title="Back one hour">−1h</button><button type="button" data-clk="-10" title="Back ten minutes">−10m</button><button type="button" data-clk="10" title="Forward ten minutes">+10m</button><button type="button" data-clk="60" title="Forward one hour">+1h</button><button type="button" data-clk="dusk" title="Skip to the next dusk">Dusk</button><button type="button" data-clk="dawn" title="Skip to the next dawn">Dawn</button><button type="button" data-clk="edit" title="Set the date and time"><i class="fa-solid fa-pen"></i></button></div>` : '');
   },
   async dialog() {

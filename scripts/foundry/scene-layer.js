@@ -12,7 +12,8 @@
 import {AtlasView} from '../core/view.js';
 import {esc} from '../core/util.js';
 import {JournalStore, MOD} from './journal-store.js';
-import {makeAdapter, resolveUrl, AtlasApp, resetUiTheme} from './app.js';
+import {makeAdapter, resolveUrl, AtlasApp, resetUiTheme, upgradeLooks, uploadPicture, isLeadGM} from './app.js';
+import {renderSnapshot, lookSig} from '../core/snapshot.js';
 
 const {ApplicationV2} = foundry.applications.api;
 const HUD_KEY = 'wod-city-atlas:hud';
@@ -82,7 +83,11 @@ export class SceneAtlas {
     if (f.lock && !game.user.isGM) this.followFlag(f);
     // Foundry content links inside the dossier
     this.root.addEventListener('click', async e => { const a = e.target.closest('a.content-link[data-uuid]'); if (!a) return; e.preventDefault(); e.stopPropagation(); const d = await fromUuid(a.dataset.uuid); if (d?.documentName === 'Scene') d.view(); else d?.sheet?.render(true); });
-    this._unsubBm = this.store.onChange(async info => { if ((info.all || info.meta) && this.store.atlas.basemap !== this._bm) { this._bm = this.store.atlas.basemap; await this.store.loadBasemap(resolveUrl); this.view?.onStoreChange({basemap: true}); } });
+    this._unsubBm = this.store.onChange(async info => {
+      if ((info.all || info.meta) && this.store.atlas.basemap !== this._bm) { this._bm = this.store.atlas.basemap; await this.store.loadBasemap(resolveUrl); this.view?.onStoreChange({basemap: true}); }
+      // a realm's look changed: the scene picture may need redrawing
+      if (info.all || info.meta || info.many || info.coll === 'realms' || info.coll === 'styles') { clearTimeout(this._picT); this._picT = setTimeout(() => this.checkPicture(), 4000); }
+    });
     this._bm = this.store.atlas.basemap;
     this.bindBoard();
     this.startLoop();
@@ -90,6 +95,25 @@ export class SceneAtlas {
     if (loadHud().open !== false) this.hud.render({force: true});
     console.log(`${MOD} | atlas “${this.entry.name}” mounted on scene “${this.scene.name}”`);
     this._check = setTimeout(() => this.selfCheck(), 3000);
+    // a new version may bring a new look; then make sure the scene picture shows the atlas as it looks now
+    if (game.user.isGM) upgradeLooks(this.entry, this.store).finally(() => { clearTimeout(this._picT); this._picT = setTimeout(() => this.checkPicture(), 2500); });
+  }
+  /** Storyteller: the scene picture is a still of the plain map. If the realm's look has changed since, draw it again. */
+  async checkPicture() {
+    if (this.dead || !this.view || !isLeadGM() || this._picBusy) return;
+    const f = this.flag(), m = this.view.model, realm = f.bgRealm ?? f.realm, level = f.bgLevel ?? f.level;
+    if (!realm || !m.atlas.realms[realm] || !Array.isArray(f.bb)) return;
+    const sig = lookSig(m, realm, level); if (f.sig === sig) return;
+    this._picBusy = true;
+    try {
+      ui.notifications.info(`City Atlas: redrawing the map picture of “${this.scene.name}” in the atlas’s current look…`);
+      const size = Math.min(4096, Math.max(this.scene.width || 0, this.scene.height || 0) || 4096);
+      const snap = await renderSnapshot(this.view, {bb: f.bb, size, bare: true, as: 'gm', labels: false, realm, level});
+      const path = await uploadPicture(this.entry, snap.blob);
+      if (this.dead) return;
+      await this.scene.update({'background.src': path, backgroundColor: m.view(realm, level).bg || '#000000', [`flags.${MOD}.atlas.sig`]: sig});
+    } catch (err) { console.warn(`${MOD} | could not redraw the scene picture`, err); ui.notifications.warn(`City Atlas: could not redraw the picture of “${this.scene.name}” (${err.message}).`); }
+    finally { this._picBusy = false; }
   }
   /** Everything useful for finding out why a scene shows nothing. */
   diagnose() {
@@ -189,7 +213,7 @@ export class SceneAtlas {
     let down = null;
     const onBoard = e => { const t = e.target; return t === this.board || (t && t.tagName === 'CANVAS' && t.id === 'board'); };
     this._pd = e => {
-      down = null; if (!onBoard(e) || e.button !== 0 || !this.view) return;
+      down = null; if (!onBoard(e) || e.button !== 0 || !this.view || this.view.atlasHidden) return;
       // pins sit above the zones: a press on a pin is the atlas's, not Foundry's (no drag-select box, no token deselect)
       const [sx, sy] = this.local(e), mk = this.view.markerAt(sx, sy);
       if (mk && !this.tokenAt(sx, sy, e)) {
@@ -199,8 +223,13 @@ export class SceneAtlas {
       down = {x: e.clientX, y: e.clientY, t: performance.now()};
     };
     this._pu = e => { const d = down; down = null; if (!d || e.button !== 0 || !onBoard(e)) return; if (Math.hypot(e.clientX - d.x, e.clientY - d.y) > 5 || performance.now() - d.t > 700) return; this.clickAt(e); };
-    this._pm = e => { if (!onBoard(e)) { if (this._overBoard) { this._overBoard = false; this._pl(); } return; } this._overBoard = true; this._last = e; if (!this._hoverRaf) this._hoverRaf = requestAnimationFrame(() => { this._hoverRaf = 0; this.hoverAt(this._last); }); };
-    this._pl = () => { if (!this.view) return; if (this.view.hover) { this.view.hover = null; this.view.dirty(); } this.view.hideTip(); };
+    this._pm = e => {
+      if (!onBoard(e)) {
+        // over one of the atlas's own pins: it shows its own tooltip, so leave it be
+        const onPin = !!(this.layer && e.target?.closest?.('.wca-pin') && this.layer.contains(e.target));
+        if (this._overBoard && !onPin) this._pl(); this._overBoard = false; return;
+      } this._overBoard = true; this._last = e; if (!this._hoverRaf) this._hoverRaf = requestAnimationFrame(() => { this._hoverRaf = 0; this.hoverAt(this._last); }); };
+    this._pl = () => { if (document.body.style.cursor) document.body.style.cursor = ''; if (!this.view) return; this.view._tipFor = null; if (this.view.hover) { this.view.hover = null; this.view.dirty(); } this.view.hideTip(); };
     document.addEventListener('pointerdown', this._pd, true); document.addEventListener('pointerup', this._pu, true); document.addEventListener('pointermove', this._pm, true);
   }
   unbindBoard() { document.removeEventListener('pointerdown', this._pd, true); document.removeEventListener('pointerup', this._pu, true); document.removeEventListener('pointermove', this._pm, true); }
@@ -223,7 +252,7 @@ export class SceneAtlas {
     } catch (e2) { return false; }
   }
   clickAt(e) {
-    if (!this.view) return; const [sx, sy] = this.local(e);
+    if (!this.view || this.view.atlasHidden) return; const [sx, sy] = this.local(e);
     // pins come first, whatever tool is active
     const mk = this.view.markerAt(sx, sy); if (mk && !this.tokenAt(sx, sy, e)) { this.view.openMarker(mk); return; }
     if (!this.clicksAllowed() || this.tokenAt(sx, sy, e)) return;
@@ -232,7 +261,7 @@ export class SceneAtlas {
     setTimeout(() => { if ((canvas.tokens?.controlled?.length ?? 0) !== before || canvas.tokens?.hover) return; this.view?.clickAt(sx, sy, e); }, 30);
   }
   hoverAt(e) {
-    if (!this.view || !e || e.buttons) return; const [sx, sy] = this.local(e);
+    if (!this.view || !e || e.buttons) return; if (this.view.atlasHidden) { this._pl(); return; } const [sx, sy] = this.local(e);
     if (this.view.markerAt(sx, sy)) { this.view.hoverAt(sx, sy); return; }
     if (!this.clicksAllowed() || this.tokenAt(sx, sy, e)) { this._pl(); return; }
     this.view.hoverAt(sx, sy);
@@ -268,7 +297,7 @@ export class SceneAtlas {
 
   destroy() {
     if (this.dead) return; this.dead = true;
-    cancelAnimationFrame(this._raf); clearTimeout(this._check); if (this._panHook != null) Hooks.off('canvasPan', this._panHook);
+    cancelAnimationFrame(this._raf); clearTimeout(this._check); clearTimeout(this._picT); clearTimeout(this._rt); if (document.body.style.cursor) document.body.style.cursor = ''; if (this._panHook != null) Hooks.off('canvasPan', this._panHook);
     this.unbindBoard(); window.removeEventListener('resize', this._onWin);
     try { this.hud?.close({animate: false}); } catch (e) {}
     try { this._unsubBm?.(); this.view?.destroy(); } catch (e) {}

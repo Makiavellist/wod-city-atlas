@@ -17,12 +17,13 @@ export async function renderSnapshot(view, o = {}) {
   const k = size / Math.max(w0, h0);
   const W = Math.max(64, Math.round(w0 * k)), H = Math.max(64, Math.round(h0 * k));
   const canvas = document.createElement('canvas'); canvas.width = W; canvas.height = H;
-  const st = Object.assign({}, view.st, o.as === 'gm' ? {storyteller: true, gm: true, as: '*'} : {storyteller: false, gm: false, as: o.as || '*'});
+  const st = Object.assign({}, view.st, o.as === 'gm' ? {storyteller: true, gm: true, as: '*'} : {storyteller: false, gm: false, as: o.as || '*'}, o.realm ? {realm: o.realm, level: m.level(o.realm, o.level).id} : {});
+  const rv = o.realm ? m.view(st.realm, st.level) : view.rv;
   const places = [];
   const fake = {
     model: m, ctx: canvas.getContext('2d'), cam: {cx: (bb[0] + bb[2]) / 2, cy: (bb[1] + bb[3]) / 2, z: Math.log2(k), W, H, dpr: 1},
-    st, T: 0, sel: null, hover: null, rv: view.rv, editor: null, noLabels: o.labels === false, bare: !!o.bare,
-    layerOn: id => view.layerOn(id), isHiddenItem: id => view.isHiddenItem(id), resolveUrl: s => view.resolveUrl(s), dirty() {},
+    st, T: 0, sel: null, hover: null, rv, editor: null, noLabels: o.labels === false, bare: !!o.bare,
+    layerOn: id => o.realm ? m.layerDefault(id, st.realm, st.level) : view.layerOn(id), isHiddenItem: id => view.isHiddenItem(id), resolveUrl: s => view.resolveUrl(s), dirty() {},
     markerBoxes: () => places.map(p => [p.x - 13, p.y - 13, p.x + 13, p.y + 13])
   };
   // places first, so labels avoid the note icons
@@ -35,13 +36,21 @@ export async function renderSnapshot(view, o = {}) {
   }
   const r = new Renderer(fake);
   // make sure pictures are loaded before drawing
-  const srcs = new Set(); const bg = view.rv.background; if (bg && bg.src) srcs.add(bg.src);
+  const srcs = new Set(); const bg = rv.background; if (bg && bg.src) srcs.add(bg.src);
   for (const z of Object.values(m.atlas.zones)) if (z.fillImage && z.fillImage.src) srcs.add(z.fillImage.src);
   await Promise.all([...srcs].map(src => new Promise(ok => { r.image(src); const im = r.images.get(src); if (!im || im.complete) return ok(); im.addEventListener('load', ok, {once: true}); im.addEventListener('error', ok, {once: true}); setTimeout(ok, 15000); })));
   try { await document.fonts.ready; } catch (e) {}
   r.draw();
   const blob = await new Promise(ok => canvas.toBlob(ok, 'image/webp', 0.88));
   return {blob, width: W, height: H, places, bb};
+}
+
+/** A fingerprint of what the plain map of a realm looks like (what a scene picture holds): when it changes, the picture is out of date. */
+export function lookSig(model, realm, level) {
+  const v = model.view(realm, level), a = model.atlas;
+  const txt = JSON.stringify([v.bg, v.styles, (v.effects || []).filter(e => e.under), v.background, a.basemap, a.background]);
+  let h = 2166136261; for (let i = 0; i < txt.length; i++) { h ^= txt.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return (h >>> 0).toString(36);
 }
 
 /** A round pin icon for map notes: white glyph on a dark disc, meant to be tinted. */

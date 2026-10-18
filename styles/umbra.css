@@ -1,0 +1,142 @@
+/* The Umbra skin: old woods. Moss and bark, paper and ink, vines and leaves growing over the controls.
+ * The atlas chrome follows [data-realm="umbra"] on the atlas; Foundry's own interface follows body[data-wca-realm="umbra"]
+ * (only with the Masquerade look on). Places of the Weaver stay crisp and blue on the map itself. */
+
+.wca[data-realm="umbra"] {
+  --u-bark: linear-gradient(180deg, #2a2414 0%, #19190e 55%, #10140b 100%);
+  --u-moss: radial-gradient(circle at 38% 30%, #33421f 0%, #1a2512 55%, #0c120a 100%);
+  --u-edge: #4a4526;
+  --u-edge-hi: #8a7a3c;
+  --u-grain: url(umbra/grain.svg);
+  --u-pebble: 46% 54% 44% 56% / 54% 46% 56% 44%;
+}
+
+/* ---------- toolbar on the scene: a bark plank with a vine draped over it ---------- */
+.wca.scene-map[data-realm="umbra"] .wca-scenebar .wca-bar {
+  background: var(--u-grain), var(--u-bark); border: 1px solid var(--u-edge); border-radius: 12px 16px 10px 14px / 14px 10px 16px 12px;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, .65), inset 0 1px 0 rgba(226, 190, 120, .08), inset 0 0 18px rgba(0, 0, 0, .55); padding: 7px 10px 5px;
+}
+.wca.scene-map[data-realm="umbra"] .wca-scenebar .wca-bar::before {
+  content: ''; position: absolute; left: -16px; right: -16px; top: -17px; height: 46px; pointer-events: none; z-index: 3;
+  background: url(umbra/drape.svg) repeat-x left top / auto 46px; filter: drop-shadow(0 3px 2px rgba(0, 0, 0, .7));
+}
+.wca.scene-map[data-realm="umbra"] .wca-scenebar .wca-bar::after {
+  content: ''; position: absolute; right: -26px; top: -24px; width: 66px; height: 66px; pointer-events: none; z-index: 4;
+  background: url(umbra/corner-tr.svg) center / contain no-repeat; filter: drop-shadow(0 3px 2px rgba(0, 0, 0, .7));
+}
+/* the realm and level switches: a twisted branch with leaves at the ends */
+.wca[data-realm="umbra"] .seg { position: relative; background: var(--u-grain), var(--u-bark); border-color: var(--u-edge); border-radius: 18px 22px 16px 20px / 20px 16px 22px 18px; box-shadow: 0 6px 20px rgba(0, 0, 0, .6), inset 0 0 14px rgba(0, 0, 0, .5); }
+.wca[data-realm="umbra"] .seg.realms::before { content: ''; position: absolute; left: -22px; top: -20px; width: 58px; height: 58px; pointer-events: none; z-index: 2; background: url(umbra/corner.svg) center / contain no-repeat; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .7)); }
+.wca[data-realm="umbra"] .seg.levels::after { content: ''; position: absolute; right: -14px; bottom: -12px; width: 30px; height: 30px; pointer-events: none; z-index: 2; background: url(umbra/leaf-corner.svg) center / contain no-repeat; transform: rotate(90deg); }
+.wca[data-realm="umbra"] .seg button { color: #a9ad86; border-radius: 16px 20px 14px 18px / 18px 14px 20px 16px; }
+.wca[data-realm="umbra"] .seg button:hover { color: #efe6c6; text-shadow: 0 0 8px rgba(226, 182, 94, .5); box-shadow: none; }
+.wca[data-realm="umbra"] .seg button[aria-checked="true"] {
+  color: #f5eed2; background: url(umbra/leaf.svg) no-repeat right 6px center / 13px 8px, radial-gradient(120% 140% at 30% 20%, #4b5c27, #26331a 60%, #18210f);
+  box-shadow: inset 0 0 0 1px #6e6a34, inset 0 -6px 12px rgba(0, 0, 0, .35), 0 0 12px rgba(150, 170, 80, .25); padding-right: 24px; text-shadow: 0 1px 2px #000;
+}
+.wca.scene-map[data-realm="umbra"] .wca-scenebar .follow { background: var(--u-grain), var(--u-bark); border-color: var(--u-edge); }
+
+/* ---------- map buttons: river pebbles of moss ---------- */
+.wca[data-realm="umbra"] .mbtn { background: var(--u-moss); border: 1px solid var(--u-edge); border-radius: var(--u-pebble); color: #e6dcbc; box-shadow: inset 0 1px 0 rgba(226, 200, 140, .10), inset 0 -3px 6px rgba(0, 0, 0, .45), 0 2px 4px rgba(0, 0, 0, .5); transition: border-color .2s, box-shadow .2s, transform .15s; }
+.wca[data-realm="umbra"] .mbtn:nth-child(3n+1) { border-radius: 54% 46% 52% 48% / 46% 56% 44% 54%; }
+.wca[data-realm="umbra"] .mbtn:nth-child(3n+2) { border-radius: 50% 50% 42% 58% / 58% 48% 52% 42%; }
+.wca[data-realm="umbra"] .mbtn svg { color: #d8c88a; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .8)); }
+.wca[data-realm="umbra"] .mbtn:hover { border-color: var(--u-edge-hi); box-shadow: inset 0 0 10px rgba(226, 182, 94, .22), 0 0 12px rgba(226, 182, 94, .35); transform: translateY(-1px); }
+.wca[data-realm="umbra"] .mbtn:hover svg { color: #f3d98e; }
+.wca[data-realm="umbra"] .mbtn[aria-pressed="true"], .wca[data-realm="umbra"] .mbtn.on, .wca[data-realm="umbra"] .mbtn[aria-expanded="true"] {
+  background: url(umbra/leaf-corner.svg) no-repeat top -3px right -3px / 16px, radial-gradient(circle at 40% 30%, #56682a, #2c3a18 60%, #141c0d); border-color: #9a8a42; }
+/* the atlas window: a vine climbs the button column */
+.wca:not(.scene-map):not(.scene-hud)[data-realm="umbra"] .wca-bar::before { content: ''; position: absolute; left: -16px; top: -10px; bottom: -14px; width: 34px; pointer-events: none; z-index: 3; background: url(umbra/vine-v.svg) repeat-y center top / 34px auto; filter: drop-shadow(1px 2px 1px rgba(0, 0, 0, .6)); }
+
+/* ---------- panels: tooltips, legend, layers, search ---------- */
+.wca[data-realm="umbra"] .wca-tip, .wca[data-realm="umbra"] .wca-legend, .wca[data-realm="umbra"] .wca-layers, .wca[data-realm="umbra"] .wca-finder {
+  background: url(umbra/leaf-corner.svg) no-repeat top -4px right -4px / 26px, var(--u-grain), linear-gradient(180deg, rgba(30, 34, 18, .97), rgba(12, 18, 10, .97));
+  border-color: var(--u-edge); border-radius: 10px 6px 12px 7px / 7px 12px 6px 10px; box-shadow: 0 10px 28px rgba(0, 0, 0, .65), inset 0 0 16px rgba(0, 0, 0, .5);
+}
+.wca[data-realm="umbra"] .wca-tip { color: #ece4c8; font-family: var(--f-head); }
+.wca[data-realm="umbra"] .wca-legend i.k-fill, .wca[data-realm="umbra"] .wca-legend i.k-dash { border-radius: 40% 60% 45% 55%; }
+.wca[data-realm="umbra"] .wca-finder .fbox { background: transparent; }
+.wca[data-realm="umbra"] .wca-credit { color: #8a8a68; font-family: var(--f-head); font-style: italic; }
+
+/* ---------- pins: a leaf caught on every marker ---------- */
+.wca[data-realm="umbra"] .wca-pin:not(.s-party):not(.pnote) .pin::before {
+  content: ''; position: absolute; left: -7px; bottom: -4px; width: 14px; height: 9px; pointer-events: none; z-index: 2;
+  background: url(umbra/leaf.svg) center / contain no-repeat; transform: rotate(-38deg); filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .8));
+}
+.wca[data-realm="umbra"] .zl-lo .wca-pin .pin::before { display: none; }
+.wca[data-realm="umbra"] .wca-pin .lbl { font-family: var(--f-head); color: #efe6c8; }
+.wca[data-realm="umbra"] .wca-pin.s-party .lbl { background: var(--u-grain), linear-gradient(180deg, #2a2a16, #141a0c); border: 1px solid var(--u-edge); }
+.wca[data-realm="umbra"] .wca-pin.s-party .pin { box-shadow: 0 0 0 2px #1a1a0c, 0 0 0 3px var(--c), 0 3px 8px rgba(0, 0, 0, .7), 0 0 14px rgba(140, 170, 80, .25) !important; }
+
+/* ---------- the dossier: a field journal ---------- */
+.wca[data-realm="umbra"] .wca-side {
+  background-color: #0f190f;
+  background-image: var(--u-grain), radial-gradient(130% 55% at 0% 0%, rgba(182, 168, 90, .14), transparent 60%), radial-gradient(100% 50% at 100% 100%, rgba(0, 0, 0, .55), transparent 70%), linear-gradient(180deg, #132014, #0b130b);
+}
+.wca:not(.scene-hud)[data-realm="umbra"] .wca-side::after { content: ''; position: absolute; right: -17px; top: 0; bottom: 0; width: 34px; pointer-events: none; z-index: 26; background: url(umbra/vine-v.svg) repeat-y center top / 34px auto; filter: drop-shadow(2px 2px 2px rgba(0, 0, 0, .6)); }
+.wca[data-realm="umbra"] .wca-mast { background: url(umbra/corner-tr.svg) no-repeat top -6px right -6px / 92px; }
+.wca[data-realm="umbra"] .wca-mast::before { content: ''; position: absolute; left: -6px; top: -6px; width: 70px; height: 70px; pointer-events: none; background: url(umbra/corner.svg) center / contain no-repeat; opacity: .9; }
+.wca[data-realm="umbra"] .wca-mast::after { left: 10%; right: 10%; height: 18px; bottom: -9px; background: url(umbra/flourish.svg) center / 220px 18px no-repeat; }
+.wca[data-realm="umbra"] .wca-mast .ttl { text-shadow: 0 0 16px rgba(226, 182, 94, .35), 0 2px 3px #000; position: relative; }
+.wca[data-realm="umbra"] .wca-mast .kicker, .wca[data-realm="umbra"] .wca-mast .date { position: relative; }
+.wca[data-realm="umbra"] .wca-mast .banner { border-color: var(--u-edge); border-radius: 12px 8px 14px 9px / 9px 14px 8px 12px; background: rgba(0, 0, 0, .18); }
+.wca[data-realm="umbra"] .wca-tabs button[aria-selected="true"] { border-bottom-color: transparent; box-shadow: none; background: url(umbra/leaf.svg) no-repeat center bottom 1px / 18px 10px; color: #f3ebcf; text-shadow: 0 0 10px rgba(226, 182, 94, .45); }
+.wca[data-realm="umbra"] .wca-tabs { border-bottom: 0; background: linear-gradient(90deg, transparent, #5a5228 20%, #6e6232 50%, #5a5228 80%, transparent) bottom / 100% 1px no-repeat; }
+.wca[data-realm="umbra"] .grp::before { width: 16px; height: 9px; background: url(umbra/leaf.svg) center / contain no-repeat; transform: rotate(-18deg); box-shadow: none; }
+.wca[data-realm="umbra"] .item .ic { border-radius: var(--u-pebble); }
+.wca[data-realm="umbra"] .item:hover, .wca[data-realm="umbra"] .item.hot { background: linear-gradient(90deg, rgba(110, 130, 60, .22), transparent 75%); }
+.wca[data-realm="umbra"] .chip { border-radius: 14px 18px 12px 16px / 16px 12px 18px 14px; }
+.wca[data-realm="umbra"] .btn { border-radius: 12px 8px 14px 9px / 9px 14px 8px 12px; background: var(--u-grain), linear-gradient(180deg, #2a2f17, #151a0d); border-color: var(--u-edge); }
+.wca[data-realm="umbra"] .btn:hover { border-color: var(--u-edge-hi); box-shadow: 0 0 10px rgba(226, 182, 94, .3); }
+.wca[data-realm="umbra"] .search input, .wca[data-realm="umbra"] .wca-q { border-radius: 14px 10px 12px 9px / 10px 13px 9px 12px; }
+.wca[data-realm="umbra"] .det h2::after { content: ''; display: block; height: 14px; margin-top: 6px; background: url(umbra/flourish.svg) left center / 180px 14px no-repeat; opacity: .85; }
+.wca[data-realm="umbra"] .det .body > p:first-child::first-letter { color: #e2b65e; font-family: var(--f-head); font-size: 2.9em; text-shadow: 0 0 10px rgba(226, 182, 94, .35); }
+.wca[data-realm="umbra"] .det .scene { border-left-color: #8a7a3c; background: linear-gradient(90deg, rgba(110, 120, 60, .12), transparent); }
+.wca[data-realm="umbra"] .wca-pane { scrollbar-color: #4e5a2a transparent; }
+
+/* ---------- crossing into the Umbra: vines grow in from the edges, green mist rises, leaves fall ---------- */
+.fx-umbra .veil { inset: 0; background: linear-gradient(0deg, rgba(5, 12, 6, .96) 0%, rgba(14, 26, 14, .78) 34%, rgba(24, 38, 20, .32) 66%, transparent 100%); animation-name: wca-veil-umbra; animation-timing-function: cubic-bezier(.35, .1, .3, 1); }
+@keyframes wca-veil-umbra { 0% { opacity: 0; transform: translateY(45%); } 42% { opacity: 1; transform: translateY(0); } 74% { opacity: .92; } 100% { opacity: 0; transform: translateY(-12%); } }
+.fx-umbra .vines { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; animation: wca-vines-out var(--fx-ms, 2600ms) linear forwards; filter: drop-shadow(0 3px 3px rgba(0, 0, 0, .7)); }
+@keyframes wca-vines-out { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
+.fx-umbra .vines .st { stroke-dasharray: 1; stroke-dashoffset: 1; animation: wca-grow calc(var(--fx-ms, 2600ms) * .5) cubic-bezier(.25, .7, .35, 1) forwards; animation-delay: var(--d, 0ms); }
+@keyframes wca-grow { to { stroke-dashoffset: 0; } }
+.fx-umbra .vines .lf { transform-box: fill-box; transform-origin: 0% 50%; transform: scale(0); animation: wca-leaf-in .45s cubic-bezier(.3, 1.5, .5, 1) forwards; animation-delay: var(--d, 0ms); }
+@keyframes wca-leaf-in { to { transform: scale(1); } }
+.fx-umbra b { width: calc(11px * var(--s, 1)); height: calc(5px * var(--s, 1)); border-radius: 0 100% 0 100%; background: #8c9a4a; box-shadow: none; animation-name: wca-leaf; animation-duration: calc(var(--fx-ms, 2600ms) * .95); animation-timing-function: ease-in-out; }
+.fx-umbra b:nth-child(3n) { background: #a0702e; }
+.fx-umbra b:nth-child(4n) { background: #e2b65e; box-shadow: 0 0 8px #e2b65e; width: 5px; height: 5px; border-radius: 50%; }
+@keyframes wca-leaf { 0% { opacity: 0; transform: translate(0, -30px) rotate(0); } 20% { opacity: .9; } 50% { transform: translate(18px, 20px) rotate(140deg); } 100% { opacity: 0; transform: translate(-6px, 80px) rotate(300deg); } }
+@keyframes wca-out-umbra { 0% { opacity: 1; filter: none; transform: scale(1); } 100% { opacity: 0; filter: sepia(.8) hue-rotate(40deg) brightness(.4) blur(3px); transform: scale(1.03); } }
+
+/* ---------- the clock: a wreath ---------- */
+body[data-wca-realm="umbra"] .wca-clock .clk-face { background: url(umbra/grain.svg), linear-gradient(180deg, rgba(36, 36, 20, .96), rgba(14, 20, 11, .96)); border-color: #5a5228; border-radius: 16px 12px 18px 13px / 13px 18px 12px 16px; box-shadow: 0 6px 22px rgba(0, 0, 0, .7), inset 0 0 16px rgba(0, 0, 0, .55); }
+body[data-wca-realm="umbra"] .wca-clock .clk-face::before, body[data-wca-realm="umbra"] .wca-clock .clk-face::after { top: -8px; width: 48px; height: 48px; transform: none; background: url(umbra/corner.svg) center / contain no-repeat; box-shadow: none; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .7)); }
+body[data-wca-realm="umbra"] .wca-clock .clk-face::before { left: -20px; }
+body[data-wca-realm="umbra"] .wca-clock .clk-face::after { right: -20px; background-image: url(umbra/corner-tr.svg); }
+body[data-wca-realm="umbra"] .wca-clock .clk-ctl button { border-radius: 10px 7px 11px 8px / 8px 11px 7px 10px; background: linear-gradient(180deg, #2c3218, #141a0c); border-color: #5a5228; }
+
+/* ---------- Foundry's own interface, with the Masquerade look on ---------- */
+body.wca-vtm[data-wca-realm="umbra"] #interface { box-shadow: inset 0 0 220px rgba(3, 9, 4, .8); }
+body.wca-vtm[data-wca-realm="umbra"] .ui-control { border-radius: 46% 54% 44% 56% / 54% 46% 56% 44%; background: radial-gradient(circle at 38% 30%, #33421f, #1a2512 55%, #0c120a); border-color: #4a4526; color: #e6dcbc; }
+body.wca-vtm[data-wca-realm="umbra"] .ui-control:hover { background: radial-gradient(circle at 38% 30%, #4b5c27, #26331a 60%, #121a0c); border-color: #8a7a3c; color: #f6e7b8; box-shadow: 0 0 12px rgba(226, 182, 94, .35); }
+body.wca-vtm[data-wca-realm="umbra"] .ui-control.active, body.wca-vtm[data-wca-realm="umbra"] .ui-control[aria-pressed="true"] { background: url(umbra/leaf-corner.svg) no-repeat top -3px right -3px / 16px, radial-gradient(circle at 40% 30%, #6a7c30, #34461c 60%, #151d0d); border-color: #b09a4c; color: #fff6da; }
+body.wca-vtm[data-wca-realm="umbra"] #scene-controls-layers, body.wca-vtm[data-wca-realm="umbra"] #scene-controls-tools { background: url(umbra/vine-v.svg) repeat-y center top / 34px auto; }
+body.wca-vtm[data-wca-realm="umbra"] #scene-controls .ui-control:not(.active):not([aria-pressed="true"]):nth-child(odd), body.wca-vtm[data-wca-realm="umbra"] #scene-controls li:nth-child(odd) > .ui-control:not(.active) { background-image: url(umbra/leaf-corner.svg), radial-gradient(circle at 38% 30%, #33421f, #1a2512 55%, #0c120a); background-repeat: no-repeat; background-position: bottom -4px left -4px, center; background-size: 15px, auto; }
+body.wca-vtm[data-wca-realm="umbra"] #sidebar-content, body.wca-vtm[data-wca-realm="umbra"] #sidebar .sidebar-tab {
+  background: url(umbra/vine-v.svg) repeat-y left -10px top / 30px auto, url(umbra/grain.svg), radial-gradient(120% 40% at 100% 0%, rgba(182, 168, 90, .12), transparent 60%), linear-gradient(180deg, #121c11, #0a110a); }
+body.wca-vtm[data-wca-realm="umbra"] .directory .folder > header, body.wca-vtm[data-wca-realm="umbra"] .directory .folder-header { background: url(umbra/leaf.svg) no-repeat right 8px center / 16px 9px, linear-gradient(90deg, #2e3a18, #121a0c 75%) !important; border-top-color: #4a4526; }
+body.wca-vtm[data-wca-realm="umbra"] .application, body.wca-vtm[data-wca-realm="umbra"] .app.window-app { border-color: #4a4526; box-shadow: 0 0 0 1px #070b06, 0 16px 48px rgba(0, 0, 0, .7), 0 0 26px rgba(120, 140, 60, .18); }
+body.wca-vtm[data-wca-realm="umbra"] .application > .window-header, body.wca-vtm[data-wca-realm="umbra"] .app.window-app > .window-header {
+  background: url(umbra/vine-h.svg) repeat-x left top -14px / auto 32px, url(umbra/grain.svg), linear-gradient(90deg, #121b10, #2c3018 50%, #121b10); border-bottom-color: #5a5228; }
+body.wca-vtm[data-wca-realm="umbra"] .application > .window-header .window-title, body.wca-vtm[data-wca-realm="umbra"] .chat-message .message-sender { font-family: 'IM Fell English', Georgia, serif; text-shadow: 0 1px 3px #000, 0 0 8px rgba(226, 182, 94, .35); }
+body.wca-vtm[data-wca-realm="umbra"] #chat-log .chat-message, body.wca-vtm[data-wca-realm="umbra"] .chat-log .chat-message {
+  background: url(umbra/leaf-corner.svg) no-repeat top -3px right -3px / 22px, url(umbra/grain.svg), linear-gradient(180deg, #1a2214, #0e150c); border-color: #3a3a1e; border-left-color: #7a6c32; border-radius: 4px 10px 4px 10px; }
+body.wca-vtm[data-wca-realm="umbra"] #hotbar .slot, body.wca-vtm[data-wca-realm="umbra"] #action-bar .slot { border-radius: 40% 60% 45% 55% / 55% 45% 60% 40%; border-color: #4a4526; }
+body.wca-vtm[data-wca-realm="umbra"] #players, body.wca-vtm[data-wca-realm="umbra"] aside#players { background: url(umbra/vine-h.svg) repeat-x left bottom -16px / auto 30px, linear-gradient(180deg, rgba(26, 32, 16, .95), rgba(10, 14, 8, .95)); border-color: #4a4526; border-radius: 10px 6px 12px 7px / 7px 12px 6px 10px; }
+body.wca-vtm[data-wca-realm="umbra"] #notifications .notification { background: url(umbra/leaf-corner.svg) no-repeat top -2px left -2px / 20px, linear-gradient(90deg, #2a3418, #0e150c); border-color: #4a4526; border-left-color: #8a7a3c; }
+body.wca-vtm[data-wca-realm="umbra"] .application.dialog .window-content, body.wca-vtm[data-wca-realm="umbra"] #settings-config .window-content, body.wca-vtm[data-wca-realm="umbra"] .wca-calendar-app .window-content { background: url(umbra/grain.svg), linear-gradient(180deg, #152015, #0a110a); }
+body.wca-vtm[data-wca-realm="umbra"] .wca-cal .cal-day { border-radius: 10px 6px 12px 7px / 7px 12px 6px 10px; }
+body.wca-vtm[data-wca-realm="umbra"] .wca-cal .cal-head h2 { text-shadow: 0 0 12px rgba(226, 182, 94, .35), 0 2px 3px #000; }
+body.wca-vtm[data-wca-realm="umbra"] ::selection { background: rgba(140, 160, 70, .45); color: #fff; }
+@media (prefers-reduced-motion: reduce) { .fx-umbra .vines { display: none; } }

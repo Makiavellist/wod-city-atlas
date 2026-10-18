@@ -1,8 +1,9 @@
 /* The GM editor: drawing tools, item forms, collection managers, import/export and undo. */
 import {esc, svg, clone, uid, safeId, sortBy, GLYPH, segDist, inPoly, clamp} from './util.js';
-import {COLLECTIONS, TYPE_NAMES, normalize, TIER} from './model.js';
+import {COLLECTIONS, TYPE_NAMES, normalize} from './model.js';
 import {renderFields, readFields, bindFields} from './forms.js';
 import {LOOKS, applyLook} from './templates.js';
+import {planLooks, applyLooks} from './looks.js';
 const SHAPE_OPTS = [['circle', 'Circle'], ['square', 'Square'], ['diamond', 'Diamond'], ['hex', 'Hexagon'], ['octagon', 'Octagon'], ['shield', 'Shield'], ['marker', 'Map marker']];
 
 const TOOLS = [['select', 'cursor', 'Select & move'], ['places', 'pin', 'Add a place'], ['zones', 'poly', 'Draw a zone'], ['routes', 'line', 'Draw a route'], ['labels', 'text', 'Add a label'], ['auras', 'glow', 'Add a glow']];
@@ -382,7 +383,7 @@ export class AtlasEditor {
         {k: '_look', t: 'select', label: 'Apply a look', help: 'replaces colours & effects', opts: Object.entries(LOOKS).map(([k, l]) => [k, l.label]), none: '(keep current)'},
         {k: 'kicker', t: 'text', label: 'Kicker', wide: true}, {k: 'date', t: 'text', label: 'Date line', wide: true}, {k: 'banner', t: 'text', label: 'Banner', wide: true}, {k: 'credit', t: 'text', label: 'Map credit', wide: true},
         {k: 'terms.places', t: 'text', label: 'Tab: places'}, {k: 'terms.people', t: 'text', label: 'Tab: people'}, {k: 'terms.zones', t: 'text', label: 'Tab: zones'}, {k: 'terms.pages', t: 'text', label: 'Tab: chronicle'},
-        {k: 'crossLabel', t: 'text', label: 'Crossing button text', ph: 'Step sideways into the Umbra', wide: true}, {k: 'crossIcon', t: 'icon', label: 'Crossing icon'}, {k: 'crossFx', t: 'select', label: 'Crossing animation', opts: [['blood', 'Blood (waking city)'], ['dream', 'Dreaming sparks'], ['shadow', 'Falling ash'], ['umbra', 'Gauntlet ripples'], ['descend', 'Sinking'], ['ascend', 'Rising']], none: 'Guess from the realm'},
+        {k: 'crossLabel', t: 'text', label: 'Crossing button text', ph: 'Step sideways into the Umbra', wide: true}, {k: 'crossIcon', t: 'icon', label: 'Crossing icon'}, {k: 'crossFx', t: 'select', label: 'Crossing animation', opts: [['blood', 'Blood (waking city)'], ['dream', 'Dreaming sparks'], ['shadow', 'Falling ash'], ['umbra', 'Into the woods'], ['descend', 'Sinking'], ['ascend', 'Rising']], none: 'Guess from the realm'},
         {k: 'bg', t: 'color', label: 'Map background'}, {k: 'theme.panel', t: 'color', label: 'Panel'}, {k: 'theme.accent', t: 'color', label: 'Accent'}, {k: 'theme.gold', t: 'color', label: 'Highlight'}, {k: 'theme.bone', t: 'color', label: 'Text'}, {k: 'theme.muted', t: 'color', label: 'Muted text'}, {k: 'theme.line', t: 'color', label: 'Rules'},
         {k: 'background.src', t: 'image', label: 'Own map picture (optional)', wide: true}, {k: 'background.filter', t: 'text', label: 'Picture filter', help: 'CSS filter, e.g. hue-rotate(140deg) brightness(.6)', wide: true},
         {k: '_levels', t: 'list', label: 'Levels (e.g. Street / Underground, Near / Deep)', wide: true, addLabel: 'Add level', sub: [{k: 'id', t: 'text', label: 'Id'}, {k: 'name', t: 'text', label: 'Name'}, {k: 'show', t: 'text', label: 'Shows items of', help: 'comma-separated level ids'}, {k: 'bg', t: 'color', label: 'Background'}, {k: 'kicker', t: 'text', label: 'Kicker'}, {k: 'crossLabel', t: 'text', label: 'Crossing text'}, {k: 'background.src', t: 'image', label: 'Own picture', wide: true}, {k: 'background.filter', t: 'text', label: 'Picture filter', wide: true}, {k: 'effects', t: 'json', label: 'Effects (JSON)', wide: true, rows: 3}]},
@@ -530,7 +531,7 @@ export class AtlasEditor {
     const uu = form.querySelector('.ef[data-k="uuid"] input'); if (uu && uu.dataset.name) d.uuidName = uu.dataset.name; if (!d.uuid) delete d.uuidName;
     if (coll === 'styles') {
       const name = safeId(d._name) || P.id; const body = d._body || {}; if (name !== P.id) { await this.remove('styles', P.id); P.id = name; }
-      await this.put('styles', Object.assign({}, body, {id: name}));
+      await this.put('styles', Object.assign({}, Array.isArray(body) ? {passes: body} : body, {id: name}));
     } else {
       d.id = P.id;
       // geometry may have changed while the form was open: keep the stored version
@@ -747,7 +748,7 @@ export class AtlasEditor {
       <div class="ed-sep"></div>
       <h3>Merge from another atlas</h3><p class="hint">Adds the people, factions, categories and pages of another exported atlas without touching the map.</p>
       <label class="btn">${svg('upload')} Merge people & lore<input type="file" accept=".json,application/json" hidden data-ed="merge"></label>
-      ${this.A.loadPreset ? `<div class="ed-sep"></div><h3>Realm looks from the preset</h3><p class="hint">Copies the colours, effects and map styles of every realm (and the styles and colours of the spirit zones, place categories and the Umbra's Kindred taint) from the bundled Milwaukee preset into this atlas. Nothing else changes: no texts, positions, visibility or entries.</p><button type="button" class="btn" data-ed="looks">${svg('image')} Refresh realm looks</button>` : ''}</div>`;
+      ${this.A.loadPreset ? `<div class="ed-sep"></div><h3>Realm looks from the preset</h3><p class="hint">Copies the colours, effects and map styles of every realm, and the look of the zones, routes, glows, labels and place categories, from the bundled Milwaukee preset into this atlas. Nothing else changes: no texts, positions, visibility or entries. (A new version of the module does this by itself once, after asking.)</p><button type="button" class="btn" data-ed="looks">${svg('image')} Refresh realm looks</button>` : ''}</div>`;
     pane.onclick = e => { const b = e.target.closest('button[data-ed]'); if (!b) return; const a = b.dataset.ed;
       if (a === 'back') this.back();
       else if (a === 'export') this.download(`${safeId(this.m.atlas.title) || 'atlas'}.atlas.json`, JSON.stringify(this.store.exportData(), null, 1));
@@ -771,19 +772,9 @@ export class AtlasEditor {
   }
   async refreshLooks() {
     let pre; try { pre = await this.A.loadPreset('milwaukee'); } catch (e) { pre = null; } if (!pre) return this.notify('Could not load the preset.', 'error');
-    pre = normalize(pre); const a = this.m.atlas;
-    if (!await this.confirm('Refresh realm looks?', 'The colours, effects and map styles of the realms and spirit zones will be replaced by the preset’s. Texts, positions and visibility are not touched.')) return;
-    for (const [rid, pr] of Object.entries(pre.realms)) {
-      const cur = a.realms[rid]; if (!cur) continue; const d = clone(cur);
-      for (const k of ['bg', 'theme', 'effects', 'styles', 'labelColors', 'background', 'legend']) if (pr[k] !== undefined) d[k] = clone(pr[k]);
-      for (const pl of pr.levels || []) { const cl = (d.levels || []).find(l => l.id === pl.id); if (cl) for (const k of ['effects', 'theme', 'styles', 'bg', 'labelColors']) { if (pl[k] !== undefined) cl[k] = clone(pl[k]); else delete cl[k]; } }
-      await this.store.setItem('realms', rid, d);
-    }
-    for (const [sid, ps] of Object.entries(pre.styles)) if (a.styles[sid] && JSON.stringify(a.styles[sid]) !== JSON.stringify(ps)) await this.store.setItem('styles', sid, clone(ps));
-    for (const [cid, pc] of Object.entries(pre.categories)) { const c = a.categories[cid]; if (c && pc.color && c.color !== pc.color) await this.store.setItem('categories', cid, Object.assign(clone(c), {color: pc.color})); }
-    for (const [gid, pg] of Object.entries(pre.auras)) { const g = a.auras[gid]; if (!g || g.layer !== 'taint' || pg.layer !== 'taint') continue; const d = clone(g); for (const k of ['color', 'ring', 'mode', 'decor', 'name', 'kicker', 'html']) { if (pg[k] !== undefined) d[k] = clone(pg[k]); } await this.store.setItem('auras', gid, d); }
-    for (const [zid, pz] of Object.entries(pre.zones)) { const z = a.zones[zid]; if (!z || z.realm !== pz.realm) continue; if (z.color !== pz.color || JSON.stringify(z.style) !== JSON.stringify(pz.style)) { const d = clone(z); d.color = pz.color; d.style = clone(pz.style); await this.store.setItem('zones', zid, d); } }
-    this.v.applyView(); this.v.dirty(); this.notify('Realm looks refreshed from the preset.');
+    if (!await this.confirm('Refresh realm looks?', 'The colours, effects and map styles of the realms, zones, routes, glows and place categories will be replaced by the preset’s. Texts, positions and visibility are not touched.')) return;
+    const n = await applyLooks(this.store, planLooks(this.m.atlas, normalize(pre)));
+    this.v.applyView(); this.v.dirty(); this.notify(n ? `Realm looks refreshed from the preset (${n} changes).` : 'The realm looks already match the preset.');
   }
   download(name, text) {
     if (this.A.saveFile) return this.A.saveFile(name, text);
