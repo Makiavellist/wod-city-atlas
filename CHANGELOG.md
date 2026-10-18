@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.6.0
+- **Fix: pins and character portraits could not be clicked on an atlas scene; the zone behind them opened instead.** Pins now always win over the zones and domains behind them, and a click that selects a Foundry token no longer opens the zone under it.
+- **Clicking a character's portrait** opens that character's sheet (for the Storyteller and the owner).
+- **The whole interface follows the realm.** With the Masquerade look on, Foundry's sidebar, chat, controls, windows, clock and calendar take the colours of the realm shown on the atlas scene (violet and gold in the Dreaming, grey-green in the Shadowlands, jade in the Umbra, amber underground, blood in the waking city) and glide from one to the next.
+- **Chronicle calendar.** A calendar button sits on the clock (with the number of tonight's events). It opens a month view of the in-game date where the Storyteller writes events for any night: for everyone, Storyteller only, or for particular players. Players see the events meant for them. *Set the clock to this day* jumps the clock there.
+- **The Umbra, redone.** A deep night-blue Penumbra with dimmer streets and stars, softer motes and a heavier vignette; every kind of spirit zone has its own colour and texture (Weaver grids, Wyrm hatching, Wyld dots, clan glyphs). The crossing into the Umbra is slower and gentler, like mist lifting off water. Existing atlases: *Edit → Import / export → Refresh realm looks* copies the new look in without touching anything else.
+
 ## 1.5.0
 Built on 1.3.0 / 1.4.1 (the 1.4.0 changes stay withdrawn).
 - **Crossing animations.** Switching realms plays a short animation in the new realm's manner: golden and lilac sparks for the Dreaming, falling ash for the Shadowlands, Gauntlet ripples for the Umbra, blood seeping through for the waking city. Going down a level sinks into the dark; going up rises out of it. Works on atlas scenes and in the atlas window. Each realm can choose its animation (*Edit → Realms & levels → Crossing animation*); the *Animate the map* setting or the system's reduced-motion preference turns them off.

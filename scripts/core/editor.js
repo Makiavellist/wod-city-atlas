@@ -746,10 +746,12 @@ export class AtlasEditor {
       <label class="btn">${svg('upload')} Import atlas (replace)<input type="file" accept=".json,application/json" hidden data-ed="import"></label>
       <div class="ed-sep"></div>
       <h3>Merge from another atlas</h3><p class="hint">Adds the people, factions, categories and pages of another exported atlas without touching the map.</p>
-      <label class="btn">${svg('upload')} Merge people & lore<input type="file" accept=".json,application/json" hidden data-ed="merge"></label></div>`;
+      <label class="btn">${svg('upload')} Merge people & lore<input type="file" accept=".json,application/json" hidden data-ed="merge"></label>
+      ${this.A.loadPreset ? `<div class="ed-sep"></div><h3>Realm looks from the preset</h3><p class="hint">Copies the colours, effects and map styles of every realm (and the styles and colours of the spirit zones) from the bundled Milwaukee preset into this atlas. Nothing else changes: no texts, positions, visibility or entries.</p><button type="button" class="btn" data-ed="looks">${svg('image')} Refresh realm looks</button>` : ''}</div>`;
     pane.onclick = e => { const b = e.target.closest('button[data-ed]'); if (!b) return; const a = b.dataset.ed;
       if (a === 'back') this.back();
       else if (a === 'export') this.download(`${safeId(this.m.atlas.title) || 'atlas'}.atlas.json`, JSON.stringify(this.store.exportData(), null, 1));
+      else if (a === 'looks') this.refreshLooks();
       else if (a === 'exportbm') this.download(`${safeId(this.m.atlas.title) || 'atlas'}.basemap.json`, JSON.stringify(this.store.basemap));
     };
     pane.onchange = async e => {
@@ -766,6 +768,20 @@ export class AtlasEditor {
       }
       inp.value = '';
     };
+  }
+  async refreshLooks() {
+    let pre; try { pre = await this.A.loadPreset('milwaukee'); } catch (e) { pre = null; } if (!pre) return this.notify('Could not load the preset.', 'error');
+    pre = normalize(pre); const a = this.m.atlas;
+    if (!await this.confirm('Refresh realm looks?', 'The colours, effects and map styles of the realms and spirit zones will be replaced by the preset’s. Texts, positions and visibility are not touched.')) return;
+    for (const [rid, pr] of Object.entries(pre.realms)) {
+      const cur = a.realms[rid]; if (!cur) continue; const d = clone(cur);
+      for (const k of ['bg', 'theme', 'effects', 'styles', 'labelColors', 'background', 'legend']) if (pr[k] !== undefined) d[k] = clone(pr[k]);
+      for (const pl of pr.levels || []) { const cl = (d.levels || []).find(l => l.id === pl.id); if (cl) for (const k of ['effects', 'theme', 'styles', 'bg', 'labelColors']) { if (pl[k] !== undefined) cl[k] = clone(pl[k]); else delete cl[k]; } }
+      await this.store.setItem('realms', rid, d);
+    }
+    for (const [sid, ps] of Object.entries(pre.styles)) if (a.styles[sid] && JSON.stringify(a.styles[sid]) !== JSON.stringify(ps)) await this.store.setItem('styles', sid, clone(ps));
+    for (const [zid, pz] of Object.entries(pre.zones)) { const z = a.zones[zid]; if (!z || z.realm !== pz.realm) continue; if (z.color !== pz.color || JSON.stringify(z.style) !== JSON.stringify(pz.style)) { const d = clone(z); d.color = pz.color; d.style = clone(pz.style); await this.store.setItem('zones', zid, d); } }
+    this.v.applyView(); this.v.dirty(); this.notify('Realm looks refreshed from the preset.');
   }
   download(name, text) {
     if (this.A.saveFile) return this.A.saveFile(name, text);

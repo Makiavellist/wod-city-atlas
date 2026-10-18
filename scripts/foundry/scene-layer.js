@@ -12,7 +12,7 @@
 import {AtlasView} from '../core/view.js';
 import {esc} from '../core/util.js';
 import {JournalStore, MOD} from './journal-store.js';
-import {makeAdapter, resolveUrl, AtlasApp} from './app.js';
+import {makeAdapter, resolveUrl, AtlasApp, resetUiTheme} from './app.js';
 
 const {ApplicationV2} = foundry.applications.api;
 const HUD_KEY = 'wod-city-atlas:hud';
@@ -52,7 +52,7 @@ export class SceneAtlas {
     try { await sa.mount(); } catch (err) { console.error(`${MOD} | could not draw the atlas on the scene`, err); sa.destroy(); if (this.current === sa) this.current = null; ui.notifications.error(`City Atlas: could not draw the atlas on this scene (${err.message}).`); }
     return this.current;
   }
-  static teardown() { this.current?.destroy(); this.current = null; }
+  static teardown() { this.current?.destroy(); this.current = null; resetUiTheme(); }
 
   constructor(scene, entry) { this.scene = scene; this.entry = entry; }
   flag() { return this.scene.getFlag(MOD, 'atlas') || {}; }
@@ -202,13 +202,30 @@ export class SceneAtlas {
     if (ctl && !['tokens', 'token', 'notes'].includes(ctl)) return false;
     return !tool || ['select', 'wcaAtlas', 'wcaHud'].includes(tool);
   }
-  tokenAt(sx, sy) {
-    try { const p = this.toScene(sx, sy); return (canvas.tokens?.placeables || []).some(t => t.visible && t.bounds?.contains?.(p.x, p.y)); } catch (e) { return false; }
+  /** Is a Foundry token (or another placeable) under this screen point? Then the click belongs to Foundry, not the atlas. */
+  tokenAt(sx, sy, e) {
+    try {
+      if (canvas.tokens?.hover) return true;
+      let p = null;
+      if (e && typeof canvas.canvasCoordinatesFromClient === 'function') p = canvas.canvasCoordinatesFromClient({x: e.clientX, y: e.clientY});
+      if (!p) p = this.toScene(sx, sy);
+      const hit = t => { if (!t || t.visible === false) return false; const b = t.bounds; if (b && b.contains && b.contains(p.x, p.y)) return true; const d = t.document; if (d && Number.isFinite(d.x) && Number.isFinite(d.y)) { const g = canvas.grid?.size || canvas.dimensions?.size || 100; return p.x >= d.x && p.y >= d.y && p.x <= d.x + (d.width || 1) * g && p.y <= d.y + (d.height || 1) * g; } return false; };
+      return (canvas.tokens?.placeables || []).some(hit);
+    } catch (e2) { return false; }
   }
-  clickAt(e) { if (!this.view || !this.clicksAllowed()) return; const [sx, sy] = this.local(e); if (this.tokenAt(sx, sy)) return; this.view.clickAt(sx, sy, e); }
+  clickAt(e) {
+    if (!this.view) return; const [sx, sy] = this.local(e);
+    // pins come first, whatever tool is active
+    const mk = this.view.markerAt(sx, sy); if (mk && !this.tokenAt(sx, sy, e)) { this.view.openMarker(mk); return; }
+    if (!this.clicksAllowed() || this.tokenAt(sx, sy, e)) return;
+    const before = canvas.tokens?.controlled?.length ?? 0;
+    // let Foundry handle the click first: if it selected a token, the zone behind stays closed
+    setTimeout(() => { if ((canvas.tokens?.controlled?.length ?? 0) !== before || canvas.tokens?.hover) return; this.view?.clickAt(sx, sy, e); }, 30);
+  }
   hoverAt(e) {
     if (!this.view || !e || e.buttons) return; const [sx, sy] = this.local(e);
-    if (!this.clicksAllowed() || this.tokenAt(sx, sy)) { this._pl(); return; }
+    if (this.view.markerAt(sx, sy)) { this.view.hoverAt(sx, sy); return; }
+    if (!this.clicksAllowed() || this.tokenAt(sx, sy, e)) { this._pl(); return; }
     this.view.hoverAt(sx, sy);
   }
   forwardWheel(e) {

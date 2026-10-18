@@ -68,11 +68,13 @@ export const Clock = {
       el = document.createElement('aside'); el.id = 'wca-clock'; el.className = 'wca-clock';
       (document.getElementById('interface') || document.body).appendChild(el);
       el.addEventListener('click', e => { const b = e.target.closest('[data-clk]'); if (!b) return; const a = b.dataset.clk;
-        if (a === 'edit') return this.dialog(); if (a === 'dusk') return this.nextDusk(); if (a === 'dawn') return this.nextDawn(); this.advance(Number(a)); });
+        if (a === 'cal') return Hooks.callAll('wcaOpenCalendar'); if (a === 'edit') return this.dialog(); if (a === 'dusk') return this.nextDusk(); if (a === 'dawn') return this.nextDawn(); this.advance(Number(a)); });
     }
     const d = this.describe(), gm = game.user.isGM, soon = !d.day && d.dawnMs < 36e5;
+    const p = parts(this.get().t), key = `${p.y}-${String(p.mo + 1).padStart(2, '0')}-${String(p.d).padStart(2, '0')}`;
+    let evs = []; try { evs = (game.settings.get(MOD, 'events') || []).filter(e => e.date === key && (gm || e.vis === 'all' || (e.vis === 'some' && (e.users || []).includes(game.user.id)))); } catch (e) {}
     el.classList.toggle('day', d.day); el.classList.toggle('soon', soon); el.classList.toggle('gm', gm);
-    el.innerHTML = `<div class="clk-face"><span class="clk-ic" aria-hidden="true">${d.day ? '☀' : '☾'}</span><div class="clk-txt"><b class="clk-time">${d.time}</b><span class="clk-date">${d.date}</span><span class="clk-sun">${d.sun}</span></div></div>` +
+    el.innerHTML = `<div class="clk-face"><span class="clk-ic" aria-hidden="true">${d.day ? '☀' : '☾'}</span><div class="clk-txt"><b class="clk-time">${d.time}</b><span class="clk-date">${d.date}</span><span class="clk-sun">${d.sun}</span></div><button type="button" class="clk-cal" data-clk="cal" title="Calendar${evs.length ? ` · tonight: ${evs.map(e => e.title).join(', ').replace(/"/g, '&quot;')}` : ''}"><i class="fa-solid fa-calendar-days"></i>${evs.length ? `<b>${evs.length}</b>` : ''}</button></div>` +
       (gm ? `<div class="clk-ctl"><button type="button" data-clk="-60" title="Back one hour">−1h</button><button type="button" data-clk="-10" title="Back ten minutes">−10m</button><button type="button" data-clk="10" title="Forward ten minutes">+10m</button><button type="button" data-clk="60" title="Forward one hour">+1h</button><button type="button" data-clk="dusk" title="Skip to the next dusk">Dusk</button><button type="button" data-clk="dawn" title="Skip to the next dawn">Dawn</button><button type="button" data-clk="edit" title="Set the date and time"><i class="fa-solid fa-pen"></i></button></div>` : '');
   },
   async dialog() {

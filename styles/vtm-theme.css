@@ -1,103 +1,159 @@
 /* The Masquerade look for Foundry's own interface. Everything is scoped under body.wca-vtm
  * (client setting "Masquerade look for Foundry") and only touches colours, borders and type,
- * never layout, so turning it off restores Foundry exactly. Character sheet contents are left alone. */
-body.wca-vtm {
-  --vtm-black: #0a0608; --vtm-ink: #130b0e; --vtm-ink2: #1c1014; --vtm-line: #3d151b; --vtm-line-hi: #6e1b23;
-  --vtm-blood: #8a0f17; --vtm-blood-hi: #c41b25; --vtm-bone: #eadcc3; --vtm-muted: #a8937b; --vtm-gold: #c9a25a;
+ * never layout. The colours follow the realm on screen: the atlas sets --vtm-* on <body>,
+ * and the registered properties below let them glide from one realm to the next. */
+@property --vtm-panel { syntax: '<color>'; inherits: true; initial-value: #140c0f; }
+@property --vtm-panel2 { syntax: '<color>'; inherits: true; initial-value: #1c1014; }
+@property --vtm-line { syntax: '<color>'; inherits: true; initial-value: #3d151b; }
+@property --vtm-accent { syntax: '<color>'; inherits: true; initial-value: #b3202a; }
+@property --vtm-gold { syntax: '<color>'; inherits: true; initial-value: #c9a25a; }
+@property --vtm-muted { syntax: '<color>'; inherits: true; initial-value: #a8937b; }
+@property --vtm-bone { syntax: '<color>'; inherits: true; initial-value: #eadcc3; }
+body {
+  --vtm-ink: color-mix(in srgb, var(--vtm-panel) 80%, #000); --vtm-ink2: var(--vtm-panel2); --vtm-deep: color-mix(in srgb, var(--vtm-panel) 50%, #000);
+  --vtm-line-hi: color-mix(in srgb, var(--vtm-accent) 55%, var(--vtm-line)); --vtm-acc-dk: color-mix(in srgb, var(--vtm-accent) 42%, #000);
+  --vtm-acc-hi: color-mix(in srgb, var(--vtm-accent) 80%, #fff); --vtm-glow: color-mix(in srgb, var(--vtm-accent) 45%, transparent);
+  --vtm-blood: var(--vtm-acc-dk); --vtm-blood-hi: var(--vtm-accent);
   --vtm-head: 'IM Fell English SC', 'IM Fell English', Georgia, serif; --vtm-title: 'Pirata One', 'IM Fell English', Georgia, serif; --vtm-serif: 'IM Fell English', Georgia, serif;
+  transition: --vtm-panel 1.6s ease, --vtm-panel2 1.6s ease, --vtm-line 1.6s ease, --vtm-accent 1.6s ease, --vtm-gold 1.6s ease, --vtm-muted 1.6s ease, --vtm-bone 1.6s ease;
 }
 /* Foundry v13 theme variables (harmless if a name does not exist in this build) */
 body.wca-vtm.theme-dark, body.wca-vtm .theme-dark {
-  --color-text-primary: #eadcc3; --color-text-secondary: #b9a58c; --color-text-emphatic: #ffffff; --color-text-subtle: #8f7c66;
-  --color-border: #3d151b; --color-border-highlight: #c41b25; --color-fieldset-border: #3d151b;
-  --color-cool-5: #130b0e; --color-cool-4: #1c1014; --color-warm-1: #c41b25; --color-warm-2: #8a0f17;
-  --button-background-color: #1c1014; --button-border-color: #4a1a20; --button-text-color: #eadcc3;
-  --button-hover-background-color: #3a0c12; --button-hover-border-color: #c41b25; --button-hover-text-color: #fff;
-  --control-bg-color: rgba(19, 11, 14, .9); --control-border-color: #4a1a20; --control-icon-color: #d8c6aa;
-  --control-hover-bg-color: #3a0c12; --control-hover-border-color: #c41b25; --control-hover-icon-color: #fff;
-  --control-active-bg-color: #6e0f17; --control-active-border-color: #e0323c; --control-active-icon-color: #fff;
-  --color-scrollbar: #6e1b23; --color-scrollbar-track: #130b0e;
-  --sidebar-background: #0d080a;
+  --color-text-primary: var(--vtm-bone); --color-text-secondary: var(--vtm-muted); --color-text-emphatic: #ffffff; --color-text-subtle: var(--vtm-muted);
+  --color-border: var(--vtm-line); --color-border-highlight: var(--vtm-accent); --color-fieldset-border: var(--vtm-line);
+  --color-cool-5: var(--vtm-ink); --color-cool-4: var(--vtm-ink2); --color-warm-1: var(--vtm-accent); --color-warm-2: var(--vtm-acc-dk);
+  --button-background-color: var(--vtm-ink2); --button-border-color: var(--vtm-line); --button-text-color: var(--vtm-bone);
+  --button-hover-background-color: var(--vtm-acc-dk); --button-hover-border-color: var(--vtm-accent); --button-hover-text-color: #fff;
+  --control-bg-color: rgba(19, 11, 14, .9); --control-border-color: var(--vtm-line); --control-icon-color: var(--vtm-bone);
+  --control-hover-bg-color: var(--vtm-acc-dk); --control-hover-border-color: var(--vtm-accent); --control-hover-icon-color: #fff;
+  --control-active-bg-color: var(--vtm-acc-dk); --control-active-border-color: var(--vtm-acc-hi); --control-active-icon-color: #fff;
+  --color-scrollbar: var(--vtm-line-hi); --color-scrollbar-track: var(--vtm-ink);
+  --sidebar-background: var(--vtm-deep);
 }
 /* a faint bloodshot vignette at the edges of the screen */
-body.wca-vtm #interface { box-shadow: inset 0 0 180px rgba(70, 0, 8, .45); }
+body.wca-vtm #interface { box-shadow: inset 0 0 180px color-mix(in srgb, var(--vtm-acc-dk) 70%, transparent); }
 
 /* ----- controls: scene tools, sidebar tabs, scene navigation, macro bar, player list buttons ----- */
-body.wca-vtm .ui-control { background: linear-gradient(180deg, #1d1015, #0c0709); border-color: #4a1a20; color: #d8c6aa; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .04), 0 2px 6px rgba(0, 0, 0, .5); }
-body.wca-vtm .ui-control:hover { background: linear-gradient(180deg, #3a0c12, #1a0709); border-color: #c41b25; color: #fff; box-shadow: 0 0 10px rgba(196, 27, 37, .45); }
-body.wca-vtm .ui-control.active, body.wca-vtm .ui-control[aria-pressed="true"], body.wca-vtm .ui-control.toggle.active { background: radial-gradient(circle at 50% 35%, #a3141e, #4a060b 75%); border-color: #e0323c; color: #fff; box-shadow: 0 0 12px rgba(224, 50, 60, .55); }
+body.wca-vtm .ui-control { background: linear-gradient(180deg, var(--vtm-ink2), var(--vtm-deep)); border-color: var(--vtm-line); color: var(--vtm-bone); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .04), 0 2px 6px rgba(0, 0, 0, .5); }
+body.wca-vtm .ui-control:hover { background: linear-gradient(180deg, var(--vtm-acc-dk), var(--vtm-deep)); border-color: var(--vtm-accent); color: #fff; box-shadow: 0 0 10px var(--vtm-glow); }
+body.wca-vtm .ui-control.active, body.wca-vtm .ui-control[aria-pressed="true"], body.wca-vtm .ui-control.toggle.active { background: radial-gradient(circle at 50% 35%, var(--vtm-accent), var(--vtm-acc-dk) 75%); border-color: var(--vtm-acc-hi); color: #fff; box-shadow: 0 0 12px var(--vtm-glow); }
 
 /* ----- sidebar & directories ----- */
 body.wca-vtm #sidebar-content, body.wca-vtm #sidebar .tab.sidebar-tab, body.wca-vtm #sidebar .sidebar-tab {
-  background: radial-gradient(120% 40% at 100% 0%, rgba(138, 15, 23, .16), transparent 60%), linear-gradient(180deg, #110a0c, #0a0608); color: var(--vtm-bone); }
+  background: radial-gradient(120% 40% at 100% 0%, color-mix(in srgb, var(--vtm-accent) 16%, transparent), transparent 60%), linear-gradient(180deg, var(--vtm-ink), var(--vtm-deep)); color: var(--vtm-bone); }
 body.wca-vtm #sidebar { border-left: 1px solid var(--vtm-line); }
 body.wca-vtm .directory .directory-header, body.wca-vtm .sidebar-tab .directory-header { border-bottom: 1px solid var(--vtm-line); }
-body.wca-vtm .directory .folder > header, body.wca-vtm .directory .folder-header { background: linear-gradient(90deg, #3a0c12, #1a0a0d 70%) !important; border-top: 1px solid #5a1a20; border-bottom: 1px solid #1a0709; font-family: var(--vtm-head); letter-spacing: .04em; color: var(--vtm-bone); text-shadow: 0 1px 2px #000; }
+body.wca-vtm .directory .folder > header, body.wca-vtm .directory .folder-header { background: linear-gradient(90deg, var(--vtm-acc-dk), var(--vtm-ink) 70%) !important; border-top: 1px solid var(--vtm-line-hi); border-bottom: 1px solid var(--vtm-deep); font-family: var(--vtm-head); letter-spacing: .04em; color: var(--vtm-bone); text-shadow: 0 1px 2px #000; }
 body.wca-vtm .directory-item .entry-name, body.wca-vtm .directory-item .document-name, body.wca-vtm .directory-item h4 { font-family: var(--vtm-serif); }
-body.wca-vtm .directory-item:hover { background: linear-gradient(90deg, rgba(138, 15, 23, .28), transparent); }
-body.wca-vtm .directory input[type="search"], body.wca-vtm #sidebar input[type="search"] { background: #0c0709; border-color: #4a1a20; color: var(--vtm-bone); }
-body.wca-vtm #sidebar .header-actions button, body.wca-vtm .directory-footer button { background: linear-gradient(180deg, #2a0d12, #12080a); border: 1px solid #5a1a20; color: var(--vtm-bone); font-family: var(--vtm-head); letter-spacing: .05em; }
-body.wca-vtm #sidebar .header-actions button:hover, body.wca-vtm .directory-footer button:hover { border-color: var(--vtm-blood-hi); box-shadow: 0 0 8px rgba(196, 27, 37, .45); color: #fff; }
+body.wca-vtm .directory-item:hover { background: linear-gradient(90deg, color-mix(in srgb, var(--vtm-accent) 28%, transparent), transparent); }
+body.wca-vtm .directory input[type="search"], body.wca-vtm #sidebar input[type="search"] { background: var(--vtm-deep); border-color: var(--vtm-line); color: var(--vtm-bone); }
+body.wca-vtm #sidebar .header-actions button, body.wca-vtm .directory-footer button { background: linear-gradient(180deg, var(--vtm-acc-dk), var(--vtm-ink)); border: 1px solid var(--vtm-line-hi); color: var(--vtm-bone); font-family: var(--vtm-head); letter-spacing: .05em; }
+body.wca-vtm #sidebar .header-actions button:hover, body.wca-vtm .directory-footer button:hover { border-color: var(--vtm-blood-hi); box-shadow: 0 0 8px var(--vtm-glow); color: #fff; }
 
 /* ----- chat ----- */
 body.wca-vtm #chat-log .chat-message, body.wca-vtm .chat-log .chat-message, body.wca-vtm #chat-notifications .chat-message {
-  background: linear-gradient(180deg, #1a0f12, #110a0c); border: 1px solid var(--vtm-line); border-left: 3px solid var(--vtm-blood); color: var(--vtm-bone); box-shadow: 0 2px 8px rgba(0, 0, 0, .45); }
+  background: linear-gradient(180deg, var(--vtm-ink2), var(--vtm-ink)); border: 1px solid var(--vtm-line); border-left: 3px solid var(--vtm-blood); color: var(--vtm-bone); box-shadow: 0 2px 8px rgba(0, 0, 0, .45); }
 body.wca-vtm .chat-message.whisper { border-left-color: #6b4fa0; background: linear-gradient(180deg, #160f1d, #0e0a12); }
 body.wca-vtm .chat-message .message-header .message-sender, body.wca-vtm .chat-message .message-sender { font-family: var(--vtm-head); color: var(--vtm-gold); letter-spacing: .04em; }
 body.wca-vtm .chat-message .message-metadata { color: var(--vtm-muted); }
-body.wca-vtm .chat-message .dice-roll .dice-total { border-color: #6e1b23; background: rgba(138, 15, 23, .18); color: #fff; }
-body.wca-vtm #chat-message, body.wca-vtm .chat-form textarea, body.wca-vtm #chat-form textarea { background: #0c0709; border: 1px solid #4a1a20; color: var(--vtm-bone); font-family: var(--vtm-serif); }
-body.wca-vtm #chat-message:focus, body.wca-vtm .chat-form textarea:focus { border-color: var(--vtm-blood-hi); box-shadow: 0 0 8px rgba(196, 27, 37, .4); }
+body.wca-vtm .chat-message .dice-roll .dice-total { border-color: var(--vtm-line-hi); background: color-mix(in srgb, var(--vtm-accent) 18%, transparent); color: #fff; }
+body.wca-vtm #chat-message, body.wca-vtm .chat-form textarea, body.wca-vtm #chat-form textarea { background: var(--vtm-deep); border: 1px solid var(--vtm-line); color: var(--vtm-bone); font-family: var(--vtm-serif); }
+body.wca-vtm #chat-message:focus, body.wca-vtm .chat-form textarea:focus { border-color: var(--vtm-blood-hi); box-shadow: 0 0 8px var(--vtm-glow); }
 
 /* ----- windows: every application's frame and title bar (contents untouched) ----- */
-body.wca-vtm .application, body.wca-vtm .app.window-app { border-color: #5a1a20; box-shadow: 0 0 0 1px #24090c, 0 16px 48px rgba(0, 0, 0, .7), 0 0 30px rgba(110, 15, 23, .25); }
+body.wca-vtm .application, body.wca-vtm .app.window-app { border-color: var(--vtm-line-hi); box-shadow: 0 0 0 1px var(--vtm-deep), 0 16px 48px rgba(0, 0, 0, .7), 0 0 30px color-mix(in srgb, var(--vtm-accent) 22%, transparent); }
 body.wca-vtm .application > .window-header, body.wca-vtm .app.window-app > .window-header {
-  background: linear-gradient(90deg, #170a0d, #3d0c13 50%, #170a0d); border-bottom: 1px solid var(--vtm-blood); color: var(--vtm-bone); }
-body.wca-vtm .application > .window-header .window-title, body.wca-vtm .app.window-app > .window-header .window-title { font-family: var(--vtm-head); letter-spacing: .06em; text-shadow: 0 1px 3px #000, 0 0 10px rgba(196, 27, 37, .35); }
-body.wca-vtm .application > .window-header .header-control:hover { color: #ff6b6b; }
+  background: linear-gradient(90deg, var(--vtm-ink), var(--vtm-acc-dk) 50%, var(--vtm-ink)); border-bottom: 1px solid var(--vtm-blood); color: var(--vtm-bone); }
+body.wca-vtm .application > .window-header .window-title, body.wca-vtm .app.window-app > .window-header .window-title { font-family: var(--vtm-head); letter-spacing: .06em; text-shadow: 0 1px 3px #000, 0 0 10px var(--vtm-glow); }
+body.wca-vtm .application > .window-header .header-control:hover { color: var(--vtm-acc-hi); }
 /* dialogs and settings windows (not sheets): dark parchment */
-body.wca-vtm .application.dialog .window-content, body.wca-vtm #settings-config .window-content, body.wca-vtm .application.category-browser .window-content { background: linear-gradient(180deg, #160d10, #0d0809); color: var(--vtm-bone); }
-body.wca-vtm .application.dialog footer button, body.wca-vtm .application.dialog .form-footer button { background: linear-gradient(180deg, #2a0d12, #12080a); border: 1px solid #5a1a20; color: var(--vtm-bone); font-family: var(--vtm-head); letter-spacing: .05em; }
-body.wca-vtm .application.dialog footer button:hover, body.wca-vtm .application.dialog .form-footer button:hover { border-color: var(--vtm-blood-hi); color: #fff; box-shadow: 0 0 8px rgba(196, 27, 37, .45); }
+body.wca-vtm .application.dialog .window-content, body.wca-vtm #settings-config .window-content, body.wca-vtm .application.category-browser .window-content { background: linear-gradient(180deg, var(--vtm-ink), var(--vtm-deep)); color: var(--vtm-bone); }
+body.wca-vtm .application.dialog footer button, body.wca-vtm .application.dialog .form-footer button { background: linear-gradient(180deg, var(--vtm-acc-dk), var(--vtm-ink)); border: 1px solid var(--vtm-line-hi); color: var(--vtm-bone); font-family: var(--vtm-head); letter-spacing: .05em; }
+body.wca-vtm .application.dialog footer button:hover, body.wca-vtm .application.dialog .form-footer button:hover { border-color: var(--vtm-blood-hi); color: #fff; box-shadow: 0 0 8px var(--vtm-glow); }
 
 /* ----- players, hotbar, scene navigation, notifications, menus, tooltips, pause ----- */
-body.wca-vtm #players, body.wca-vtm aside#players { background: linear-gradient(180deg, rgba(26, 14, 18, .94), rgba(12, 7, 9, .94)); border: 1px solid var(--vtm-line); color: var(--vtm-bone); }
+body.wca-vtm #players, body.wca-vtm aside#players { background: linear-gradient(180deg, color-mix(in srgb, var(--vtm-ink2) 94%, transparent), color-mix(in srgb, var(--vtm-deep) 94%, transparent)); border: 1px solid var(--vtm-line); color: var(--vtm-bone); }
 body.wca-vtm #players .player-name, body.wca-vtm #players li { font-family: var(--vtm-serif); }
-body.wca-vtm #hotbar .slot, body.wca-vtm #action-bar .slot { background: radial-gradient(circle at 50% 30%, #1c1014, #0a0608); border-color: #4a1a20; }
-body.wca-vtm #hotbar .slot:hover, body.wca-vtm #action-bar .slot:hover { border-color: var(--vtm-blood-hi); box-shadow: 0 0 10px rgba(196, 27, 37, .45); }
+body.wca-vtm #hotbar .slot, body.wca-vtm #action-bar .slot { background: radial-gradient(circle at 50% 30%, var(--vtm-ink2), var(--vtm-deep)); border-color: var(--vtm-line); }
+body.wca-vtm #hotbar .slot:hover, body.wca-vtm #action-bar .slot:hover { border-color: var(--vtm-blood-hi); box-shadow: 0 0 10px var(--vtm-glow); }
 body.wca-vtm #scene-navigation .scene, body.wca-vtm #navigation .scene { font-family: var(--vtm-serif); }
-body.wca-vtm #scene-navigation .scene.active, body.wca-vtm #navigation .scene.active { border-color: var(--vtm-blood-hi); box-shadow: 0 0 10px rgba(196, 27, 37, .45); }
-body.wca-vtm #notifications .notification { background: linear-gradient(90deg, #2a0d12, #140a0c); border: 1px solid #5a1a20; border-left: 4px solid var(--vtm-blood-hi); color: var(--vtm-bone); font-family: var(--vtm-serif); box-shadow: 0 6px 20px rgba(0, 0, 0, .6); }
+body.wca-vtm #scene-navigation .scene.active, body.wca-vtm #navigation .scene.active { border-color: var(--vtm-blood-hi); box-shadow: 0 0 10px var(--vtm-glow); }
+body.wca-vtm #notifications .notification { background: linear-gradient(90deg, var(--vtm-acc-dk), var(--vtm-ink)); border: 1px solid var(--vtm-line-hi); border-left: 4px solid var(--vtm-blood-hi); color: var(--vtm-bone); font-family: var(--vtm-serif); box-shadow: 0 6px 20px rgba(0, 0, 0, .6); }
 body.wca-vtm #notifications .notification.warning { border-left-color: #c98a2a; }
-body.wca-vtm #notifications .notification.error { border-left-color: #ff3b3b; background: linear-gradient(90deg, #4a0a10, #170a0c); }
-body.wca-vtm #context-menu, body.wca-vtm .context-menu { background: #120a0d; border: 1px solid #5a1a20; color: var(--vtm-bone); box-shadow: 0 8px 26px rgba(0, 0, 0, .7); }
-body.wca-vtm #context-menu .context-item:hover, body.wca-vtm .context-menu .context-item:hover { background: linear-gradient(90deg, #4a0a10, transparent); color: #fff; }
-body.wca-vtm #tooltip, body.wca-vtm .locked-tooltip { background: #120a0d; border: 1px solid #5a1a20; color: var(--vtm-bone); font-family: var(--vtm-serif); }
-body.wca-vtm #pause img { filter: sepia(1) hue-rotate(-50deg) saturate(6) brightness(.75) drop-shadow(0 0 12px #8a0f17); }
-body.wca-vtm #pause figcaption, body.wca-vtm #pause label { font-family: var(--vtm-title); letter-spacing: .04em; color: #e9d7c0; text-shadow: 0 0 12px #8a0f17, 0 2px 4px #000; }
-body.wca-vtm ::selection { background: rgba(196, 27, 37, .55); color: #fff; }
+body.wca-vtm #notifications .notification.error { border-left-color: #ff3b3b; background: linear-gradient(90deg, var(--vtm-acc-dk), var(--vtm-ink)); }
+body.wca-vtm #context-menu, body.wca-vtm .context-menu { background: var(--vtm-ink); border: 1px solid var(--vtm-line-hi); color: var(--vtm-bone); box-shadow: 0 8px 26px rgba(0, 0, 0, .7); }
+body.wca-vtm #context-menu .context-item:hover, body.wca-vtm .context-menu .context-item:hover { background: linear-gradient(90deg, var(--vtm-acc-dk), transparent); color: #fff; }
+body.wca-vtm #tooltip, body.wca-vtm .locked-tooltip { background: var(--vtm-ink); border: 1px solid var(--vtm-line-hi); color: var(--vtm-bone); font-family: var(--vtm-serif); }
+body.wca-vtm #pause img { filter: sepia(1) hue-rotate(-50deg) saturate(6) brightness(.75) drop-shadow(0 0 12px var(--vtm-acc-dk)); }
+body.wca-vtm #pause figcaption, body.wca-vtm #pause label { font-family: var(--vtm-title); letter-spacing: .04em; color: var(--vtm-bone); text-shadow: 0 0 12px var(--vtm-acc-dk), 0 2px 4px #000; }
+body.wca-vtm ::selection { background: var(--vtm-glow); color: #fff; }
 
 /* ----- the chronicle clock ----- */
 .wca-clock { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 70; pointer-events: auto; display: flex; flex-direction: column; align-items: center; gap: 4px;
-  font-family: 'IM Fell English', Georgia, serif; color: #eadcc3; user-select: none; }
+  font-family: 'IM Fell English', Georgia, serif; color: var(--vtm-bone); user-select: none; }
 .wca-clock .clk-face { display: flex; align-items: center; gap: 10px; padding: 6px 16px 6px 12px; min-width: 230px;
-  background: linear-gradient(180deg, rgba(28, 14, 18, .95), rgba(10, 6, 8, .95)); border: 1px solid #5a1a20; border-radius: 2px;
-  box-shadow: 0 0 0 1px #1a0709, 0 6px 22px rgba(0, 0, 0, .65), inset 0 0 18px rgba(138, 15, 23, .25); position: relative; }
-.wca-clock .clk-face::before, .wca-clock .clk-face::after { content: ''; position: absolute; top: 50%; width: 8px; height: 8px; background: #8a0f17; transform: translateY(-50%) rotate(45deg); box-shadow: 0 0 6px #c41b25; }
+  background: linear-gradient(180deg, color-mix(in srgb, var(--vtm-ink2) 95%, transparent), color-mix(in srgb, var(--vtm-deep) 95%, transparent)); border: 1px solid var(--vtm-line-hi); border-radius: 2px;
+  box-shadow: 0 0 0 1px var(--vtm-deep), 0 6px 22px rgba(0, 0, 0, .65), inset 0 0 18px color-mix(in srgb, var(--vtm-accent) 25%, transparent); position: relative; }
+.wca-clock .clk-face::before, .wca-clock .clk-face::after { content: ''; position: absolute; top: 50%; width: 8px; height: 8px; background: var(--vtm-acc-dk); transform: translateY(-50%) rotate(45deg); box-shadow: 0 0 6px var(--vtm-accent); }
 .wca-clock .clk-face::before { left: -5px; } .wca-clock .clk-face::after { right: -5px; }
-.wca-clock .clk-ic { font-size: 22px; line-height: 1; color: #d8c6aa; text-shadow: 0 0 8px rgba(216, 198, 170, .5); }
+.wca-clock .clk-ic { font-size: 22px; line-height: 1; color: var(--vtm-bone); text-shadow: 0 0 8px rgba(216, 198, 170, .5); }
 .wca-clock .clk-txt { display: grid; line-height: 1.15; }
-.wca-clock .clk-time { font: 22px/1 'Pirata One', 'IM Fell English', Georgia, serif; letter-spacing: .03em; color: #f3e6cf; text-shadow: 0 0 10px rgba(196, 27, 37, .5); }
-.wca-clock .clk-date { font: 12.5px 'IM Fell English SC', 'IM Fell English', Georgia, serif; letter-spacing: .06em; color: #c9b597; }
-.wca-clock .clk-sun { font: italic 12px 'IM Fell English', Georgia, serif; color: #a8937b; }
+.wca-clock .clk-time { font: 22px/1 'Pirata One', 'IM Fell English', Georgia, serif; letter-spacing: .03em; color: var(--vtm-bone); text-shadow: 0 0 10px var(--vtm-glow); }
+.wca-clock .clk-date { font: 12.5px 'IM Fell English SC', 'IM Fell English', Georgia, serif; letter-spacing: .06em; color: var(--vtm-muted); }
+.wca-clock .clk-sun { font: italic 12px 'IM Fell English', Georgia, serif; color: var(--vtm-muted); }
 .wca-clock.soon .clk-sun { color: #ff8a5a; text-shadow: 0 0 6px rgba(255, 120, 60, .6); }
 .wca-clock.day .clk-face { border-color: #c98a2a; box-shadow: 0 0 0 1px #2a1606, 0 6px 22px rgba(0, 0, 0, .65), inset 0 0 22px rgba(255, 170, 60, .25); }
 .wca-clock.day .clk-ic { color: #ffcf6a; text-shadow: 0 0 10px #ffb43a; }
 .wca-clock.day .clk-sun { color: #ffb45a; }
 .wca-clock .clk-ctl { display: none; gap: 3px; flex-wrap: wrap; justify-content: center; }
 .wca-clock.gm:hover .clk-ctl { display: flex; }
-.wca-clock .clk-ctl button { all: unset; cursor: pointer; padding: 2px 7px; font: 11.5px 'IM Fell English SC', Georgia, serif; letter-spacing: .04em; color: #eadcc3; background: linear-gradient(180deg, #2a0d12, #12080a); border: 1px solid #5a1a20; border-radius: 2px; }
-.wca-clock .clk-ctl button:hover { border-color: #c41b25; color: #fff; box-shadow: 0 0 6px rgba(196, 27, 37, .5); }
+.wca-clock .clk-ctl button { all: unset; cursor: pointer; padding: 2px 7px; font: 11.5px 'IM Fell English SC', Georgia, serif; letter-spacing: .04em; color: var(--vtm-bone); background: linear-gradient(180deg, var(--vtm-acc-dk), var(--vtm-ink)); border: 1px solid var(--vtm-line-hi); border-radius: 2px; }
+.wca-clock .clk-ctl button:hover { border-color: var(--vtm-accent); color: #fff; box-shadow: 0 0 6px var(--vtm-glow); }
 .wca-clockform { display: grid; gap: 10px; padding: 4px 2px; }
 .wca-clockform label { display: grid; grid-template-columns: 60px 1fr; align-items: center; gap: 8px; }
 .wca-clockform .hint { margin: 0; font-size: 12px; opacity: .75; }
+
+.wca-clock .clk-cal { all: unset; cursor: pointer; position: relative; margin-left: 4px; padding: 4px 6px; color: var(--vtm-muted); border-left: 1px solid var(--vtm-line); }
+.wca-clock .clk-cal:hover { color: var(--vtm-bone); text-shadow: 0 0 8px var(--vtm-glow); }
+.wca-clock .clk-cal b { position: absolute; top: -4px; right: -6px; min-width: 15px; height: 15px; border-radius: 8px; background: var(--vtm-accent); color: #fff; font: 10px/15px 'Alegreya Sans', sans-serif; text-align: center; box-shadow: 0 0 6px var(--vtm-glow); }
+
+/* ----- the chronicle calendar ----- */
+.wca-calendar-app .window-content { padding: 0; background: linear-gradient(180deg, var(--vtm-ink2), var(--vtm-deep)); color: var(--vtm-bone); }
+.wca-cal { padding: 12px 14px 14px; font-family: 'Alegreya Sans', sans-serif; }
+.wca-cal button { all: unset; box-sizing: border-box; cursor: pointer; }
+.wca-cal .cal-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.wca-cal .cal-head h2 { flex: 1; margin: 0; border: 0; text-align: center; font: 26px/1.1 'Pirata One', 'IM Fell English', serif; letter-spacing: .02em; color: var(--vtm-bone); text-shadow: 0 0 12px var(--vtm-glow); }
+.wca-cal .cal-head button { padding: 4px 9px; border: 1px solid var(--vtm-line); border-radius: 2px; color: var(--vtm-muted); }
+.wca-cal .cal-head button:hover { color: var(--vtm-bone); border-color: var(--vtm-accent); }
+.wca-cal .cal-now { font: 12px 'IM Fell English SC', serif; letter-spacing: .05em; }
+.wca-cal .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.wca-cal .cal-wd { text-align: center; font: 11.5px 'IM Fell English SC', serif; letter-spacing: .08em; color: var(--vtm-muted); padding-bottom: 2px; }
+.wca-cal .cal-day { min-height: 46px; padding: 4px 5px; border: 1px solid var(--vtm-line); border-radius: 2px; background: color-mix(in srgb, var(--vtm-panel) 70%, transparent); display: flex; flex-direction: column; justify-content: space-between; }
+.wca-cal .cal-day.out { border: 0; background: none; }
+.wca-cal .cal-day b { font: 15px 'IM Fell English', serif; font-weight: 400; color: var(--vtm-bone); }
+.wca-cal .cal-day:hover { border-color: var(--vtm-line-hi); background: color-mix(in srgb, var(--vtm-accent) 12%, var(--vtm-panel)); }
+.wca-cal .cal-day.today { border-color: var(--vtm-accent); box-shadow: inset 0 0 12px var(--vtm-glow); }
+.wca-cal .cal-day.today b { color: var(--vtm-acc-hi); }
+.wca-cal .cal-day.sel { outline: 1px solid var(--vtm-gold); outline-offset: -3px; }
+.wca-cal .dots { display: flex; gap: 3px; flex-wrap: wrap; }
+.wca-cal .dots i, .wca-cal .cal-ev::before { width: 7px; height: 7px; border-radius: 50%; background: var(--vtm-gold); }
+.wca-cal .dots i.v-gm { background: #8a8aa0; } .wca-cal .dots i.v-some { background: #b08ce0; }
+.wca-cal .cal-daypane { margin-top: 12px; border-top: 1px solid var(--vtm-line); padding-top: 8px; }
+.wca-cal .cal-daypane h3 { margin: 0 0 8px; border: 0; font: 16px 'IM Fell English SC', serif; letter-spacing: .06em; color: var(--vtm-gold); }
+.wca-cal .cal-ev { margin: 0 0 6px; padding: 6px 9px; border: 1px solid var(--vtm-line); border-left: 3px solid var(--vtm-gold); border-radius: 2px; background: color-mix(in srgb, var(--vtm-panel2) 80%, transparent); }
+.wca-cal .cal-ev.v-gm { border-left-color: #8a8aa0; } .wca-cal .cal-ev.v-some { border-left-color: #b08ce0; }
+.wca-cal .cal-evh { display: flex; align-items: baseline; gap: 8px; }
+.wca-cal .cal-evh b { flex: 1; font: 15px 'IM Fell English', serif; font-weight: 400; }
+.wca-cal .cal-evh .t { color: var(--vtm-gold); font-size: 13px; }
+.wca-cal .cal-evh small { color: var(--vtm-muted); font-size: 11.5px; }
+.wca-cal .cal-evb { display: flex; gap: 6px; color: var(--vtm-muted); } .wca-cal .cal-evb button:hover { color: var(--vtm-acc-hi); }
+.wca-cal .cal-evt { margin-top: 3px; font-size: 13.5px; color: color-mix(in srgb, var(--vtm-bone) 85%, transparent); line-height: 1.45; }
+.wca-cal .cal-none { margin: 4px 0 8px; font-style: italic; color: var(--vtm-muted); }
+.wca-cal .cal-form { display: grid; gap: 6px; margin-top: 8px; }
+.wca-cal .cal-form .row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.wca-cal .cal-form input[type=text] { flex: 1; min-width: 200px; }
+.wca-cal .cal-form input[type=text], .wca-cal .cal-form input[type=time], .wca-cal .cal-form textarea { background: var(--vtm-deep); border: 1px solid var(--vtm-line); color: var(--vtm-bone); border-radius: 2px; padding: 4px 6px; font: 14px 'Alegreya Sans', sans-serif; }
+.wca-cal .cal-form .vis label { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: var(--vtm-muted); }
+.wca-cal .cal-users { display: inline-flex; gap: 8px; flex-wrap: wrap; }
+.wca-cal .cal-form .act button { padding: 5px 10px; border: 1px solid var(--vtm-line-hi); border-radius: 2px; background: linear-gradient(180deg, var(--vtm-acc-dk), var(--vtm-ink)); color: var(--vtm-bone); font: 13px 'IM Fell English SC', serif; letter-spacing: .04em; }
+.wca-cal .cal-form .act button:hover { border-color: var(--vtm-accent); box-shadow: 0 0 8px var(--vtm-glow); }

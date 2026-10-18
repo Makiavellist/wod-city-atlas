@@ -34,6 +34,7 @@ export function makeAdapter(app) {
     share: game.user.isGM ? state => shareView(app.entry, state) : null,
     saveFile: (name, text) => foundry.utils.saveDataToFile(text, 'application/json', name),
     loadJSON: async path => (await fetch(resolveUrl(path))).json(),
+    loadPreset: game.user.isGM ? async id => { const p = (await loadPresets()).find(x => x.id === id); if (!p) return null; return rebasePaths(await (await fetch(resolveUrl(`modules/${MOD}/${p.atlas}`))).json(), `modules/${MOD}/` + p.atlas.replace(/[^/]+$/, '')); } : null,
     pickActors: () => pickActors(),
     players: () => game.users.filter(u => !u.isGM).map(u => ({id: u.id, name: u.name, color: u.color?.css ?? String(u.color || '')})),
     notifyReveal: game.user.isGM ? ({ids, name}) => game.socket.emit(`module.${MOD}`, {action: 'reveal', entryId: app.entry.id, ids, name}) : null,
@@ -47,10 +48,19 @@ export function makeAdapter(app) {
     // personal notes on the map, kept in each user's own flags (players can write those, not the atlas)
     notes: notesApi(app),
     party: partyApi(app),
+    uiTheme: (rv, kind) => { if (!app.scene && SceneAtlas.current) return; applyUiTheme(rv, kind); },
     onNotes: cb => { const id = Hooks.on('updateUser', (u, ch) => { if (ch?.flags?.[MOD] !== undefined || ch?.character !== undefined || ch?.avatar !== undefined) cb(); }); const id2 = Hooks.on('updateActor', (a, ch) => { if (ch?.img !== undefined || ch?.name !== undefined) cb(); }); return () => { Hooks.off('updateUser', id); Hooks.off('updateActor', id2); }; }
   };
 }
 /** Where each player's character is on this atlas, kept in that user's flags (the GM may move anyone). */
+/** Foundry's whole interface follows the realm on screen (with the Masquerade look on). */
+const UI_KEYS = ['panel', 'panel2', 'line', 'accent', 'gold', 'muted', 'bone'];
+export function applyUiTheme(rv, kind) {
+  const b = document.body, t = (rv && rv.theme) || {};
+  for (const k of UI_KEYS) { if (t[k]) b.style.setProperty('--vtm-' + k, t[k]); else b.style.removeProperty('--vtm-' + k); }
+  b.dataset.wcaRealm = kind || 'blood';
+}
+export function resetUiTheme() { const b = document.body; for (const k of UI_KEYS) b.style.removeProperty('--vtm-' + k); delete b.dataset.wcaRealm; }
 function partyApi(app) {
   const eid = () => app.entry?.id;
   const img = u => { const a = u.character; const i = a && a.img && !DEFAULT_ICON.test(a.img) ? a.img : null; return i || (u.avatar && !DEFAULT_ICON.test(u.avatar) ? u.avatar : null); };
@@ -62,7 +72,7 @@ function partyApi(app) {
         const pos = (u.getFlag?.(MOD, 'pos') || {})[eid()] || null; const mine = u.id === game.user.id;
         if (u.isGM && !pos) continue;
         if (!seeAll && !mine && (!others || !pos || pos.hidden)) continue;
-        out.push({uid: u.id, name: u.character?.name || u.name, player: u.character ? u.name : '', img: img(u), color: u.color?.css ?? (typeof u.color === 'string' ? u.color : undefined), mine, at: pos?.at || null, realm: pos?.realm, level: pos?.level, hidden: !!pos?.hidden});
+        out.push({uid: u.id, uuid: u.character?.uuid || null, name: u.character?.name || u.name, player: u.character ? u.name : '', img: img(u), color: u.color?.css ?? (typeof u.color === 'string' ? u.color : undefined), mine, at: pos?.at || null, realm: pos?.realm, level: pos?.level, hidden: !!pos?.hidden});
       }
       return out;
     },
@@ -204,7 +214,7 @@ export class AtlasApp extends ApplicationV2 {
     this._bm = this.store.atlas.basemap;
     if (this.pending) { this.view.applyState(this.pending); this.pending = null; }
   }
-  _onClose(options) { super._onClose?.(options); try { this._unsubBm?.(); this.view?.destroy(); } catch (e) {} this.store?.release(); this.store = null; this._mounted = false; }
+  _onClose(options) { super._onClose?.(options); if (!SceneAtlas.current) resetUiTheme(); try { this._unsubBm?.(); this.view?.destroy(); } catch (e) {} this.store?.release(); this.store = null; this._mounted = false; }
 }
 
 /* ================= sharing a view with players ================= */

@@ -86,7 +86,8 @@ Every realm, level, layer, place category, place, zone, route, glow, person and 
 - **Crossing animations.** Every realm switch plays a short animation in the new realm's manner (Dreaming sparks, Shadowlands ash, Umbra ripples, waking blood); levels sink or rise. Pick one per realm in *Edit → Realms & levels*.
 - **Chronicle clock.** The in-game date and time, with the hours until dawn, at the top of everyone's screen. The Storyteller hovers it to move it (−1h, −10m, +10m, +1h, Dusk, Dawn) or presses the pen to set any date and time. It only moves when you move it. From a macro: `game.modules.get('wod-city-atlas').api.clock.advance(60)`, `.set(Date.UTC(1991, 9, 31, 22, 0))`, `.nextDusk()`.
 - **Characters on the map.** Every player's character appears on atlas scenes as a portrait pin taken from their Actor. Players drag their own; the Storyteller drags anyone and manages them in *Map tab → Characters* (place, find, hide from the others, remove). The people button on the scene toolbar jumps there.
-- **Masquerade look.** Foundry's own interface is restyled in black, bone and blood. Each player can turn it off in the module settings.
+- **Chronicle calendar.** The calendar button on the clock opens a month view where the Storyteller writes events for any night, for everyone, for the Storyteller only, or for particular players.
+- **Masquerade look.** Foundry's own interface is restyled in black, bone and blood, and takes on the colours of the realm shown on the atlas scene. Each player can turn it off in the module settings.
 
 ## Pins
 
