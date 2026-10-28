@@ -544,6 +544,12 @@
 .fx-shadow b{border-radius:1px;background:#cfd6d1;opacity:0;animation-name:wca-ash;width:calc(4px*var(--s,1));height:calc(3px*var(--s,1))}
 @keyframes wca-ash{0%{opacity:0;transform:translate(0,-30px) rotate(0)}30%{opacity:.8}100%{opacity:0;transform:translate(14px,70px) rotate(160deg)}}
 @keyframes wca-out-shadow{0%{opacity:1;filter:none}60%{filter:grayscale(1) brightness(.6) contrast(1.2)}100%{opacity:0;filter:grayscale(1) brightness(.2);transform:translateY(8px)}}
+/* Umbra: the Gauntlet thins slowly, like mist lifting off still water */
+.fx-umbra .veil{inset:-30%;background:radial-gradient(circle at 50% 50%,transparent 0 25%,#4fd1b01a 38%,#7fb2ff14 50%,transparent 64%),repeating-radial-gradient(circle at 50% 50%,transparent 0 46px,#4fd1b012 50px,transparent 58px);animation-name:wca-veil-umbra;animation-timing-function:cubic-bezier(.35,.1,.25,1)}
+@keyframes wca-veil-umbra{0%{opacity:0;transform:scale(.6)}40%{opacity:.75}100%{opacity:0;transform:scale(1.5)}}
+.fx-umbra b{background:radial-gradient(circle,#e6fff7,#4fd1b0 45%,transparent 70%);box-shadow:0 0 10px #4fd1b088;animation-name:wca-mote-slow;animation-duration:calc(var(--fx-ms,2300ms)*.9)}
+@keyframes wca-mote-slow{0%{opacity:0;transform:translate(0,10px) scale(.4)}35%{opacity:.7}100%{opacity:0;transform:translate(0,-34px) scale(.9)}}
+@keyframes wca-out-umbra{0%{opacity:1;filter:none;transform:scale(1)}100%{opacity:0;filter:blur(5px) brightness(.75) hue-rotate(-15deg);transform:scale(1.02)}}
 /* the waking city (and any other realm): blood bleeding through the page */
 .fx-blood .veil{background:radial-gradient(circle at 50% 50%,#3a050800 0 15%,#8a0a12aa 32%,#2a0408dd 48%,transparent 66%);animation-name:wca-veil}
 .fx-blood b{background:radial-gradient(circle at 40% 35%,#ff6b6b,#a3141c 55%,#4a0408);width:calc(6px*var(--s,1));height:calc(9px*var(--s,1));border-radius:50% 50% 50% 50%/60% 60% 40% 40%;animation-name:wca-drip}

@@ -83,14 +83,17 @@ Every realm, level, layer, place category, place, zone, route, glow, person and 
 
 ## Crossings, the clock and the characters
 
-- **Crossing animations.** Every realm switch plays a short animation in the new realm's manner (Dreaming sparks, Shadowlands ash, vines growing in over the map for the Umbra, waking blood); levels sink or rise. Pick one per realm in *Edit → Realms & levels*.
+- **Crossing animations.** Every realm switch plays a short animation in the new realm's manner (Dreaming sparks, Shadowlands ash, Gauntlet mist for the Umbra, waking blood); levels sink or rise. Pick one per realm in *Edit → Realms & levels*.
 - **Chronicle clock.** The in-game date and time, with the hours until dawn, at the top of everyone's screen. The Storyteller hovers it to move it (−1h, −10m, +10m, +1h, Dusk, Dawn) or presses the pen to set any date and time. It only moves when you move it. From a macro: `game.modules.get('wod-city-atlas').api.clock.advance(60)`, `.set(Date.UTC(1991, 9, 31, 22, 0))`, `.nextDusk()`.
 - **Characters on the map.** Every player's character appears on atlas scenes as a portrait pin taken from their Actor. Players drag their own; the Storyteller drags anyone and manages them in *Map tab → Characters* (place, find, hide from the others, remove). The people button on the scene toolbar jumps there.
 - **Masquerade violation.** The red theatre-masks button (Storyteller only, in the Token and Notes tool columns) flashes a full-screen MASQUERADE VIOLATION alert on every screen. Shift-click adds a line of text.
 - **Chronicle calendar.** The calendar button on the clock opens a month view where the Storyteller writes events for any night, for everyone, for the Storyteller only, or for particular players.
-- **Masquerade look.** Foundry's own interface is restyled in black, bone and blood, and takes on the colours of the realm shown on the atlas scene. In the Umbra it turns to moss, bark and old paper, with vines and leaves over the controls. Each player can turn it off in the module settings.
-- **The Umbra as old woods.** The Milwaukee Umbra is a dark forest seen from above: tree crowns over the land, mist, fireflies and falling leaves, hand-inked spirit zones and roads. The Weaver's places stay straight, blue and gridded, the city showing through the woods.
+- **Masquerade look.** Foundry's own interface is restyled in black, bone and blood, and takes on the colours of the realm shown on the atlas scene. Each player can turn it off in the module settings.
 - **New looks arrive by themselves.** When a new version of the module redraws a realm of the Milwaukee preset, the Storyteller is asked once whether to give their atlas the new look (only colours, effects and map styles change). Atlas scenes then redraw their picture to match. *Edit → Import / export → Refresh realm looks* does the same by hand, for every realm.
+
+## Making a scene
+
+Right-click an atlas in the Journal sidebar and choose **Show as a Scene…** (Storyteller only), or press the scene button (a framed picture) on the right-hand toolbar of the atlas window, under the pen. Both open the *Show as a Scene* panel: pick a new scene or one to update, the area and the name, then *Make the scene*. It is also under *Edit → Show as a Scene*.
 
 ## Pins
 

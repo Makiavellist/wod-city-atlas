@@ -117,13 +117,15 @@ Hooks.on('renderJournalEntrySheet', (app, html) => {
   setTimeout(() => app.close({animate: false}), 0);
 });
 
-/* Context menu entry for atlases in the Journal directory. */
-Hooks.on('getJournalEntryContextOptions', (app, options) => {
-  options.unshift({name: 'WCA.OpenMap', icon: '<i class="fa-solid fa-map-location-dot"></i>',
-    condition: li => { const id = (li instanceof HTMLElement ? li : li[0])?.dataset?.entryId; return isAtlasEntry(game.journal.get(id)); },
-    callback: li => { const id = (li instanceof HTMLElement ? li : li[0])?.dataset?.entryId; const e = game.journal.get(id); if (e) AtlasApp.open(e); }});
-});
-
+/* Right-click on an atlas in the Journal directory: open the map, or make a scene of it. */
+const entryOf = li => game.journal.get((li instanceof HTMLElement ? li : li?.[0])?.dataset?.entryId);
+const journalContext = (app, options) => {
+  if (options.some(o => o.name === 'WCA.OpenMap')) return; // both hook names may fire
+  options.unshift({name: 'WCA.OpenMap', icon: '<i class="fa-solid fa-map-location-dot"></i>', condition: li => isAtlasEntry(entryOf(li)), callback: li => { const e = entryOf(li); if (e) AtlasApp.open(e); }},
+    {name: 'Show as a Scene…', icon: '<i class="fa-solid fa-map"></i>', condition: li => game.user.isGM && isAtlasEntry(entryOf(li)), callback: li => { const e = entryOf(li); if (e) AtlasApp.open(e, {state: {edit: true, panel: 'scene'}}); }});
+};
+Hooks.on('getJournalEntryContextOptions', journalContext);
+Hooks.on('getJournalDirectoryEntryContext', journalContext);
 
 /* Atlas scenes: the atlas is drawn live on the scene for each user. */
 let ORIG_MAX_ZOOM = null;
