@@ -4,7 +4,7 @@ import {AtlasEditor} from '../core/editor.js';
 import {rebasePaths} from '../core/store.js';
 import {normalize} from '../core/model.js';
 import {blankAtlas, LOOKS} from '../core/templates.js';
-import {esc, svg} from '../core/util.js';
+import {esc} from '../core/util.js';
 import {renderSnapshot, lookSig} from '../core/snapshot.js';
 import {planLooks, applyLooks, fromPreset} from '../core/looks.js';
 import {JournalStore, MOD, isAtlasEntry} from './journal-store.js';
@@ -376,7 +376,6 @@ function actorKicker(a) {
   const ord = n => n + ((n % 100 >= 11 && n % 100 <= 13) ? 'th' : ({1: 'st', 2: 'nd', 3: 'rd'}[n % 10] || 'th'));
   return [clan, gen && /^\d+$/.test(gen) ? `${ord(+gen)} generation` : gen].filter(Boolean).join(' · ') || undefined;
 }
-void svg;
 
 
 /* ================= atlas → Foundry scene ================= */

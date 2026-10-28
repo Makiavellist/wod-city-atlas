@@ -1,11 +1,11 @@
 /* The chronicle clock: an in-game date and time the Storyteller sets by hand, shown to everyone at the
  * top of the screen with the hours left until dawn (or until dusk, for the unlucky). */
 import {MOD} from './journal-store.js';
+import {esc} from '../core/util.js';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const DEFAULT = {t: Date.UTC(1991, 9, 26, 23, 0)};
-const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
 
 /* Time is kept as a "wall clock" value: the UTC fields of t are the local date and time in the chronicle city. */
 const parts = t => { const d = new Date(t); return {y: d.getUTCFullYear(), mo: d.getUTCMonth(), d: d.getUTCDate(), h: d.getUTCHours(), mi: d.getUTCMinutes(), wd: d.getUTCDay()}; };

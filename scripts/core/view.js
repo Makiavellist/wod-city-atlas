@@ -17,7 +17,6 @@ const SHAPES = {
   marker: '<path d="M16 30C9 22 4.5 17 4.5 12a11.5 11.5 0 0 1 23 0c0 5-4.5 10-11.5 18z"/>',
   note: '<path d="M4 4h24v17l-7 7H4z"/><path d="M21 28v-7h7" fill="none"/>'
 };
-export const PIN_SHAPES = Object.keys(SHAPES).filter(k => k !== 'note');
 function pinBody(shape, border = 'solid', width, bg) {
   const d = SHAPES[shape] || SHAPES.circle, w = width ? Math.max(1, +width) * 1.1 : 2.2;
   const dash = border === 'dashed' ? 'stroke-dasharray:4.5 3;' : border === 'dotted' ? 'stroke-dasharray:.1 3.6;stroke-linecap:round;' : '';
@@ -67,7 +66,10 @@ export class AtlasView {
   savePrefs() {
     try { localStorage.setItem(PREF_KEY + this.atlasKey, JSON.stringify({realm: this.st.realm, level: this.st.level, layers: Object.fromEntries(this.layerState), catsOff: [...this.catsOff], hidden: [...this.hiddenItems], showFaded: this.showFaded, viewAs: this.isGM ? (this.st.storyteller ? 'gm' : this.st.as) : undefined, view: {cx: this.cam.cx, cy: this.cam.cy, z: this.cam.z}, side: this.root.classList.contains('side-min'), atlasHidden: !!this.atlasHidden, notesShared: this.notesShared !== false, notesPrivate: !!this.notesPrivate})); } catch (e) {}
   }
-  persist = debounce(() => this.savePrefs(), 400);
+  /** Any change to what the map shows (layers, hidden entries, categories, view-as): redraw the cached layers, save the preferences soon. */
+  stateRev = 0;
+  saveSoon = debounce(() => this.savePrefs(), 400);
+  persist() { this.stateRev++; this.saveSoon(); }
 
   /* ================= DOM ================= */
   build() {
@@ -161,7 +163,7 @@ export class AtlasView {
   }
   roots() { return this.layerRoot ? [this.root, this.layerRoot] : [this.root]; }
   destroy() {
-    this.dead = true; this.ro?.disconnect(); this.unsub?.(); this.unsubNotes?.(); cancelAnimationFrame(this.raf); cancelAnimationFrame(this.loopRaf); this.savePrefs();
+    this.dead = true; cancelAnimationFrame(this._hovRaf); this.ro?.disconnect(); this.unsub?.(); this.unsubNotes?.(); cancelAnimationFrame(this.raf); cancelAnimationFrame(this.loopRaf); this.savePrefs();
     this.editor?.destroy?.(); this.root.innerHTML = ''; if (this.layerRoot) this.layerRoot.innerHTML = '';
   }
   resolveUrl(src) { return this.adapter.resolveUrl ? this.adapter.resolveUrl(src) : src; }
@@ -183,6 +185,7 @@ export class AtlasView {
 
   /* ================= realm / level ================= */
   applyView(first) {
+    this.stateRev++;
     this.rv = this.model.view(this.st.realm, this.st.level);
     const t = this.rv.theme, RS = this.roots();
     const set = (k, v) => RS.forEach(r => r.style.setProperty('--wca-' + k, v));
@@ -265,13 +268,7 @@ export class AtlasView {
     clearTimeout(this._fadeT); this._fadeT = setTimeout(() => { f.hidden = true; f.style.animation = ''; fx.hidden = true; fx.innerHTML = ''; }, ms + 120);
     this.dirty();
   }
-  snapshotFade(ms = 650) {
-    if (reduceMotion() || !this.cam.W || this.sc) return;
-    const f = this.el.fade; f.width = this.el.canvas.width; f.height = this.el.canvas.height; f.style.width = this.cam.W + 'px'; f.style.height = this.cam.H + 'px';
-    f.getContext('2d').drawImage(this.el.canvas, 0, 0); f.hidden = false; f.style.transition = 'none'; f.style.opacity = '1';
-    requestAnimationFrame(() => { f.style.transition = `opacity ${ms}ms ease`; f.style.opacity = '0'; });
-    clearTimeout(this._fadeT); this._fadeT = setTimeout(() => { f.hidden = true; }, ms + 50);
-  }
+
 
   /* ================= layers ================= */
   layerOn(id) {
@@ -440,7 +437,8 @@ export class AtlasView {
       if (ptrs.has(e.pointerId)) ptrs.set(e.pointerId, [e.clientX, e.clientY]);
       if (pinch && ptrs.size === 2) { const [a, b] = [...ptrs.values()]; const d = Math.hypot(a[0] - b[0], a[1] - b[1]); const mx = (a[0] + b[0]) / 2 - r.left, my = (a[1] + b[1]) / 2 - r.top; this.zoomAround(mx, my, pinch.z + Math.log2(d / pinch.d)); return; }
       if (drag) { const dx = e.clientX - drag.x, dy = e.clientY - drag.y; moved = Math.max(moved, Math.hypot(dx, dy)); if (moved > 3) { M.classList.add('dragging'); const s = Math.pow(2, this.cam.z); this.cam.cx = drag.cx - dx / s; this.cam.cy = drag.cy - dy / s; this.clampView(); this.dirty(); this.hideTip(); } return; }
-      if (e.pointerType === 'mouse' && !isUI(e)) this.hoverAt(sx, sy, e);
+      // hover at most once a frame: hit-testing every zone on every mouse event is wasted work
+      if (e.pointerType === 'mouse' && !isUI(e)) { this._hov = [sx, sy]; if (!this._hovRaf) this._hovRaf = requestAnimationFrame(() => { this._hovRaf = 0; if (!this.dead && this._hov) this.hoverAt(this._hov[0], this._hov[1]); }); }
     });
     const end = e => {
       if (this.editor && this.editor.pointerUp(e)) { ptrs.delete(e.pointerId); return; }
@@ -451,7 +449,7 @@ export class AtlasView {
       if (!ptrs.size) drag = null;
     };
     M.addEventListener('pointerup', end); M.addEventListener('pointercancel', end);
-    M.addEventListener('pointerleave', () => { if (this.hover) { this.hover = null; this.dirty(); } this.hideTip(); });
+    M.addEventListener('pointerleave', () => { this._hov = null; if (this.hover) { this.hover = null; this.dirty(); } this.hideTip(); });
     M.addEventListener('wheel', e => { if (isUI(e) && !e.target.closest('.wca-pin')) return; e.preventDefault(); const r = M.getBoundingClientRect(); const dz = -e.deltaY * (e.deltaMode === 1 ? 0.05 : e.ctrlKey ? 0.01 : 0.0022); this.zoomAround(e.clientX - r.left, e.clientY - r.top, this.cam.z + clamp(dz, -1, 1)); }, {passive: false});
     M.addEventListener('dblclick', e => { if (isUI(e) || this.editor?.consumesDblClick?.()) return; const r = M.getBoundingClientRect(); const sx = e.clientX - r.left, sy = e.clientY - r.top; const w = this.toWorld(sx, sy); this.animateTo(w, this.cam.z + 1, 250); });
     M.addEventListener('dragover', e => { if (this.editor?.acceptsDrop?.(e)) { e.preventDefault(); } });
@@ -529,7 +527,12 @@ export class AtlasView {
 
   /* ================= drawing loop ================= */
   dirty() { if (this.sc) { this.needs = true; return; } if (!this.needs && !this.dead) { this.needs = true; this.raf = requestAnimationFrame(() => this.frame()); } }
-  frame() { this.needs = false; if (!this.cam.W || this.dead) return; this.renderer.draw(); this.placeMarkers(); this.drawScale(); }
+  frame() { this.needs = false; if (!this.cam.W || this.dead) return; this.markersIfMoved(); this.renderer.draw(); }
+  /** Pins and the scale bar only need placing when the camera or the selection changed, not on every animation tick. */
+  markersIfMoved() {
+    const c = this.cam, k = [c.cx, c.cy, c.z, c.W, c.H, this.sel, this.tab, this.q, this.stateRev].join('|');
+    if (k === this._mkKey) return; this._mkKey = k; this.placeMarkers(); this.drawScale();
+  }
   /** Scene mode: called by the host on every Foundry frame. Follows the scene camera and redraws when needed. */
   sceneTick(force) {
     if (this.dead || !this.cam.W || !this.rv) return false;
@@ -537,7 +540,7 @@ export class AtlasView {
     const moved = c.cx !== this.cam.cx || c.cy !== this.cam.cy || c.z !== this.cam.z;
     if (!moved && !this.needs && !force) return false;
     if (moved) { this.cam.cx = c.cx; this.cam.cy = c.cy; this.cam.z = c.z; this.hideTip(); }
-    this.needs = false; this.renderer.draw(); this.placeMarkers(); this.drawScale();
+    this.needs = false; this.markersIfMoved(); this.renderer.draw();
     this.sceneOK = true; this.sceneDraws = (this.sceneDraws || 0) + 1;
     return true;
   }
@@ -558,7 +561,7 @@ export class AtlasView {
 
   /* ================= markers ================= */
   buildMarkers() {
-    const O = this.el.overlay; O.innerHTML = ''; this.markers = [];
+    const O = this.el.overlay; O.innerHTML = ''; this.markers = []; this.stateRev++; this._mkKey = null;
     const st = this.st;
     for (const p of Object.values(this.model.atlas.places)) {
       if (!p.at || p.hidden || !this.model.visible(p, 'places', st)) continue;

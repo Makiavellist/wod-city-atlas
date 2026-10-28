@@ -18,9 +18,9 @@ export class JournalStore extends BaseStore {
     this.entry = entry; this.key = entry.id; this.canEdit = entry.isOwner;
     this.load();
     this._hooks = [
-      ['updateJournalEntryPage', (page, changed, opts, userId) => this._onPage(page, changed, userId)],
-      ['createJournalEntryPage', (page, opts, userId) => this._onPage(page, null, userId)],
-      ['deleteJournalEntryPage', (page, opts, userId) => this._onPage(page, null, userId)],
+      ['updateJournalEntryPage', (page, changed, opts, userId) => this._onPage(page, userId, false)],
+      ['createJournalEntryPage', (page, opts, userId) => this._onPage(page, userId, false)],
+      ['deleteJournalEntryPage', (page, opts, userId) => this._onPage(page, userId, true)],
       ['updateJournalEntry', (e, changed, opts, userId) => { if (e.id !== this.entry.id) return; if (changed.flags?.[MOD] && userId !== game.user.id) { this.load(); this.emit({meta: true}); } }]
     ].map(([h, fn]) => [h, Hooks.on(h, fn)]);
   }
@@ -33,11 +33,12 @@ export class JournalStore extends BaseStore {
   }
   release() { this._refs = (this._refs || 1) - 1; if (this._refs <= 0) { SHARED.delete(this.entry.id); this.detach(); } }
 
-  _onPage(page, changed, userId) {
-    if (page.parent?.id !== this.entry.id) return;
-    if (userId === game.user.id && !this._replacing) return; // already applied locally
-    if (this._replacing) return;
-    this.load(); this.emit({coll: page.getFlag(MOD, 'coll')});
+  /** Someone else changed a collection: read just that page again (a deleted page, or one we don't know, reloads everything). */
+  _onPage(page, userId, deleted) {
+    if (page.parent?.id !== this.entry.id || this._replacing || userId === game.user.id) return; // our own changes are already applied
+    const coll = page.getFlag(MOD, 'coll');
+    if (deleted || !COLLECTIONS.includes(coll)) this.load(); else { this.atlas[coll] = readItems(page, coll); normalize(this.atlas); }
+    this.emit({coll});
   }
   pageFor(coll) { return this.entry.pages.find(p => p.getFlag(MOD, 'coll') === coll) || null; }
 
@@ -45,11 +46,7 @@ export class JournalStore extends BaseStore {
     let meta = {};
     try { meta = JSON.parse(this.entry.getFlag(MOD, 'meta') || '{}'); } catch (e) { console.error(`${MOD} | bad atlas meta`, e); }
     const a = Object.assign({}, meta);
-    for (const c of COLLECTIONS) {
-      a[c] = {};
-      const page = this.pageFor(c); const items = page ? (page.getFlag(MOD, 'items') || {}) : {};
-      for (const [id, raw] of Object.entries(items)) { try { const it = typeof raw === 'string' ? JSON.parse(raw) : raw; if (it) { it.id = id; a[c][id] = it; } } catch (e) { console.warn(`${MOD} | could not read ${c}.${id}`, e); } }
-    }
+    for (const c of COLLECTIONS) { const page = this.pageFor(c); a[c] = page ? readItems(page, c) : {}; }
     this.atlas = normalize(a);
   }
   async loadBasemap(resolve) {
@@ -100,6 +97,12 @@ export class JournalStore extends BaseStore {
   }
 }
 
+/** The items stored on one collection's page. */
+function readItems(page, coll) {
+  const out = {}, items = page.getFlag(MOD, 'items') || {};
+  for (const [id, raw] of Object.entries(items)) { try { const it = typeof raw === 'string' ? JSON.parse(raw) : raw; if (it) { it.id = id; out[id] = it; } } catch (e) { console.warn(`${MOD} | could not read ${coll}.${id}`, e); } }
+  return out;
+}
 function metaOf(a) { const m = {}; for (const k of META_KEYS) if (a[k] !== undefined) m[k] = a[k]; return m; }
 function pageData(coll, items) { return {name: `Atlas data · ${coll}`, type: 'text', text: {content: PAGE_TEXT}, title: {show: true, level: 2}, flags: {[MOD]: {coll, items}}, sort: COLLECTIONS.indexOf(coll) * 1000}; }
 

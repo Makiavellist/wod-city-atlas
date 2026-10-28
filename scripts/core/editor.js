@@ -1,6 +1,6 @@
 /* The GM editor: drawing tools, item forms, collection managers, import/export and undo. */
-import {esc, svg, clone, uid, safeId, sortBy, GLYPH, segDist, inPoly, clamp} from './util.js';
-import {COLLECTIONS, TYPE_NAMES, normalize} from './model.js';
+import {esc, svg, clone, uid, safeId, sortBy, segDist, inPoly} from './util.js';
+import {TYPE_NAMES, normalize} from './model.js';
 import {renderFields, readFields, bindFields} from './forms.js';
 import {LOOKS, applyLook} from './templates.js';
 import {planLooks, applyLooks} from './looks.js';
@@ -68,11 +68,9 @@ export class AtlasEditor {
     const r = this.sel(); if (!r) return [];
     const {coll, item: it} = r, out = [];
     if (coll === 'zones' || coll === 'routes') {
-      const g = this.m.geo(it, coll);
       const geo = coll === 'zones' ? it.rings || [] : it.parts || [];
       geo.forEach((ring, ri) => { const W = ring.map(p => this.proj.toWorld(p)); W.forEach((w, pi) => out.push({kind: 'v', ri, pi, w}));
         const n = coll === 'zones' ? W.length : W.length - 1; for (let i = 0; i < n; i++) { const a = W[i], b = W[(i + 1) % W.length]; out.push({kind: 'mid', ri, pi: i + 1, w: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]}); } });
-      void g;
     } else if ((coll === 'labels' || coll === 'auras') && it.at) {
       const c = this.proj.toWorld(it.at); out.push({kind: 'pt', w: c});
       if (coll === 'auras' && it.radius) out.push({kind: 'rad', w: [c[0] + it.radius / this.proj.mpu(c[1]), c[1]]});
@@ -514,12 +512,11 @@ export class AtlasEditor {
   }
   rerenderForm(data) {
     const P = this.panel, coll = P.coll, fields = this.fields(coll), form = this.v.el.pane.querySelector('form.ed-form'); if (!form) return;
-    const raw = form.querySelector('details.raw'), act = form.querySelector('.ed-actions');
+    const raw = form.querySelector('details.raw');
     const ctx = this.ctx(); ctx.data = data;
     const tmp = document.createElement('div'); tmp.innerHTML = renderFields(fields, data, ctx);
     form.querySelectorAll(':scope > .ef').forEach(e => e.remove());
     [...tmp.children].forEach(c => form.insertBefore(c, raw));
-    void act;
     if (!form._bound) { form._bound = true; }
     // bind only new nodes: rebinding the form is idempotent enough for delegated listeners, but rich editors need setup
     if (ctx.richEditor) form.querySelectorAll('.ef-html').forEach(ef => { const host = ef.querySelector('[data-html-host]'), ta = ef.querySelector('textarea'); if (host && !host._getValue) { try { if (ctx.richEditor(host, ta.value, ta)) ta.hidden = true; } catch (e) {} } });
@@ -643,7 +640,6 @@ export class AtlasEditor {
     };
     pane.onclick = async e => { const b = e.target.closest('button[data-ed]'); if (!b) return;
       if (b.dataset.ed === 'back') this.back();
-      else if (b.dataset.ed === 'addtier') { const ts = this.m.tiers().slice(); ts.push(`Secret ${ts.length - 3}`); await this.store.setMeta({tiers: ts}); this.renderVisibility(); }
       else if (b.dataset.ed === 'bulk') {
         const list = bulkSel(), who = pane.querySelector('[data-b="who"]').value, tv = pane.querySelector('[data-b="tier"]').value, coll = pane.querySelector('[data-b="coll"]').value;
         if (!list.length) return this.notify('Nothing matches those filters.', 'warn');
@@ -781,4 +777,4 @@ export class AtlasEditor {
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], {type: 'application/json'})); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
   }
 }
-void COLLECTIONS; void GLYPH; void clamp;
+

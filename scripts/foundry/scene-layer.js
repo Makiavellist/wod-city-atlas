@@ -297,7 +297,7 @@ export class SceneAtlas {
 
   destroy() {
     if (this.dead) return; this.dead = true;
-    cancelAnimationFrame(this._raf); clearTimeout(this._check); clearTimeout(this._picT); clearTimeout(this._rt); if (document.body.style.cursor) document.body.style.cursor = ''; if (this._panHook != null) Hooks.off('canvasPan', this._panHook);
+    cancelAnimationFrame(this._raf); cancelAnimationFrame(this._hoverRaf); clearTimeout(this._check); clearTimeout(this._picT); clearTimeout(this._rt); if (document.body.style.cursor) document.body.style.cursor = ''; if (this._panHook != null) Hooks.off('canvasPan', this._panHook);
     this.unbindBoard(); window.removeEventListener('resize', this._onWin);
     try { this.hud?.close({animate: false}); } catch (e) {}
     try { this._unsubBm?.(); this.view?.destroy(); } catch (e) {}
@@ -305,7 +305,6 @@ export class SceneAtlas {
     this.view = null;
   }
 }
-void esc;
 
 /** Foundry's board canvas: the #board element, or the PIXI view as a fallback. */
 function findBoard() {

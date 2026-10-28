@@ -2,10 +2,10 @@
  * Each event is shown to everyone, kept for the Storyteller, or shown to particular players. */
 import {MOD} from './journal-store.js';
 import {Clock} from './clock.js';
+import {esc} from '../core/util.js';
 
 const {ApplicationV2, DialogV2} = foundry.applications.api;
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
 const pad = n => String(n).padStart(2, '0');
 const dayKey = t => { const d = new Date(t); return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`; };
 

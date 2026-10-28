@@ -6,6 +6,7 @@ export const MAP_ITEMS = ['places', 'zones', 'routes', 'labels', 'auras'];
 export const META_KEYS = ['tiers', 'revealDefault', 'domainLayer', 'domainStatuses', 'scene', 'schema', 'title', 'titleHtml', 'description', 'projection', 'bounds', 'home', 'zoom', 'closeBy', 'basemap', 'background', 'theme', 'statuses', 'precisions', 'fonts', 'scale', 'version', 'preset', 'looks'];
 export const TYPE_NAMES = {places: 'Place', zones: 'Zone', routes: 'Route', labels: 'Label', auras: 'Glow', people: 'Person', pages: 'Page', realms: 'Realm', layers: 'Layer', categories: 'Category', factions: 'Faction', styles: 'Style'};
 
+const EMPTY = Object.freeze([]);
 export const DEFAULT_TIERS = ['Hidden', 'Existence', 'Basic', 'Full'];
 export const TIER = {HIDDEN: 0, EXIST: 1, BASIC: 2, FULL: 3, SECRET: 4};
 export const STRUCT = ['realms', 'layers', 'categories', 'factions', 'styles'];
@@ -71,7 +72,7 @@ export class AtlasModel {
     for (const p of Object.values(this.atlas.people)) for (const id of p.at || []) { if (!this.atPeople.has(id)) this.atPeople.set(id, []); this.atPeople.get(id).push(p.id); }
     for (const c of ['places', 'zones', 'routes']) for (const it of Object.values(this.atlas[c])) if (it.anchor) { if (!this.anchoredBy.has(it.anchor)) this.anchoredBy.set(it.anchor, []); this.anchoredBy.get(it.anchor).push(it.id); }
     for (const z of Object.values(this.atlas.zones)) for (const o of z.owners || []) { if (!this.ownersOf.has(o)) this.ownersOf.set(o, []); this.ownersOf.get(o).push(z.id); }
-    this._searchIdx = null;
+    this._searchIdx = null; this._passNames = new Map(); this._passObjs = new WeakMap();
   }
 
   get(id) { return this.index.get(id) || null; }
@@ -244,14 +245,21 @@ export class AtlasModel {
     if (coll === 'people') return 'user';
     return 'pin';
   }
-  /** Resolve a style reference into an array of passes. */
+  /** Resolve a style reference into an array of passes (remembered until the atlas changes; don't modify the result). */
   passes(style) {
-    if (!style) return [];
-    if (typeof style === 'string') return this.passes(this.atlas.styles[style]);
-    if (Array.isArray(style)) return style.flatMap(s => this.passes(s));
-    if (isObj(style) && style.passes) return this.passes(style.passes);
+    if (!style) return EMPTY;
+    if (typeof style === 'string') { let r = this._passNames.get(style); if (!r) { r = this._passes(this.atlas.styles[style]); this._passNames.set(style, r); } return r; }
+    let r = this._passObjs.get(style); if (!r) { r = this._passes(style); this._passObjs.set(style, r); } return r;
+  }
+  _passes(style) {
+    if (!style) return EMPTY;
+    if (typeof style === 'string') return this.passes(style);
+    if (Array.isArray(style)) return style.flatMap(s => this._passes(s));
+    if (isObj(style) && style.passes) return this._passes(style.passes);
     return [style];
   }
+  /** Does a style move with time (flowing dashes, flicker)? */
+  moves(style) { return this.passes(style).some(p => p && (p.flow || p.flicker)); }
   categoriesFor(realmId, levelId) {
     return sortBy(Object.values(this.atlas.categories).filter(c => (c.realm == null || c.realm === realmId) && (!Array.isArray(c.levels) || !c.levels.length || c.levels.includes(levelId))), c => c.order ?? 0, 'name');
   }

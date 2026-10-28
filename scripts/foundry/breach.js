@@ -1,5 +1,6 @@
 /* "MASQUERADE VIOLATION": the Storyteller's red alert, shown across every player's whole screen. */
 import {MOD} from './journal-store.js';
+import {esc} from '../core/util.js';
 
 const MASK_L = 'M100 18C70 18 38 30 26 58c-10 24-6 58 10 84 14 22 36 38 58 42l6-30-12-14 16-18-10-22 14-20-8-24 10-18z';
 const MASK_R = 'M100 18c30 0 62 12 74 40 10 24 6 58-10 84-14 22-36 38-58 42l-6-30 12-14-16-18 10-22-14-20 8-24-10-18z';
@@ -19,7 +20,7 @@ function maskSvg() {
 export function showBreach({text = '', sound = true} = {}) {
   document.getElementById('wca-breach')?.remove();
   const el = document.createElement('div'); el.id = 'wca-breach'; el.setAttribute('role', 'alert');
-  el.innerHTML = `<div class="brk-bg"></div><div class="brk-crack"></div><div class="brk-inner">${maskSvg()}<h1 class="brk-title"><span>Masquerade</span><span>Violation</span></h1>${text ? `<p class="brk-text">${String(text).replace(/[&<>]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;'}[c]))}</p>` : ''}<p class="brk-hint">click to dismiss</p></div>`;
+  el.innerHTML = `<div class="brk-bg"></div><div class="brk-crack"></div><div class="brk-inner">${maskSvg()}<h1 class="brk-title"><span>Masquerade</span><span>Violation</span></h1>${text ? `<p class="brk-text">${esc(text)}</p>` : ''}<p class="brk-hint">click to dismiss</p></div>`;
   document.body.appendChild(el);
   if (sound) { try { foundry.audio.AudioHelper.play({src: 'sounds/drums.wav', volume: 0.7, loop: false}, false); } catch (e) {} }
   const close = () => { el.classList.add('out'); setTimeout(() => el.remove(), 900); };

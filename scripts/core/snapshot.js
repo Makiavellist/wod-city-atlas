@@ -1,6 +1,5 @@
 /* Render an atlas view to a still picture (for Foundry scenes), as a given viewer would see it. */
 import {Renderer} from './renderer.js';
-import {GLYPH} from './util.js';
 import {TIER} from './model.js';
 
 /**
@@ -51,10 +50,4 @@ export function lookSig(model, realm, level) {
   const txt = JSON.stringify([v.bg, v.styles, (v.effects || []).filter(e => e.under), v.background, a.basemap, a.background]);
   let h = 2166136261; for (let i = 0; i < txt.length; i++) { h ^= txt.charCodeAt(i); h = Math.imul(h, 16777619); }
   return (h >>> 0).toString(36);
-}
-
-/** A round pin icon for map notes: white glyph on a dark disc, meant to be tinted. */
-export function pinSvg(glyph) {
-  const g = GLYPH[glyph] || GLYPH.pin;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="128" height="128"><circle cx="32" cy="32" r="29" fill="#15121a" stroke="#ffffff" stroke-width="3.5"/><g transform="translate(16 16) scale(2)" fill="none" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${g}</g></svg>`;
 }
