@@ -53,5 +53,7 @@ const RU = {
   'Players follow my realm': 'Игроки следуют за моим миром', 'Draw a domain': 'Нарисовать домен', 'Draw another domain': 'Нарисовать ещё домен',
   // tiers and view-as (Storyteller)
   'Hidden from players': 'Скрыто от игроков', 'Hide from all': 'Скрыть от всех', 'View': 'Вид', 'View as': 'Смотреть как', 'Storyteller': 'Рассказчик', 'Storyteller (everything)': 'Рассказчик (всё)',
+  'Centre on map': 'Показать на карте', 'Note by {who}': 'Заметка: {who}', 'someone': 'кто-то', 'private': 'личная', 'Delete this note': 'Удалить заметку',
+  'shared with everyone': 'видят все', 'only you': 'только вы', 'of {n}': 'из {n}',
   'Every player (defaults)': 'Все игроки (по умолчанию)', 'This player': 'Этот игрок', "Players' private notes": 'Личные заметки игроков'
 };

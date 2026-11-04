@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.16.0
+- **Characters go inside places.** Drop a character's portrait onto a place's pin and they enter it: the portrait settles on the rim of the pin with a glow and a short entering animation, the place pulses to welcome them and keeps a ring in their colour while anyone is in. The tooltip and the dossier (*Сейчас здесь*) show who is inside, and the character list reads *внутри: …*. Drag the portrait off to leave.
+- **The atlas speaks Russian.** Everything players see is in Russian: the window and its tabs, the map controls, search, notes, the character list, the dossiers, the clock (Russian weekdays and months, 24-hour time, «до рассвета») and the calendar. Cyrillic letters use matching faces (Old Standard TT, Cormorant SC, Ponomar) beside the IM Fell and Pirata lettering. *Configure Settings → Atlas language for players / Язык атласа* (Русский by default) switches it back to English; the Storyteller's editor stays in English. Foundry's own strings for the module have a Russian translation too.
+- **The whole Milwaukee preset is translated**: every description, person, clan line, fact, callout, relation, chronicle page, timeline, hook, layer, category, faction, realm, level, legend and status, in the official World of Darkness Russian terms (Сородичи, Камарилья, Шабаш, Гару, Умбра, Преграда, Саван, Земли Теней, Грёза, Чары, Банальность…). Names stay “English (Русский)”, now for people and factions too, and the map lettering still shows only the English.
+- **Linked pictures.** A pin, zone or route linked to a Scene shows the Scene's background, and a person or pin linked to an Actor shows the Actor's portrait, in the dossier, the tooltip and the picture-pin, before any picture of their own.
+- Atlases made from the preset take the translation by themselves. What players have been shown stays shown: revealed secrets, facts and relations keep their state; only their words change.
+- Fix: names whose English part has brackets of its own (“Merik’s penthouse (sealed) (Пентхаус Мерика (опечатан))”) lost their Russian part only partly on the map.
+
 ## 1.15.1
 - **Easier to find**: right-click an atlas in the Journal tab for *Hide everything from players…* and *Link to Actors (players and people)…*. The editor's home page lists *Link to Actors* too.
 - **Players' characters** can be set right in *Link to Actors* (the same as Foundry's User Configuration → Character): the player's portrait pin shows that Actor.

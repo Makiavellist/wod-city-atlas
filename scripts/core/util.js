@@ -98,6 +98,12 @@ export function arcPts(a, b, k, n = 24) {
 export function rng(seed = 1991) { let s = seed % 2147483647; if (s <= 0) s += 2147483646; return () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; }; }
 
 /** "Pabst Theater (Театр Пабст)" → "Pabst Theater": a trailing translation in brackets (Cyrillic) left out, for the map lettering. */
-export function shortName(n) { return String(n || '').replace(/\s*\([^()]*[\u0400-\u04FF][^()]*\)\s*$/, ''); }
+export function shortName(n) {
+  // the last bracketed group, which may hold brackets of its own ("Merik\u2019s penthouse (sealed) (\u041F\u0435\u043D\u0442\u0445\u0430\u0443\u0441 \u041C\u0435\u0440\u0438\u043A\u0430 (\u043E\u043F\u0435\u0447\u0430\u0442\u0430\u043D))")
+  const s = String(n || '').trimEnd(); if (!s.endsWith(')')) return s;
+  let d = 0, i = s.length - 1;
+  for (; i >= 0; i--) { if (s[i] === ')') d++; else if (s[i] === '(' && --d === 0) break; }
+  return i > 0 && /[\u0400-\u04FF]/.test(s.slice(i)) ? s.slice(0, i).trimEnd() : s;
+}
 /** The same name as HTML for a heading, with the bracketed translation set a little smaller. */
 export function nameHtml(n) { const s = String(n || ''), sh = shortName(s); return sh === s ? esc(s) : `${esc(sh)} <span class="tr">${esc(s.slice(sh.length).trim())}</span>`; }

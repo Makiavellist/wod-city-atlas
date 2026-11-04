@@ -44,7 +44,7 @@ Effect types: `gradient` (linear/radial), `fog`, `vignette`, `stars` and `waves`
 
 ## Map items
 
-All map items take `realm`, `level` (or `levels: []`), `layer`, `gm` (Storyteller only), `name` (a translation can follow in brackets: “Pabst Theater (Театр Пабст)”; map lettering leaves a bracketed Cyrillic part out), `alias` and `aliasText` (name and text at Existence), `sub`, `kicker`, `brief` (the Basic description, html), `html`, `img`, `notes: [{title, html, kind: scene|law|secret|play, gm, secret, reveal}]`, `facts: [{k, v, secret, reveal}]`, `tags: [{text, color}]`, `people: [ids]`, `anchor` (twin in another realm), `links: [{id, label}]`, `uuid` (Foundry document) and `src`.
+All map items take `realm`, `level` (or `levels: []`), `layer`, `gm` (Storyteller only), `name` (a translation can follow in brackets: “Pabst Theater (Театр Пабст)”; map lettering leaves a bracketed Cyrillic part out), `alias` and `aliasText` (name and text at Existence), `sub`, `kicker`, `brief` (the Basic description, html), `html`, `img`, `notes: [{title, html, kind: scene|law|secret|play, gm, secret, reveal}]`, `facts: [{k, v, secret, reveal}]`, `tags: [{text, color}]`, `people: [ids]`, `anchor` (twin in another realm), `links: [{id, label}]`, `uuid` (Foundry document; its picture, an Actor's portrait or a Scene's background, is used before `img`) and `src`.
 
 - **place**: `at`, `roam: [placeIds]` / `ride: [[lat, lng]…]` / `wander: metres` with `period` (seconds) for places that move, `cat`, `faction`, `color`, `icon`, `precision`, `zone`, `hidden` (no pin), `zoom`, `pin: {border, glow, bg: [c1, c2], anim: "pulse"}`.
 - **zone**: `rings: [[pt…], …]` (even-odd), `art` (ward|wolf|index|orchard|seat: a moving Dreaming picture instead of the outline), `style` (name or object), `owners`, `container`, `rating: {label, value, max, text}`, `label: {text, sub, at, minZoom, font, ls, color, halo, italic, subFont}`, `noLabel`, `fillImage: {src, minZoom, alpha}`, `ref` (clicking opens another entry), `order`.
@@ -65,7 +65,7 @@ Colours may be `auto` or `auto:0.3`, meaning the item's own colour (from its fac
 
 ## People and pages
 
-- **person**: `name`, `kicker` (clan line; a part containing “generation” is never shown to players), `falseKicker` (false clan), `tag` (short clan), `sub`, `faction`, `group: {realmId: factionId}`, `status`, `icon`, `img`, `html`, `notes`, `facts`, `relations: {title, rows: [[who, attitude]]}`, `at: [ids]`, `realms: ["waking", "waking:underground", …]`, `uuid`.
+- **person**: `name`, `kicker` (clan line; a part containing “generation” is never shown to players), `falseKicker` (false clan), `tag` (short clan), `sub`, `faction`, `group: {realmId: factionId}`, `status`, `icon`, `img`, `html`, `notes`, `facts`, `relations: {title, rows: [[who, attitude]]}`, `at: [ids]`, `realms: ["waking", "waking:underground", …]`, `uuid` (the linked Actor's portrait is used before `img`). A person's `name` reads “English (Русский)” like a place's; the clan line is Russian (“Вентру · 8-е поколение”, the part with «поколени» or “generation” is never shown to players).
 - **page**: `title`, `realm`, `level`/`levels`, `tab` (pages|places|people|zones), `order`, `gm`, `html`. Inside `html`, `.gm-only` and `.player-only` hide text from players or from the Storyteller, `data-link="id"` makes a link to an entry, and the classes `tl`, `hook`, `lead`, `note` and `council` give the timeline, hook and table looks.
 
 ## Visibility
@@ -83,3 +83,11 @@ Without a decision, the allegiance shows from Basic, figures, owners, facts and 
 `{"features": [{"k": "l"|"p"|"m", "c": "class", "p": coordinates, "n": "name", "w": widthFactor, "layer": "blocks"}]}`
 
 Here `l` is a line, `p` is a polygon (a list of rings) and `m` is a multi-line. Each realm or level draws a class only if its `styles` define it. A pass with a `label` (`{minZoom, layer, spacing, color, halo}`) writes the feature's name along the line.
+
+## Characters on scenes
+
+Players' characters are not stored in the atlas. Each player's position is kept on their user, per atlas (`flags.wod-city-atlas.pos.<journal id>`), as `{at: [lat, lng], realm, level, hidden, place, entered, t}`: `place` is the id of the place the character has gone into (dropped onto its pin), `entered` the time they went in (the entering animation plays for twenty seconds after).
+
+## Language
+
+The world setting `uiLang` (`ru` or `en`, default `ru`) sets the language of the atlas window and the map for players; the Storyteller's editor stays in English. The Milwaukee preset's texts are in Russian, with English place and person names followed by the Russian in brackets.

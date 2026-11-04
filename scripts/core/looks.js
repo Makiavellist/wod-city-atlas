@@ -80,11 +80,26 @@ export function planUpgrade(atlas, pre, {all = false} = {}) {
     const plain = keys.filter(k => !k.includes('.')), lv = keys.filter(k => k.startsWith('levels.')).map(k => k.slice(7));
     const lvSame = !lv.length || (it.levels || []).every(l => { const pl = (p.levels || []).find(q => q.id === l.id); return !pl || lv.every(k => same(l[k], pl[k])); });
     if (plain.every(k => same(it[k], p[k])) && lvSame) continue;
-    const d = edit(coll, id); for (const k of plain) { if (p[k] === undefined) delete d[k]; else d[k] = clone(p[k]); }
+    const d = edit(coll, id); for (const k of plain) { if (p[k] === undefined) delete d[k]; else d[k] = textOnly(k, d[k], p[k]); }
     for (const l of d.levels || []) { const pl = (p.levels || []).find(q => q.id === l.id); if (pl) for (const k of lv) { if (pl[k] === undefined) delete l[k]; else l[k] = clone(pl[k]); } }
     f++;
   }
   if (f) parts.push(`new texts for ${f} entries (${[...new Set(Object.values(fields).flat())].map(k => FIELD_NAMES[k] ?? k).filter(Boolean).join(', ')})`);
+  // atlas-wide settings (placement kinds, title…)
+  for (const k of new Set(todo.flatMap(u => u.meta || []))) if (pre[k] !== undefined && !same(atlas[k], pre[k])) { plan.meta[k] = clone(pre[k]); parts.push(k); }
   return {items: plan.items, meta: plan.meta, parts};
+}
+
+/* Callouts, facts and relation rows carry what each player has been shown (reveal, secret, ref). When the preset's list
+ * lines up with the atlas's, only the words are replaced, so a new translation never hides what was already revealed. */
+const TEXTS = {notes: ['title', 'html'], facts: ['k', 'v']};
+function textOnly(k, cur, p) {
+  if (k === 'relations' && cur && p && Array.isArray(cur.rows) && Array.isArray(p.rows) && cur.rows.length === p.rows.length) {
+    const d = clone(cur); d.title = p.title; d.rows = cur.rows.map((r, i) => { const pr = p.rows[i]; if (Array.isArray(r) || Array.isArray(pr)) return clone(pr); const o = Object.assign({}, r, {a: pr.a, b: pr.b}); if (!o.ref && pr.ref) o.ref = pr.ref; return o; });
+    return d;
+  }
+  const keys = TEXTS[k];
+  if (keys && Array.isArray(cur) && Array.isArray(p) && cur.length === p.length) return cur.map((x, i) => { const o = Object.assign({}, x); for (const t of keys) { if (p[i][t] === undefined) delete o[t]; else o[t] = p[i][t]; } return o; });
+  return clone(p);
 }
 const FIELD_NAMES = {brief: 'Basic descriptions', alias: 'names while unknown', aliasText: 'texts while unknown', nameTr: 'translated names', tag: 'short tags', falseKicker: 'false clans', sub: 'role lines', name: 'names with their Russian in brackets', nameTr: '', art: 'Dreaming pictures', roam: 'wandering chimera', ride: '', wander: '', period: '', date: 'header lines', terms: 'tab names', 'levels.date': ''};

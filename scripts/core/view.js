@@ -1,7 +1,7 @@
 /* AtlasView: the interactive map, its chrome and the dossier panel. Framework-free; Foundry glue lives elsewhere. */
 import {esc, svg, clamp, sortBy, stripHtml, debounce, withAlpha, shortName, nameHtml} from './util.js';
 import {AtlasModel, TYPE_NAMES, TIER, stripGeneration} from './model.js';
-import {t as tr} from './i18n.js';
+import {t as tr, lang} from './i18n.js';
 import {Renderer} from './renderer.js';
 
 const PREF_KEY = 'wod-city-atlas:prefs:';
@@ -590,7 +590,7 @@ export class AtlasView {
     const mpp = this.renderer.mpp(); const unit = (a.scale && a.scale.unit) || (P.kind === 'mercator' ? 'mi' : 'm');
     const U = unit === 'mi' ? 1609.344 : unit === 'km' ? 1000 : unit === 'ft' ? 0.3048 : 1;
     const val = mpp * 110 / U, nice = [0.05, 0.1, 0.25, 0.5, 1, 2, 3, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000]; let m = nice[0]; nice.forEach(n => { if (n <= val) m = n; });
-    el.style.width = (m * U / mpp) + 'px'; el.textContent = (this.rv.realm.order ? '≈ ' : '') + m + ' ' + ({mi: m === 1 ? 'mile' : 'miles', km: 'km', m: 'm', ft: 'ft'}[unit] || unit);
+    el.style.width = (m * U / mpp) + 'px'; el.textContent = (this.rv.realm.order ? '≈ ' : '') + m + ' ' + ((lang() === 'ru' ? {mi: 'мил.', km: 'км', m: 'м', ft: 'фт'} : {mi: m === 1 ? 'mile' : 'miles', km: 'km', m: 'm', ft: 'ft'})[unit] || unit);
   }
 
   /* ================= markers ================= */
@@ -990,7 +990,7 @@ export class AtlasView {
     const edit = n.mine, icons = ['note', 'pin', 'star', 'eye', 'skull', 'drop', 'crown', 'key', 'swords', 'haven', 'flame', 'raven', 'church', 'glass', 'coin', 'grave'];
     const back = `<div class="detbar"><button type="button" class="back" data-act="back">${svg('back', 2)} Back</button></div>`;
     if (!edit) {
-      this.el.pane.innerHTML = `<div class="det" style="--c:${esc(n.color || n.authorColor || '#e8d27a')}">${back}<div class="dsub">Note by ${esc(n.authorName || 'someone')}${n.shared ? '' : ' · private'}</div><h2>${esc(n.title || tr('Note'))}</h2><div class="body notebody">${esc(n.html || '').replace(/\n/g, '<br>')}</div><button type="button" class="btn" data-act="center">${svg('target')} Centre on map</button>${this.isGM ? `<button type="button" class="btn" data-act="note-del">${svg('trash')} Delete this note</button>` : ''}</div>`;
+      this.el.pane.innerHTML = `<div class="det" style="--c:${esc(n.color || n.authorColor || '#e8d27a')}">${back}<div class="dsub">${tr('Note by {who}', {who: esc(n.authorName || tr('someone'))})}${n.shared ? '' : ' · ' + tr('private')}</div><h2>${esc(n.title || tr('Note'))}</h2><div class="body notebody">${esc(n.html || '').replace(/\n/g, '<br>')}</div><button type="button" class="btn" data-act="center">${svg('target')} ${tr('Centre on map')}</button>${this.isGM ? `<button type="button" class="btn" data-act="note-del">${svg('trash')} ${tr('Delete this note')}</button>` : ''}</div>`;
       return;
     }
     this.el.pane.innerHTML = `<div class="det notef" style="--c:${esc(n.color || '#e8d27a')}">${back}<div class="dsub">${n.isNew ? tr('New note') : tr('Your note')}</div>
@@ -1013,7 +1013,7 @@ export class AtlasView {
     const N = this.adapter.notes; if (!N) return '<div class="empty">Notes are not available here.</div>';
     const all = this.visibleNotes(), mine = all.filter(n => n.mine), others = all.filter(n => !n.mine);
     const realmName = n => { const r = this.model.atlas.realms[n.realm]; return r ? r.name : ''; };
-    const row = n => this.itemRow({id: 'note:' + n.id, c: n.color || n.authorColor || '#e8d27a', g: n.icon || 'note', n: n.title || tr('Note'), s: (n.mine ? (n.shared ? 'shared with everyone' : 'only you') : `${n.authorName || ''}${n.shared ? '' : ' · private'}`) + (n.realm !== this.st.realm ? ' · ' + realmName(n) : ''), tag: ''});
+    const row = n => this.itemRow({id: 'note:' + n.id, c: n.color || n.authorColor || '#e8d27a', g: n.icon || 'note', n: n.title || tr('Note'), s: (n.mine ? (n.shared ? tr('shared with everyone') : tr('only you')) : `${n.authorName || ''}${n.shared ? '' : ' · ' + tr('private')}`) + (n.realm !== this.st.realm ? ' · ' + realmName(n) : ''), tag: ''});
     return `<button type="button" class="btn" data-act="note-new">${svg('note')} Add a note to the map</button><p class="hint">Notes are yours: the Storyteller's map stays as it is. Choose “Everyone” to share a note with the group.</p>` +
       `<div class="grp">${tr('My notes ')}<span class="n">${mine.length}</span></div>${mine.map(row).join('') || '<div class="empty-s">None yet.</div>'}` +
       `<div class="grp">${tr('Shared by others ')}<span class="n">${others.length}</span></div>${others.map(row).join('') || `<div class="empty-s">${this.notesShared ? tr('None yet.') : tr('Hidden (see the Map tab).')}</div>`}`;
@@ -1050,7 +1050,7 @@ export class AtlasView {
       const pic = this.docInfo(it.uuid)?.img || it.img;
       if (pic) H.push(`<figure class="portrait${coll === 'people' ? '' : ' wide'}"><img src="${esc(this.resolveUrl(pic))}" alt="${esc(it.name)}" loading="lazy"></figure>`);
       if (coll === 'people') H.push(this.sheetButton(it));
-      if (coll === 'auras' && it.rating && full) H.push(`<div class="bigrating"><b>${esc(it.rating.label || tr('Rating'))}</b><span>${it.rating.value}</span><small>of ${it.rating.max || 10}</small>${this.ratingBar(Object.assign({warn: false}, it.rating))}</div>`);
+      if (coll === 'auras' && it.rating && full) H.push(`<div class="bigrating"><b>${esc(it.rating.label || tr('Rating'))}</b><span>${it.rating.value}</span><small>${tr('of {n}', {n: it.rating.max || 10})}</small>${this.ratingBar(Object.assign({warn: false}, it.rating))}</div>`);
       // every piece (callout, fact, figure, haunt, domain, relation) follows its own say for this viewer, not only the tier
       const notes = (it.notes || []).filter(n => m.noteVisible(n, it, coll, st));
       const facts = (it.facts || []).filter(f2 => m.noteVisible(f2, it, coll, st));
@@ -1093,9 +1093,9 @@ export class AtlasView {
       if (full && it.links && it.links.length) H.push(section(tr('See also'), it.links.map(l => l.id).filter(i => !(it.anchor === i))));
     }
     if (!known) (it.notes || []).filter(n => m.isSecret(n) && m.noteVisible(n, it, coll, st)).forEach(n => H.push(this.noteHtml(n, this.secretTag(n))));
-    if (coll !== 'people' && coll !== 'pages') H.push(`<button type="button" class="btn" data-act="center">${svg('target')} Centre on map</button>`);
+    if (coll !== 'people' && coll !== 'pages') H.push(`<button type="button" class="btn" data-act="center">${svg('target')} ${tr('Centre on map')}</button>`);
     if (this.isGM && st.storyteller) H.push(this.revealPanel(it, coll));
-    if (it.src && full) H.push(`<div class="src">${/^(Improvised|From the|Domains)/.test(it.src) ? '' : tr('Source: ')}${it.src}</div>`);
+    if (it.src && full) H.push(`<div class="src">${/^(Improvised|From the|Domains|Придумано|Из канона|Домены|придумано)/.test(it.src) ? '' : tr('Source: ')}${it.src}</div>`);
     this.el.pane.innerHTML = `<div class="det" style="--c:${esc(color)}">${H.join('')}</div>`;
     this.el.pane.scrollTop = 0;
     this.enrichIn(this.el.pane);

@@ -95,9 +95,12 @@ The **Basic description** (*Basic description* in the edit form) is what a playe
 
 ## Crossings, the clock and the characters
 
+- **Russian.** Players see the atlas in Russian: the window, the map controls, the dossiers, the clock and the calendar. The Milwaukee preset is translated in full (descriptions, people, chronicle pages, layers, realms), with names as “Pabst Theater (Театр Пабст)”. *Configure Settings → Atlas language for players / Язык атласа* switches it to English. The Storyteller's editor stays in English.
+
 - **Crossing animations.** Every realm switch plays a short animation in the new realm's manner (Dreaming sparks, Shadowlands ash, Gauntlet mist for the Umbra, waking blood); levels sink or rise. Pick one per realm in *Edit → Realms & levels*.
 - **Chronicle clock.** The in-game date and time, with the hours until dawn, at the top of everyone's screen. The Storyteller hovers it to move it (−1h, −10m, +10m, +1h, Dusk, Dawn) or presses the pen to set any date and time. It only moves when you move it. From a macro: `game.modules.get('wod-city-atlas').api.clock.advance(60)`, `.set(Date.UTC(1991, 9, 31, 22, 0))`, `.nextDusk()`.
 - **Characters on the map.** Every player's character appears on atlas scenes as a portrait pin taken from their Actor. Players drag their own; the Storyteller drags anyone and manages them in *Map tab → Characters* (place, find, hide from the others, remove). The people button on the scene toolbar jumps there.
+- **Going inside.** Drop a portrait onto a place's pin and the character goes in: the portrait settles on the rim of the pin with a glow, the place pulses to welcome them, and its pin takes a ring in the character's colour. Everyone sees who is inside in the place's tooltip and under *Сейчас здесь* in its dossier; the character list says *внутри: …*. Drag the portrait off the pin to come out.
 - **Storyteller effects (in Russian).** Two Storyteller-only buttons in the Token and Notes tool columns. The red theatre masks flash НАРУШЕНИЕ МАСКАРАДА on every screen at once. The ghost opens the picker: choose an effect, send it to **everyone or only to the players you tick**, add a line of text if you like, and *Попробовать на себе* first. The effects:
   - *Зверь*: **Бешенство** (red flood, shaking, a heart speeding up under the Beast's growl), **Ротшрек** (flames climbing, roaring and crackling fire), **Голод** (a slow red pulse, a heavy heart, a long breath in);
   - *Разум*: **Минутное помутнение**, **Замешательство**, **Дурное предчувствие**, **Чужой взгляд**;
@@ -109,7 +112,7 @@ The **Basic description** (*Basic description* in the edit form) is what a playe
 - **The Dreaming moves.** Its realms are drawn as pictures, not outlines: the Crownless Ward's towers with windows lighting and dimming, the Unfinished Index's books drifting in orbit, the Wolf's Eye turning and opening, the three glass fruits of the Orchard, and the Far Guest's Seat bobbing on the starlit lake with its river of light. Some chimera wander: Miss Tuesday trots between the Third Shift, the West Foundry and the Last Hearth, the Rent Collector makes his rounds, the Coat rides the last bus down Wisconsin Avenue, the swifts and the copper whale drift about. (Zones take `art`, places `roam`, `ride` or `wander`.)
 - **Chronicle calendar.** The calendar button on the clock opens a month view where the Storyteller writes events for any night, for everyone, for the Storyteller only, or for particular players.
 - **Masquerade look.** Foundry's own interface is restyled in black, bone and blood, and takes on the colours of the realm shown on the atlas scene. Each player can turn it off in the module settings.
-- **Preset updates arrive by themselves.** When a new version of the module changes the Milwaukee preset (looks, outlines, short texts, the Dreaming), an atlas made from it takes the changes the next time the Storyteller opens it, without asking. Full descriptions, positions and what players can see are not touched. *Edit → Import / export → Refresh realm looks* brings everything in by hand.
+- **Preset updates arrive by themselves.** When a new version of the module changes the Milwaukee preset (looks, outlines, short texts, the Dreaming), an atlas made from it takes the changes the next time the Storyteller opens it, without asking. Positions and what players have been shown are not touched; texts are replaced with the preset's (revealed secrets, facts and relations stay revealed). *Edit → Import / export → Refresh realm looks* brings everything in by hand.
 
 ## Making a scene
 
@@ -147,7 +150,7 @@ Choose the area (the whole atlas, the home view or what you see now) and whether
 
 - **Link a person to an Actor:** in their edit form, pick the *Linked Actor* or drop one from the Actors tab onto it.
 - **Many at once:** *Edit → People → Link to Actors…* matches people to Actors by exact name, lets you pick the rest, and can create Actors for everyone unlinked (in a *City Atlas characters* folder, with their portrait and, where the system has one, their description as biography).
-- A linked person's dossier shows a **Character sheet** button to anyone allowed to open that Actor (so players see their own and the ones you share), and uses the Actor's portrait when the person has none.
+- A linked person's dossier shows a **Character sheet** button to anyone allowed to open that Actor (so players see their own and the ones you share), and shows the Actor's portrait instead of the person's own picture. Places, zones and routes linked to a Scene show the Scene's background the same way.
 - **Relations** work for every character. Each person's dossier lists how they see others and *How others see them*. As Storyteller you add a relation right in the dossier (who, attitude, secret or not) and remove one with its ✕; the edit form has the full list. Names link to the people they name (matched by name, or set *Links to*), with a sheet button for linked Actors.
 - Right-click an Actor in the Actors tab → **Show in City Atlas**.
 
