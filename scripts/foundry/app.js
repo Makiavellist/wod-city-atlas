@@ -225,7 +225,6 @@ export function shareView(entry, state) {
   ui.notifications.info(L('Shared', 'Shown to the players who can see this atlas.'));
 }
 export function onSocket(msg) {
-  if (msg && msg.action === 'breach') { import('./effects.js').then(m => m.showEffect('breach', {text: msg.text || ''})); return; } // from 1.10 and older
   if (msg && msg.action === 'effect') { import('./effects.js').then(m => m.receiveEffect(msg)); return; }
   if (msg && msg.action === 'reveal') {
     if (game.user.isGM || (msg.ids && !msg.ids.includes(game.user.id))) return;
@@ -311,23 +310,19 @@ export class AtlasLauncher extends ApplicationV2 {
 async function presetAtlas(id) { const p = (await loadPresets()).find(x => x.id === id); if (!p) return null; return rebasePaths(await (await fetch(resolveUrl(`modules/${MOD}/${p.atlas}`))).json(), `modules/${MOD}/` + p.atlas.replace(/[^/]+$/, '')); }
 const isLeadGM = () => game.user.isGM && (!game.users.activeGM || game.users.activeGM.isSelf);
 
-/** A new version of the module brought a new look for an atlas made from the preset: offer it, once. */
-const LOOKS_ASKED = new Set();
+/** A new version of the module changed the preset: an atlas made from it takes the changes on its own, once (no question). */
+const LOOKS_DONE = new Set();
 export async function upgradeLooks(entry, store) {
   try {
-    if (!isLeadGM() || !store?.canEdit || LOOKS_ASKED.has(entry.id) || !fromPreset(store.atlas)) return false;
-    LOOKS_ASKED.add(entry.id);
+    if (!isLeadGM() || !store?.canEdit || LOOKS_DONE.has(entry.id) || !fromPreset(store.atlas)) return false;
+    LOOKS_DONE.add(entry.id);
     const pre = normalize(await presetAtlas(store.atlas.preset || 'milwaukee') || {});
     if (!pre.looks || (store.atlas.looks || 0) >= pre.looks) return false;
     const plan = planUpgrade(store.atlas, pre);
-    if (!plan.items.length) { await store.setMeta(plan.meta); return false; }
-    const what = plan.parts.join('; ');
-    const ok = await DialogV2.confirm({window: {title: 'City Atlas: an update for your atlas'}, rejectClose: false, modal: true,
-      content: `<p>This version of the City Atlas brings <b>${esc(what)}</b>. Add it to <b>${esc(entry.name)}</b>?</p><p class="hint">${plan.items.length} entries change. Positions, full descriptions, facts and what players can see stay as they are; the preset’s short texts (Basic and Existence descriptions, translated names) replace the old ones. You can bring looks in later from <i>Edit → Import / export → Refresh realm looks</i>.</p>`,
-      yes: {label: 'Update the atlas'}, no: {label: 'Not this time'}});
-    if (ok) { await applyLooks(store, plan); ui.notifications.info(`${entry.name}: updated (${what}).`); return true; }
-    await store.setMeta(plan.meta); return false;
-  } catch (err) { console.warn(`${MOD} | could not update the atlas look`, err); return false; }
+    await applyLooks(store, plan);
+    console.log(`${MOD} | ${entry.name} updated from the preset: ${plan.parts.join('; ') || 'nothing to change'}`);
+    return plan.items.length > 0;
+  } catch (err) { console.warn(`${MOD} | could not update the atlas from the preset`, err); return false; }
 }
 
 /** Upload a rendered map picture into the world's folder. */

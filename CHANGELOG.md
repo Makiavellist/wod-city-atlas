@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.13.1
+- **Preset updates are applied without asking.** An atlas made from the Milwaukee preset takes a new version's changes the next time the Storyteller opens it; no more question on load. Full descriptions, positions and visibility are not touched.
+- Old update steps are folded into one, and the support for 1.10-era alerts is removed.
+
 ## 1.13.0
 - **Storyteller effects: the Send and *Try it on me* buttons are always on screen.** The picker was taller than the window on smaller screens and pushed its buttons out of sight; it now scrolls inside the dialog instead.
 - **Translations live in the name.** No separate translation field any more: names read “Pabst Theater (Театр Пабст)”. Cards, lists, tooltips and search show the whole name; the map lettering leaves the bracketed Russian out to stay readable.

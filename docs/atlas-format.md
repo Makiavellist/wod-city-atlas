@@ -15,7 +15,7 @@ Exported atlases are plain JSON. Every collection is an object keyed by id. Ids 
   "closeBy": 60, "scale": {"metersPerUnit": 2, "unit": "mi"},
   "theme": {…}, "statuses": {"dead": {"name": "Destroyed", "mark": "†", "fade": true, "hideable": true}},
   "precisions": {"canon": {"name": "Exact", "border": "solid"}},
-  "preset": "milwaukee", "looks": 8, // made from a bundled preset, and the version of its looks (a newer one is offered once)
+  "preset": "milwaukee", "looks": 8, // made from a bundled preset, and the version of its looks (a newer preset is applied by itself)
   "updates": [{"looks": 8, "realms": ["umbra"], "shapes": ["t-lupine"], "fields": {"places": ["brief", "alias"]}}], // presets only: what each looks version brings (fields are copied over, replacing)
   "realms": {}, "layers": {}, "categories": {}, "factions": {}, "styles": {},
   "places": {}, "zones": {}, "routes": {}, "labels": {}, "auras": {}, "people": {}, "pages": {}
