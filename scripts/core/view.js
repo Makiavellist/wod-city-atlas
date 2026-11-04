@@ -1,6 +1,7 @@
 /* AtlasView: the interactive map, its chrome and the dossier panel. Framework-free; Foundry glue lives elsewhere. */
 import {esc, svg, clamp, sortBy, stripHtml, debounce, withAlpha, shortName, nameHtml} from './util.js';
 import {AtlasModel, TYPE_NAMES, TIER, stripGeneration} from './model.js';
+import {t as tr} from './i18n.js';
 import {Renderer} from './renderer.js';
 
 const PREF_KEY = 'wod-city-atlas:prefs:';
@@ -75,7 +76,7 @@ export class AtlasView {
   build() {
     const R = this.root; R.classList.add('wca'); R.tabIndex = 0;
     R.innerHTML = `
-      <aside class="wca-side" aria-label="Dossier">
+      <aside class="wca-side" aria-label="${tr('Dossier')}">
         <header class="wca-mast">
           <div class="kicker"><span class="kg"></span><span class="kt"></span></div>
           <h1 class="ttl"></h1>
@@ -87,23 +88,23 @@ export class AtlasView {
         </nav>
         <div class="wca-pane"></div>
       </aside>
-      <div class="wca-map" aria-label="Map">
+      <div class="wca-map" aria-label="${tr('Map')}">
         <canvas class="wca-canvas"></canvas>
         <canvas class="wca-fade" hidden></canvas>
         <div class="wca-crossfx" hidden aria-hidden="true"></div>
         <div class="wca-overlay"></div>
         <div class="wca-tip" hidden></div>
-        <div class="wca-modebar"><div class="seg realms" role="radiogroup" aria-label="Realm"></div><div class="seg levels" role="radiogroup" aria-label="Level"></div></div>
+        <div class="wca-modebar"><div class="seg realms" role="radiogroup" aria-label="${tr('Realm')}"></div><div class="seg levels" role="radiogroup" aria-label="${tr('Level')}"></div></div>
         <div class="wca-bar">
-          <button type="button" class="mbtn" data-act="side" title="Show or hide the dossier">${svg('book')}</button>
-          <button type="button" class="mbtn" data-act="layers" title="Map layers" aria-expanded="false">${svg('layers')}</button>
-          <button type="button" class="mbtn" data-act="in" title="Zoom in">${svg('plus', 2)}</button>
-          <button type="button" class="mbtn" data-act="out" title="Zoom out">${svg('minus', 2)}</button>
-          <button type="button" class="mbtn" data-act="home" title="Show the whole map">${svg('home')}</button>
-          <button type="button" class="mbtn" data-act="find" title="Search every layer ( / )">${svg('search')}</button>
-          <button type="button" class="mbtn" data-act="note" title="Add a note to the map" hidden>${svg('note')}</button>
-          <button type="button" class="mbtn" data-act="party" title="Where the characters are" hidden>${svg('users')}</button>
-          <button type="button" class="mbtn" data-act="hideatlas" title="Hide or show the atlas on the scene" hidden>${svg('scene')}</button>
+          <button type="button" class="mbtn" data-act="side" title="${tr('Show or hide the dossier')}">${svg('book')}</button>
+          <button type="button" class="mbtn" data-act="layers" title="${tr('Map layers')}" aria-expanded="false">${svg('layers')}</button>
+          <button type="button" class="mbtn" data-act="in" title="${tr('Zoom in')}">${svg('plus', 2)}</button>
+          <button type="button" class="mbtn" data-act="out" title="${tr('Zoom out')}">${svg('minus', 2)}</button>
+          <button type="button" class="mbtn" data-act="home" title="${tr('Show the whole map')}">${svg('home')}</button>
+          <button type="button" class="mbtn" data-act="find" title="${tr('Search every layer ( / )')}">${svg('search')}</button>
+          <button type="button" class="mbtn" data-act="note" title="${tr('Add a note to the map')}" hidden>${svg('note')}</button>
+          <button type="button" class="mbtn" data-act="party" title="${tr('Where the characters are')}" hidden>${svg('users')}</button>
+          <button type="button" class="mbtn" data-act="hideatlas" title="${tr('Hide or show the atlas on the scene')}" hidden>${svg('scene')}</button>
           <span class="hotlayers"></span>
           <span class="gmbtns"></span>
           <div class="wca-layers" hidden></div>
@@ -111,9 +112,9 @@ export class AtlasView {
         <div class="wca-legend"></div>
         <div class="wca-credit"></div>
         <div class="wca-scale"></div>
-        <div class="wca-finder" hidden><div class="fbox">${svg('search')}<input type="search" placeholder="Search every layer: people, places, zones…" autocomplete="off" aria-label="Search every layer"><button type="button" class="fx" aria-label="Close">${svg('x', 2)}</button></div><div class="fres"></div></div>
+        <div class="wca-finder" hidden><div class="fbox">${svg('search')}<input type="search" placeholder="${tr('Search every layer: people, places, zones…')}" autocomplete="off" aria-label="${tr('Search every layer')}"><button type="button" class="fx" aria-label="${tr('Close')}">${svg('x', 2)}</button></div><div class="fres"></div></div>
         <div class="wca-edbar" hidden></div>
-        <div class="wca-empty" hidden><b>Nothing here yet</b><span>The Storyteller hasn't revealed this map to you.</span></div>
+        <div class="wca-empty" hidden><b>${tr('Nothing here yet')}</b><span>${tr('The Storyteller hasn\'t revealed this map to you.')}</span></div>
       </div>`;
     const $ = s => R.querySelector(s);
     this.el = {side: $('.wca-side'), pane: $('.wca-pane'), map: $('.wca-map'), canvas: $('.wca-canvas'), fade: $('.wca-fade'), crossfx: $('.wca-crossfx'), overlay: $('.wca-overlay'), tip: $('.wca-tip'),
@@ -200,7 +201,7 @@ export class AtlasView {
     m.querySelector('.ttl').innerHTML = a.titleHtml || esc(a.title);
     { const d = m.querySelector('.date'); d.textContent = v.date || ''; d.hidden = !v.date; }
     const bn = m.querySelector('.banner'); bn.hidden = !v.banner; bn.querySelector('span').textContent = v.banner || '';
-    this.root.querySelectorAll('.wca-tabs button').forEach(b => { b.textContent = ({map: 'Map', notes: 'Notes'})[b.dataset.tab] || v.terms[b.dataset.tab] || b.dataset.tab; b.setAttribute('aria-selected', String(b.dataset.tab === this.tab)); b.hidden = (b.dataset.tab === 'notes' && !this.adapter.notes) || (b.dataset.tab === 'pages' && v.terms.pages === false); });
+    this.root.querySelectorAll('.wca-tabs button').forEach(b => { b.textContent = ({map: tr('Map'), notes: tr('Notes')})[b.dataset.tab] || v.terms[b.dataset.tab] || b.dataset.tab; b.setAttribute('aria-selected', String(b.dataset.tab === this.tab)); b.hidden = (b.dataset.tab === 'notes' && !this.adapter.notes) || (b.dataset.tab === 'pages' && v.terms.pages === false); });
     if (this.tab === 'pages' && v.terms.pages === false) { this.tab = 'places'; this.detailId = null; }
     // realm & level switches
     const rl = this.st.storyteller ? this.model.realmList : this.model.visibleRealms(this.st);
@@ -210,7 +211,7 @@ export class AtlasView {
     const lv = this.st.storyteller ? this.model.realm(this.st.realm).levels : this.model.visibleLevels(this.st.realm, this.st);
     this.el.levels.hidden = lv.length < 2 || locked;
     let fl = this.el.realms.parentElement.querySelector('.follow');
-    if (locked) { if (!fl) { fl = document.createElement('span'); fl.className = 'follow'; this.el.realms.parentElement.appendChild(fl); } fl.innerHTML = `${svg('lock')}<span>${esc(this.rv.name || '')}${lv.length > 1 ? ' · ' + esc((lv.find(l => l.id === this.st.level) || {}).name || '') : ''}</span>`; fl.title = 'The Storyteller chooses the realm on this scene'; }
+    if (locked) { if (!fl) { fl = document.createElement('span'); fl.className = 'follow'; this.el.realms.parentElement.appendChild(fl); } fl.innerHTML = `${svg('lock')}<span>${esc(this.rv.name || '')}${lv.length > 1 ? ' · ' + esc((lv.find(l => l.id === this.st.level) || {}).name || '') : ''}</span>`; fl.title = tr('The Storyteller chooses the realm on this scene'); }
     else if (fl) fl.remove();
     this.el.levels.innerHTML = lv.map(l => `<button type="button" role="radio" data-level="${esc(l.id)}" aria-checked="${l.id === this.st.level}">${esc(l.name || l.id)}</button>`).join('');
     this.el.realms.onclick = e => { const b = e.target.closest('[data-realm]'); if (b) this.setRealm(b.dataset.realm); };
@@ -286,7 +287,7 @@ export class AtlasView {
     const v = this.rv, P = this.el.layers;
     const prec = Object.entries(this.model.atlas.precisions || {});
     P.innerHTML = `<h4>${esc(v.name)} layers</h4>` + (ls.length ? ls.map(L => `<label>${esc(L.name || L.id)}<input class="tog" type="checkbox" data-layer="${esc(L.id)}" ${this.layerOn(L.id) ? 'checked' : ''}></label>`).join('') : '<div class="empty-s">No layers yet.</div>') +
-      (this.isGM ? `<label class="stl viewas">View as<select data-viewas>${this.viewAsOptions().map(([v, n]) => `<option value="${esc(v)}" ${v === (this.st.storyteller ? 'gm' : this.st.as) ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></label>` : '') +
+      (this.isGM ? `<label class="stl viewas">${tr('View as')}<select data-viewas>${this.viewAsOptions().map(([v, n]) => `<option value="${esc(v)}" ${v === (this.st.storyteller ? 'gm' : this.st.as) ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></label>` : '') +
       (prec.length ? `<div class="key">${prec.map(([k, p]) => `<span><i style="border-style:${esc(p.border || 'solid')};border-color:${esc(p.color || 'var(--wca-gold)')}"></i>${esc(p.name)}</span>`).join('')}</div>` : '');
     P.onchange = e => { const t = e.target; if (t.dataset.layer) this.setLayer(t.dataset.layer, t.checked); else if ('viewas' in t.dataset) this.setViewAs(t.value); };
   }
@@ -301,18 +302,18 @@ export class AtlasView {
     const hb = this.el.bar.querySelector('[data-act="hideatlas"]'); if (hb) { hb.hidden = !this.sc; hb.setAttribute('aria-pressed', String(!!this.atlasHidden)); hb.innerHTML = svg(this.atlasHidden ? 'eyeoff' : 'scene'); }
     if (this.sc) {
       const lk = this.sc.locked?.();
-      this.el.gmb.innerHTML = (this.adapter.openFull ? `<button type="button" class="mbtn" data-act="full" title="${canEdit ? 'Open the full atlas window (to edit)' : 'Open the atlas in a window'}">${svg(canEdit ? 'pen' : 'window')}</button>` : '') +
-        (this.isGM && this.sc.setLocked ? `<button type="button" class="mbtn" data-act="lock" aria-pressed="${!!lk}" title="${lk ? 'Players follow your realm and level (click to let them switch freely)' : 'Players switch realms themselves (click to make them follow you)'}">${svg(lk ? 'lock' : 'unlock')}</button>` : '') +
-        (this.adapter.share && this.isGM ? `<button type="button" class="mbtn" data-act="share" title="Show this view to the players">${svg('share')}</button>` : '');
+      this.el.gmb.innerHTML = (this.adapter.openFull ? `<button type="button" class="mbtn" data-act="full" title="${canEdit ? tr('Open the full atlas window (to edit)') : tr('Open the atlas in a window')}">${svg(canEdit ? 'pen' : 'window')}</button>` : '') +
+        (this.isGM && this.sc.setLocked ? `<button type="button" class="mbtn" data-act="lock" aria-pressed="${!!lk}" title="${lk ? tr('Players follow your realm and level (click to let them switch freely)') : tr('Players switch realms themselves (click to make them follow you)')}">${svg(lk ? 'lock' : 'unlock')}</button>` : '') +
+        (this.adapter.share && this.isGM ? `<button type="button" class="mbtn" data-act="share" title="${tr('Show this view to the players')}">${svg('share')}</button>` : '');
       return;
     }
     if (!canEdit && !this.isGM) { this.el.gmb.innerHTML = ''; return; }
-    this.el.gmb.innerHTML = (this.opts.editorFactory && canEdit ? `<button type="button" class="mbtn ${this.editMode ? 'on' : ''}" data-act="edit" aria-pressed="${this.editMode}" title="Edit the atlas">${svg('pen')}</button>` : '') +
-      (this.opts.editorFactory && canEdit && this.adapter.exportScene ? `<button type="button" class="mbtn" data-act="toscene" title="Show as a Scene: make (or update) a Foundry scene of this atlas">${svg('scene')}</button>` : '') +
-      (this.adapter.share && this.isGM ? `<button type="button" class="mbtn" data-act="share" title="Show this view to the players">${svg('share')}</button>` : '');
+    this.el.gmb.innerHTML = (this.opts.editorFactory && canEdit ? `<button type="button" class="mbtn ${this.editMode ? 'on' : ''}" data-act="edit" aria-pressed="${this.editMode}" title="${tr('Edit the atlas')}">${svg('pen')}</button>` : '') +
+      (this.opts.editorFactory && canEdit && this.adapter.exportScene ? `<button type="button" class="mbtn" data-act="toscene" title="${tr('Show as a Scene: make (or update) a Foundry scene of this atlas')}">${svg('scene')}</button>` : '') +
+      (this.adapter.share && this.isGM ? `<button type="button" class="mbtn" data-act="share" title="${tr('Show this view to the players')}">${svg('share')}</button>` : '');
   }
   players() { try { return (this.adapter.players && this.adapter.players()) || []; } catch (e) { return []; } }
-  viewAsOptions() { return [['gm', 'Storyteller (everything)'], ['*', 'Every player (defaults)'], ...this.players().map(p => [p.id, p.name])]; }
+  viewAsOptions() { return [['gm', tr('Storyteller (everything)')], ['*', tr('Every player (defaults)')], ...this.players().map(p => [p.id, p.name])]; }
   /** GM preview: 'gm' = full view, '*' = what a player with no personal reveals sees, or a user id. */
   setViewAs(v) {
     if (!this.isGM) return;
@@ -327,7 +328,7 @@ export class AtlasView {
   fullName(it, coll) { return this.nameOf(it, coll); }
   /** A person's clan line and short tag as this viewer may see them (never the generation). */
   clanOf(p) { return this.model.clanOf(p, this.st); }
-  nameOf(it, coll) { coll ||= this.model.collOf(it.id); if (this.tierOf(it, coll) >= TIER.BASIC) return it.name || it.title || it.text || ''; return it.alias || ({places: 'Unknown place', zones: 'Unknown area', routes: 'Unknown way', people: 'Unknown figure', auras: 'Something strange'}[coll] || 'Unknown'); }
+  nameOf(it, coll) { coll ||= this.model.collOf(it.id); if (this.tierOf(it, coll) >= TIER.BASIC) return it.name || it.title || it.text || ''; return it.alias || ({places: tr('Unknown place'), zones: tr('Unknown area'), routes: tr('Unknown way'), people: tr('Unknown figure'), auras: tr('Something strange')}[coll] || tr('Unknown')); }
 
   onBar(e) {
     const b = e.target.closest('button'); if (!b) return;
@@ -519,9 +520,9 @@ export class AtlasView {
   /** The picture for an entry: its own, its linked Actor's or Scene's, or (places, domains) a known person's there. */
   pictureOf(it, coll) {
     if (!it || this.tierOf(it, coll) < TIER.BASIC) return null;
-    const own = it.img || this.docInfo(it.uuid)?.img; if (own) return own;
+    const own = this.docInfo(it.uuid)?.img || it.img; if (own) return own;
     const ppl = coll === 'zones' ? this.ownersOf(it) : coll === 'places' ? this.figuresAt(it, coll) : [];
-    for (const q of ppl) { if (this.tierOf(q, 'people') < TIER.BASIC) continue; const pic = q.img || this.docInfo(q.uuid)?.img; if (pic) return pic; }
+    for (const q of ppl) { if (this.tierOf(q, 'people') < TIER.BASIC) continue; const pic = this.docInfo(q.uuid)?.img || q.img; if (pic) return pic; }
     return null;
   }
   tipHtml(it, coll) {
@@ -607,42 +608,47 @@ export class AtlasView {
       if (pin.glow) el.style.setProperty('--g', pin.glow === true ? color : pin.glow);
       const border = pin.border || (prec && prec.border) || 'solid';
       const nm = this.nameOf(p, 'places'), short = shortName(nm);
-      const photo = known && pin.photo ? this.pictureOf(p, 'places') : null;
+      const photo = known && (pin.photo || this.docInfo(p.uuid)?.img) ? this.pictureOf(p, 'places') : null;
       const shape = photo ? 'circle' : (known ? pin.shape : 'circle') || 'circle';
       el.classList.add('s-' + shape);
       el.innerHTML = `<span class="pin${pin.glow ? ' glow' : ''}${photo ? ' photo' : ''}">${pinBody(shape, border, pin.width, pin.bg)}${photo ? `<img class="pphoto" src="${esc(this.resolveUrl(photo))}" alt="">` : svg(known ? this.model.iconOf(p, 'places') : 'unknown', 1.7)}</span><span class="lbl">${esc(short)}</span>`;
       el.setAttribute('aria-label', `${nm}, ${cat.name || ''}`); el.dataset.id = p.id;
       el.addEventListener('click', e => { e.stopPropagation(); if (this.editor && this.editor.markerClick(p.id, e)) return; this.open(p.id, {fromMap: true}); });
       el.addEventListener('pointerdown', e => { e.stopPropagation(); if (this.editor) this.editor.markerDown(p.id, e); });
-      el.addEventListener('pointerenter', () => { this.showTip(this.tipHtml(p, 'places'), el); });
+      el.addEventListener('pointerenter', () => { const mk = this.markers.find(x => x.el === el), occ = mk && mk.occupants; this.showTip(this.tipHtml(p, 'places') + (occ ? `<div class="tipocc">${occ.map(c => `<span style="--c:${esc(c.color || '#d8b45a')}">${c.img ? `<img src="${esc(this.resolveUrl(c.img))}" alt="">` : ''}${esc(c.name)}</span>`).join('')}</div>` : ''), el); });
       el.addEventListener('pointerleave', () => this.hideTip());
       O.appendChild(el);
       this.markers.push({p, el, nm: short, w: this.model.proj.toWorld(p.at), roam: p.roam || p.ride || p.wander ? p : null, sx: 0, sy: 0, vis: false, canon: !p.precision || p.precision === 'canon'});
     }
+    const docks = new Map(), inside = {}; this._entered ||= new Set();
+    for (const c of this.partyList()) { const pm = c.place && this.markers.find(m => m.p.id === c.place && !m.party && !m.note); if (pm && c.realm === st.realm && (!c.level || c.level === st.level)) (inside[c.place] ||= []).push(c); }
+    for (const [pid, list] of Object.entries(inside)) { const pm = this.markers.find(m => m.p.id === pid && !m.party && !m.note); pm.el.classList.add('occupied'); pm.el.style.setProperty('--oc', list[0].color || '#d8b45a'); pm.occupants = list; list.forEach((c, i) => docks.set(c.uid, {m: pm, i, n: list.length})); }
     for (const c of this.partyList()) {
       if (!c.at || c.realm !== st.realm || (c.level && c.level !== st.level)) continue;
-      const el = document.createElement('button'); el.type = 'button'; el.className = 'wca-pin s-party' + (c.mine ? ' mine' : '') + (c.hidden ? ' hiddenpc' : ''); el.dataset.id = 'pc:' + c.uid;
+      const dock = docks.get(c.uid);
+      const el = document.createElement('button'); el.type = 'button'; el.className = 'wca-pin s-party' + (c.mine ? ' mine' : '') + (c.hidden ? ' hiddenpc' : '') + (dock ? ' docked' : ''); el.dataset.id = 'pc:' + c.uid;
+      if (dock && c.entered && Date.now() - c.entered < 20000 && !this._entered.has(c.uid + ':' + c.entered)) { this._entered.add(c.uid + ':' + c.entered); el.classList.add('entering'); dock.m.el.classList.add('welcome'); setTimeout(() => { el.classList.remove('entering'); dock.m.el.classList.remove('welcome'); }, 1800); }
       el.style.setProperty('--c', c.color || '#d8b45a');
       el.innerHTML = `<span class="pin">${c.img ? `<img class="pphoto" src="${esc(this.resolveUrl(c.img))}" alt="">` : svg('user', 1.7)}</span><span class="lbl">${esc(c.name)}</span>`;
-      const tip = () => `${c.img ? `<img class="tipimg" src="${esc(this.resolveUrl(c.img))}" alt="">` : ''}<span class="tiptx">${esc(c.name)}<small>${esc(c.player ? c.player + (c.hidden ? ' · hidden from the others' : '') : '')}</small></span>`;
+      const tip = () => `${c.img ? `<img class="tipimg" src="${esc(this.resolveUrl(c.img))}" alt="">` : ''}<span class="tiptx">${esc(c.name)}<small>${esc(c.player ? c.player + (c.hidden ? ' · ' + tr('hidden from the others') : '') : '')}</small></span>`;
       el.addEventListener('pointerenter', () => this.showTip(tip(), el));
       el.addEventListener('pointerleave', () => this.hideTip());
       el.addEventListener('click', e => { e.stopPropagation(); if (!el._dragged) this.partyClick(c); el._dragged = false; });
       el.addEventListener('pointerdown', e => this.partyDrag(e, c, el));
       O.appendChild(el);
-      this.markers.push({p: {id: 'pc:' + c.uid}, party: c, el, nm: c.name, w: this.model.proj.toWorld(c.at), sx: 0, sy: 0, vis: false, canon: true});
+      this.markers.push({p: {id: 'pc:' + c.uid}, party: c, el, nm: c.name, w: this.model.proj.toWorld(c.at), sx: 0, sy: 0, vis: false, canon: true, dock});
     }
     for (const n of this.visibleNotes()) {
       if (!n.at || n.realm !== st.realm || (n.level && n.level !== st.level)) continue;
       const el = document.createElement('button'); el.type = 'button'; el.className = 'wca-pin pnote s-note' + (n.shared ? ' shared' : ' private'); el.dataset.id = 'note:' + n.id;
       el.style.setProperty('--c', n.color || n.authorColor || '#e8d27a');
-      el.innerHTML = `<span class="pin">${pinBody('note', 'solid')}${svg(n.icon || 'note', 1.7)}</span><span class="lbl">${esc(n.title || 'Note')}</span>`;
+      el.innerHTML = `<span class="pin">${pinBody('note', 'solid')}${svg(n.icon || 'note', 1.7)}</span><span class="lbl">${esc(n.title || tr('Note'))}</span>`;
       el.addEventListener('click', e => { e.stopPropagation(); this.openNote(n.id); });
       el.addEventListener('pointerdown', e => e.stopPropagation());
-      el.addEventListener('pointerenter', () => this.showTip(`<span class="tiptx">${esc(n.title || 'Note')}<small>${esc(n.mine ? (n.shared ? 'Your note · everyone sees it' : 'Your note · only you') : `${n.authorName || 'Someone'}'s note${n.shared ? '' : ' (private)'}`)}</small></span>`, el));
+      el.addEventListener('pointerenter', () => this.showTip(`<span class="tiptx">${esc(n.title || tr('Note'))}<small>${esc(n.mine ? (n.shared ? tr('Your note · everyone sees it') : tr('Your note · only you')) : `${n.authorName || tr('Someone')}'s note${n.shared ? '' : ' (private)'}`)}</small></span>`, el));
       el.addEventListener('pointerleave', () => this.hideTip());
       O.appendChild(el);
-      this.markers.push({p: {id: 'note:' + n.id}, note: n, el, nm: n.title || 'Note', w: this.model.proj.toWorld(n.at), sx: 0, sy: 0, vis: false, canon: true});
+      this.markers.push({p: {id: 'note:' + n.id}, note: n, el, nm: n.title || tr('Note'), w: this.model.proj.toWorld(n.at), sx: 0, sy: 0, vis: false, canon: true});
     }
     this.markMatches(); this.dirty();
   }
@@ -653,7 +659,10 @@ export class AtlasView {
     const W = this.cam.W, H = this.cam.H;
     for (const m of this.markers || []) {
       if (m.drag) m.w = m.drag;
-      const [sx, sy] = this.renderer.ts(m.w); m.sx = sx; m.sy = sy;
+      let [sx, sy] = this.renderer.ts(m.w);
+      // a character inside a place sits on the rim of its pin, the company spread around it
+      if (m.dock && !m.drag) { const a = -Math.PI / 2 + (m.dock.n > 1 ? (m.dock.i - (m.dock.n - 1) / 2) * 0.9 : 0), r = 25; sx = m.dock.m.sx + Math.cos(a) * r; sy = m.dock.m.sy + Math.sin(a) * r; }
+      m.sx = sx; m.sy = sy;
       const on = sx > -30 && sy > -30 && sx < W + 30 && sy < H + 30; m.vis = on;
       if (!on) { if (!m.el.hidden) m.el.hidden = true; continue; }
       if (m.el.hidden) m.el.hidden = false;
@@ -691,11 +700,11 @@ export class AtlasView {
   /* ================= selection & navigation ================= */
   setSel(id) { this.sel = id; this.dirty(); }
   kindLabel(coll, it) {
-    if (coll === 'people') return this.clanOf(it).kicker || 'Person';
+    if (coll === 'people') return this.clanOf(it).kicker || tr('Person');
     if (it.kicker) return it.kicker;
-    if (coll === 'places') { const c = this.model.category(it.cat); return c ? c.name : 'Place'; }
-    if (coll === 'people') return it.tag || 'Person';
-    return TYPE_NAMES[coll] || '';
+    if (coll === 'places') { const c = this.model.category(it.cat); return c ? c.name : tr('Place'); }
+    if (coll === 'people') return it.tag || tr('Person');
+    return tr(TYPE_NAMES[coll]) || '';
   }
   /** Open any item by id: switch realm/level as needed, focus the map and show its dossier. */
   open(id, o = {}) {
@@ -810,16 +819,16 @@ export class AtlasView {
     const unknown = all.filter(p => this.tierOf(p, 'places') < TIER.BASIC), list = all.filter(p => this.tierOf(p, 'places') >= TIER.BASIC);
     const groups = cats.map(c => [c, sortBy(list.filter(p => p.cat === c.id), p => p.order ?? 1e9, 'name')]).filter(([, a]) => a.length);
     const orphans = sortBy(list.filter(p => !cats.some(c => c.id === p.cat)), p => p.order ?? 1e9, 'name');
-    if (orphans.length) groups.push([{name: 'Other', id: ''}, orphans]);
-    if (!groups.length && !unknown.length) return `<div class="empty">Nothing matches. Clear the search or switch a category back on.</div>`;
+    if (orphans.length) groups.push([{name: tr('Other'), id: ''}, orphans]);
+    if (!groups.length && !unknown.length) return `<div class="empty">${tr('Nothing matches. Clear the search or switch a category back on.')}</div>`;
     const lv = this.model.realm(st.realm).levels;
     return groups.map(([c, a]) => `<div class="grp">${esc(c.name)} <span class="n">${a.length}</span></div>` + a.map(p => { const f = this.factionOf(p, 'places'); const v = this.veiled(p, 'places'); return this.itemRow({id: p.id, c: this.colorOf(p), g: this.model.iconOf(p, 'places'), n: this.fullName(p, 'places'), s: p.sub, tag: v ? 'ST' : (f && f.short) || (p.level && lv.length > 1 && p.level !== st.level ? (lv.find(l => l.id === p.level) || {}).name : ''), dash: p.precision && p.precision !== 'canon', gm: v}); }).join('')).join('') +
       (unknown.length ? `<div class="grp">Unknown <span class="n">${unknown.length}</span></div>` + unknown.map(p => this.refRow(p.id)).join('') : '');
   }
   renderPlaces() {
     const cats = this.model.categoriesFor(this.st.realm, this.st.level).filter(c => this.st.storyteller || this.tierOf(c, 'categories') >= 1);
-    return this.searchBox(`Search ${this.rv.terms.places.toLowerCase()}…`) +
-      (cats.length ? `<div class="chips" role="group" aria-label="Categories">${cats.map(c => `<button type="button" class="chip" data-cat="${esc(c.id)}" aria-pressed="${!this.catsOff.has(c.id)}" style="--c:${esc(c.color || 'var(--wca-bone)')}">${svg(c.icon || 'pin', 1.7)}${esc(c.name)}</button>`).join('')}</div>` : '') +
+    return this.searchBox(tr('Search {what}…', {what: this.rv.terms.places.toLowerCase()})) +
+      (cats.length ? `<div class="chips" role="group" aria-label="${tr('Categories')}">${cats.map(c => `<button type="button" class="chip" data-cat="${esc(c.id)}" aria-pressed="${!this.catsOff.has(c.id)}" style="--c:${esc(c.color || 'var(--wca-bone)')}">${svg(c.icon || 'pin', 1.7)}${esc(c.name)}</button>`).join('')}</div>` : '') +
       `<div class="wca-list">${this.placesBody()}</div>` + this.pageNotes('places');
   }
   /* ----- people ----- */
@@ -831,14 +840,14 @@ export class AtlasView {
     // grouped by allegiance, unless that is hidden from this viewer
     const grpOf = p => !this.model.factionShown(p, st, 'people') ? '?' : (p.group && p.group[st.realm]) || p.faction || '';
     const keys = [...new Set(list.map(grpOf))].sort((a, b) => this.model.factionOrder(a) - this.model.factionOrder(b));
-    if (!keys.length && !unknown.length) return `<div class="empty">No one by that name.</div>`;
+    if (!keys.length && !unknown.length) return `<div class="empty">${tr('No one by that name.')}</div>`;
     const dt = !!this.model.domainLayer();
-    return keys.map(k => { const f = this.model.faction(k) || {name: k === '?' ? 'Allegiance unknown' : k || 'Unaffiliated', color: '#bbb'}; const a = sortBy(list.filter(p => grpOf(p) === k), p => p.order ?? 1e9, 'name'); return `<div class="grp" style="color:${esc(f.color)}">${esc(f.name)} <span class="n">${a.length}</span></div>` + a.map(p => this.personRow(p, {domainToggle: dt})).join(''); }).join('') +
+    return keys.map(k => { const f = this.model.faction(k) || {name: k === '?' ? tr('Allegiance unknown') : k || tr('Unaffiliated'), color: '#bbb'}; const a = sortBy(list.filter(p => grpOf(p) === k), p => p.order ?? 1e9, 'name'); return `<div class="grp" style="color:${esc(f.color)}">${esc(f.name)} <span class="n">${a.length}</span></div>` + a.map(p => this.personRow(p, {domainToggle: dt})).join(''); }).join('') +
       (unknown.length ? `<div class="grp">Unknown <span class="n">${unknown.length}</span></div>` + unknown.map(p => this.personRow(p)).join('') : '');
   }
   renderPeople() {
     const hasHide = Object.values(this.model.atlas.statuses || {}).some(s => s.hideable);
-    return this.pageNotes('people') + this.searchBox(`Search ${this.rv.terms.people.toLowerCase()}…`) +
+    return this.pageNotes('people') + this.searchBox(tr('Search {what}…', {what: this.rv.terms.people.toLowerCase()})) +
       (hasHide ? `<label class="deadtog"><input type="checkbox" class="wca-faded" ${this.showFaded ? 'checked' : ''}> Show the ${esc(Object.values(this.model.atlas.statuses).find(s => s.hideable).name.toLowerCase())}</label>` : '') +
       `<div class="wca-list">${this.peopleBody()}</div>`;
   }
@@ -862,11 +871,11 @@ export class AtlasView {
     const auras = Object.values(this.model.atlas.auras).filter(a => !a.decor && (a.name || a.rating) && this.model.visible(a, 'auras', st, {ignoreLayer: true}));
     const groups = [];
     const byLayer = (arr, L) => arr.filter(x => (x.layer || '') === (L ? L.id : ''));
-    const eye = id => `<button type="button" class="eye" data-hide="${esc(id)}" aria-pressed="${!this.hiddenItems.has(id)}" title="Show or hide on the map">${svg(this.hiddenItems.has(id) ? 'eyeoff' : 'share')}</button>`;
+    const eye = id => `<button type="button" class="eye" data-hide="${esc(id)}" aria-pressed="${!this.hiddenItems.has(id)}" title="${tr('Show or hide on the map')}">${svg(this.hiddenItems.has(id) ? 'eyeoff' : 'share')}</button>`;
     for (const L of [...ls, null]) {
       const zs = byLayer(zones, L), rs = byLayer(routes, L), as = byLayer(auras, L); if (!zs.length && !rs.length && !as.length) continue;
-      const sub = new Map(); for (const z of zs) { const g = this.tierOf(z, 'zones') >= TIER.BASIC ? (z.group || '') : 'Unknown'; if (!sub.has(g)) sub.set(g, []); sub.get(g).push(z); }
-      let html = `<div class="grp lay">${esc(L ? L.name : 'Other')} <span class="n">${zs.length + rs.length + as.length}</span>${L ? `<input class="tog" type="checkbox" data-layer="${esc(L.id)}" ${this.layerOn(L.id) ? 'checked' : ''} aria-label="Show ${esc(L.name)}">` : ''}</div>`;
+      const sub = new Map(); for (const z of zs) { const g = this.tierOf(z, 'zones') >= TIER.BASIC ? (z.group || '') : tr('Unknown'); if (!sub.has(g)) sub.set(g, []); sub.get(g).push(z); }
+      let html = `<div class="grp lay">${esc(L ? L.name : tr('Other'))} <span class="n">${zs.length + rs.length + as.length}</span>${L ? `<input class="tog" type="checkbox" data-layer="${esc(L.id)}" ${this.layerOn(L.id) ? 'checked' : ''} aria-label="Show ${esc(L.name)}">` : ''}</div>`;
       for (const [g, arr] of sub) {
         if (g) html += `<div class="subgrp">${esc(g)}</div>`;
         const sorted = arr.some(z => z.rating) ? arr.slice().sort((a, b) => (b.rating?.value ?? 0) - (a.rating?.value ?? 0)) : sortBy(arr.slice(), z => z.order ?? 10, 'name');
@@ -876,14 +885,14 @@ export class AtlasView {
       html += sortBy(as.slice(), a => -(a.rating?.value ?? 0), 'name').map(a => `<div class="zrow">${this.refRow(a.id)}${a.rating && this.tierOf(a, 'auras') >= TIER.FULL ? this.ratingBar(a.rating) : ''}</div>`).join('');
       groups.push(html);
     }
-    return (groups.join('') || `<div class="empty">No zones or routes here yet.</div>`) + this.pageNotes('zones');
+    return (groups.join('') || `<div class="empty">${tr('No zones or routes here yet.')}</div>`) + this.pageNotes('zones');
   }
   ratingBar(r) { const max = Math.min(10, r.max || 5), v = r.value || 0; return `<span class="danger" title="${esc(r.label || '')} ${v}/${max}${r.text ? ' · ' + esc(r.text) : ''}">${Array.from({length: max}, (_, i) => `<i class="${i < v ? 'on' : ''}${r.warn !== false && v >= max - 1 && i < v ? ' red' : ''}"></i>`).join('')}</span>`; }
   /* ----- pages ----- */
   renderPages() {
     const pages = sortBy(Object.values(this.model.atlas.pages).filter(pg => (!pg.tab || pg.tab === 'pages') && this.model.visible(pg, 'pages', this.st)), p => p.order ?? 0);
     if (!pages.length) return `<div class="empty">No chronicle pages for this ${esc(this.rv.name.toLowerCase())} yet.</div>`;
-    return pages.map(pg => `<section class="wca-page${this.veiled(pg, 'pages') ? ' gm-only' : ''}" data-page="${esc(pg.id)}"><div class="grp">${esc(pg.title || '')}${this.isGM && this.st.storyteller ? `<button type="button" class="eye" data-reveal-page="${esc(pg.id)}" title="Who can read this page">${svg('share')}</button>` : ''}</div>${pg.html || ''}</section>`).join('');
+    return pages.map(pg => `<section class="wca-page${this.veiled(pg, 'pages') ? ' gm-only' : ''}" data-page="${esc(pg.id)}"><div class="grp">${esc(pg.title || '')}${this.isGM && this.st.storyteller ? `<button type="button" class="eye" data-reveal-page="${esc(pg.id)}" title="${tr('Who can read this page')}">${svg('share')}</button>` : ''}</div>${pg.html || ''}</section>`).join('');
   }
 
   /* ----- the Map tab: every switch for the map in one place ----- */
@@ -902,13 +911,13 @@ export class AtlasView {
         if (lv.length > 1) h += `<div class="mt-seg">${lv.map(l => `<button type="button" class="chip" data-mt-level="${esc(l.id)}" aria-pressed="${l.id === st.level}">${esc(l.name || l.id)}</button>`).join('')}</div>`;
       }
     }
-    h += `<div class="grp">Layers <span class="n">${ls.length}</span></div>` + (ls.length ? `<div class="mt-list">${ls.map(L => `<label>${L.icon ? svg(L.icon, 1.7) : '<i></i>'}<span>${esc(L.name || L.id)}</span><input class="tog" type="checkbox" data-layer="${esc(L.id)}" ${this.layerOn(L.id) ? 'checked' : ''}></label>`).join('')}</div>` : '<p class="hint">No layers here.</p>');
-    if (cats.length) h += `<div class="grp">Places shown</div><div class="chips" role="group">${cats.map(c => `<button type="button" class="chip" data-cat="${esc(c.id)}" aria-pressed="${!this.catsOff.has(c.id)}" style="--c:${esc(c.color || 'var(--wca-bone)')}">${svg(c.icon || 'pin', 1.7)}${esc(c.name)}</button>`).join('')}</div>`;
-    if (this.adapter.notes) h += `<div class="grp">Notes</div><div class="mt-list"><label>${svg('note', 1.7)}<span>Notes others share</span><input class="tog" type="checkbox" data-notes="shared" ${this.notesShared ? 'checked' : ''}></label>${this.isGM ? `<label>${svg('eyeoff', 1.7)}<span>Players' private notes</span><input class="tog" type="checkbox" data-notes="private" ${this.notesPrivate ? 'checked' : ''}></label>` : ''}</div><button type="button" class="btn small" data-act="note-new">${svg('note')} Add a note to the map</button>`;
+    h += `<div class="grp">${tr('Layers ')}<span class="n">${ls.length}</span></div>` + (ls.length ? `<div class="mt-list">${ls.map(L => `<label>${L.icon ? svg(L.icon, 1.7) : '<i></i>'}<span>${esc(L.name || L.id)}</span><input class="tog" type="checkbox" data-layer="${esc(L.id)}" ${this.layerOn(L.id) ? 'checked' : ''}></label>`).join('')}</div>` : '<p class="hint">No layers here.</p>');
+    if (cats.length) h += `<div class="grp">${tr('Places shown')}</div><div class="chips" role="group">${cats.map(c => `<button type="button" class="chip" data-cat="${esc(c.id)}" aria-pressed="${!this.catsOff.has(c.id)}" style="--c:${esc(c.color || 'var(--wca-bone)')}">${svg(c.icon || 'pin', 1.7)}${esc(c.name)}</button>`).join('')}</div>`;
+    if (this.adapter.notes) h += `<div class="grp">${tr('Notes')}</div><div class="mt-list"><label>${svg('note', 1.7)}<span>${tr('Notes others share')}</span><input class="tog" type="checkbox" data-notes="shared" ${this.notesShared ? 'checked' : ''}></label>${this.isGM ? `<label>${svg('eyeoff', 1.7)}<span>Players' private notes</span><input class="tog" type="checkbox" data-notes="private" ${this.notesPrivate ? 'checked' : ''}></label>` : ''}</div><button type="button" class="btn small" data-act="note-new">${svg('note')} Add a note to the map</button>`;
     if (this.adapter.party) h += this.partyHtml();
-    h += `<div class="grp">View</div><div class="mt-btns"><button type="button" class="btn small" data-act="mt-home">${svg('home')} Whole map</button><button type="button" class="btn small" data-act="mt-find">${svg('search')} Search</button>${this.sc ? `<button type="button" class="btn small" data-act="mt-hide" aria-pressed="${!!this.atlasHidden}">${svg(this.atlasHidden ? 'eyeoff' : 'scene')} ${this.atlasHidden ? 'Show the atlas' : 'Hide the atlas'}</button>` : ''}</div>`;
-    if (this.isGM) h += `<div class="grp">Storyteller</div><label class="mt-row">View as<select data-viewas>${this.viewAsOptions().map(([val, n]) => `<option value="${esc(val)}" ${val === (st.storyteller ? 'gm' : st.as) ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></label>` + (this.sc?.setLocked ? `<label class="mt-row">Players follow my realm<input class="tog" type="checkbox" data-mt-lock ${this.sc.locked() ? 'checked' : ''}></label>` : '');
-    if ((v.legend || []).length) h += `<div class="grp">Legend</div><div class="mt-legend">${v.legend.map(l => `<span><i class="k-${esc(l.kind || 'fill')}" style="--c:${esc(l.color)}"></i>${esc(l.label)}</span>`).join('')}</div>`;
+    h += `<div class="grp">${tr('View')}</div><div class="mt-btns"><button type="button" class="btn small" data-act="mt-home">${svg('home')} Whole map</button><button type="button" class="btn small" data-act="mt-find">${svg('search')} Search</button>${this.sc ? `<button type="button" class="btn small" data-act="mt-hide" aria-pressed="${!!this.atlasHidden}">${svg(this.atlasHidden ? 'eyeoff' : 'scene')} ${this.atlasHidden ? tr('Show the atlas') : tr('Hide the atlas')}</button>` : ''}</div>`;
+    if (this.isGM) h += `<div class="grp">${tr('Storyteller')}</div><label class="mt-row">${tr('View as')}<select data-viewas>${this.viewAsOptions().map(([val, n]) => `<option value="${esc(val)}" ${val === (st.storyteller ? 'gm' : st.as) ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></label>` + (this.sc?.setLocked ? `<label class="mt-row">${tr('Players follow my realm')}<input class="tog" type="checkbox" data-mt-lock ${this.sc.locked() ? 'checked' : ''}></label>` : '');
+    if ((v.legend || []).length) h += `<div class="grp">${tr('Legend')}</div><div class="mt-legend">${v.legend.map(l => `<span><i class="k-${esc(l.kind || 'fill')}" style="--c:${esc(l.color)}"></i>${esc(l.label)}</span>`).join('')}</div>`;
     return `<div class="maptab">${h}</div>`;
   }
   /* ----- notes made by players (and the Storyteller) on the map ----- */
@@ -923,19 +932,27 @@ export class AtlasView {
   partyHtml() {
     const all = this.partyList(), rows = all.filter(c => this.isGM || c.mine || !c.hidden);
     if (!rows.length) return '';
-    const where = c => { if (!c.at) return 'not on the map'; const r = this.model.atlas.realms[c.realm]; const lv = r && r.levels.length > 1 ? (r.levels.find(l => l.id === c.level) || {}).name : ''; return [r ? r.name : c.realm, lv].filter(Boolean).join(' · '); };
-    return `<div class="grp mt-party">Characters <span class="n">${rows.length}</span></div><div class="mt-pcs">${rows.map(c => `<div class="pcrow" style="--c:${esc(c.color || '#d8b45a')}"><span class="pcimg">${c.img ? `<img src="${esc(this.resolveUrl(c.img))}" alt="">` : svg('user', 1.7)}</span><span class="pcnm"><b>${esc(c.name)}</b><small>${esc(c.player || '')}${c.player ? ' · ' : ''}${esc(where(c))}${c.hidden ? ' · hidden' : ''}</small></span><span class="pcbtns">${c.at ? `<button type="button" class="mini" data-pc-find="${esc(c.uid)}" title="Find on the map">${svg('target')}</button>` : ''}${this.canMoveParty(c) ? `<button type="button" class="mini" data-pc-place="${esc(c.uid)}" title="Place on the map: click where they are">${svg('pin')}</button>` : ''}${this.isGM ? `<button type="button" class="mini" data-pc-hide="${esc(c.uid)}" aria-pressed="${!!c.hidden}" title="${c.hidden ? 'Show to the other players' : 'Hide from the other players'}">${svg(c.hidden ? 'eyeoff' : 'share')}</button>` : ''}${this.canMoveParty(c) && c.at ? `<button type="button" class="mini" data-pc-clear="${esc(c.uid)}" title="Take off the map">${svg('x', 2)}</button>` : ''}</span></div>`).join('')}</div><p class="hint">${this.isGM ? 'Drag a portrait on the map to move it. ' : 'Drag your portrait on the map to move it. '}Portraits come from each player's character.</p>`;
+    const where = c => { if (!c.at) return tr('not on the map'); if (c.place && this.model.atlas.places[c.place] && this.tierOf(this.model.atlas.places[c.place], 'places') >= 1) return tr('inside: {place}', {place: shortName(this.nameOf(this.model.atlas.places[c.place], 'places'))}); const r = this.model.atlas.realms[c.realm]; const lv = r && r.levels.length > 1 ? (r.levels.find(l => l.id === c.level) || {}).name : ''; return [r ? r.name : c.realm, lv].filter(Boolean).join(' · '); };
+    return `<div class="grp mt-party">${tr('Characters ')}<span class="n">${rows.length}</span></div><div class="mt-pcs">${rows.map(c => `<div class="pcrow" style="--c:${esc(c.color || '#d8b45a')}"><span class="pcimg">${c.img ? `<img src="${esc(this.resolveUrl(c.img))}" alt="">` : svg('user', 1.7)}</span><span class="pcnm"><b>${esc(c.name)}</b><small>${esc(c.player || '')}${c.player ? ' · ' : ''}${esc(where(c))}${c.hidden ? ' · ' + tr('hidden') : ''}</small></span><span class="pcbtns">${c.at ? `<button type="button" class="mini" data-pc-find="${esc(c.uid)}" title="${tr('Find on the map')}">${svg('target')}</button>` : ''}${this.canMoveParty(c) ? `<button type="button" class="mini" data-pc-place="${esc(c.uid)}" title="${tr('Place on the map: click where they are')}">${svg('pin')}</button>` : ''}${this.isGM ? `<button type="button" class="mini" data-pc-hide="${esc(c.uid)}" aria-pressed="${!!c.hidden}" title="${c.hidden ? tr('Show to the other players') : tr('Hide from the other players')}">${svg(c.hidden ? 'eyeoff' : 'share')}</button>` : ''}${this.canMoveParty(c) && c.at ? `<button type="button" class="mini" data-pc-clear="${esc(c.uid)}" title="${tr('Take off the map')}">${svg('x', 2)}</button>` : ''}</span></div>`).join('')}</div><p class="hint">${this.isGM ? tr('Drag a portrait on the map to move it. ') : tr('Drag your portrait on the map to move it. ')}${tr('Drop it on a place to go inside.')} ${tr('Portraits come from each player\'s character.')}</p>`;
   }
   startParty(uid) {
     this.placingParty = uid || null; const on = !!uid;
     this.root.classList.toggle('placing', on); this.layerRoot?.classList.toggle('placing', on);
-    if (on) { const c = this.partyList().find(x => x.uid === uid); this.adapter.notify?.(`Click on the map where ${c ? c.name : 'the character'} is (Esc to cancel).`); }
+    if (on) { const c = this.partyList().find(x => x.uid === uid); this.adapter.notify?.(tr('Click on the map where {name} is (Esc to cancel).', {name: c ? c.name : tr('the character')})); }
   }
   placeParty(uid, w) {
     this.startParty(null);
-    const at = this.model.proj.toLL(w).map(this.model.proj.round);
-    const c = this.partyList().find(x => x.uid === uid);
-    this.adapter.party.save(uid, {at, realm: this.st.realm, level: this.st.level, hidden: c ? !!c.hidden : false});
+    const c = this.partyList().find(x => x.uid === uid); if (c) this.saveParty(c, w);
+  }
+  /** A place pin under this point (screen distance), if a character dropped there should enter it. */
+  placeAt(w) {
+    const [sx, sy] = this.renderer.ts(w); let best = null, bd = 26;
+    for (const m of this.markers || []) { if (m.party || m.note || !m.vis || !this.model.atlas.places[m.p.id]) continue; const d = Math.hypot(m.sx - sx, m.sy - sy); if (d < bd) { bd = d; best = m; } }
+    return best && this.model.atlas.places[best.p.id];
+  }
+  saveParty(c, w) {
+    const pl = this.placeAt(w), at = pl ? pl.at : this.model.proj.toLL(w).map(this.model.proj.round);
+    this.adapter.party.save(c.uid, {at, realm: this.st.realm, level: this.st.level, hidden: !!c.hidden, place: pl ? pl.id : null, entered: pl && pl.id === c.place ? c.entered : 0});
   }
   partyDrag(e, c, el, fromBoard = false) {
     e.stopPropagation(); if (!this.canMoveParty(c) || e.button !== 0) return;
@@ -945,7 +962,7 @@ export class AtlasView {
     const mv = ev => { if (!moved && Math.hypot(ev.clientX - sx0, ev.clientY - sy0) < 4) return; ev.stopPropagation(); const r = M.getBoundingClientRect(); const w = this.toWorld(ev.clientX - r.left, ev.clientY - r.top); if (mk) { mk.drag = w; moved = true; this.placeMarkers(); } };
     const up = ev => { window.removeEventListener('pointermove', mv, true); window.removeEventListener('pointerup', up, true); el.classList.remove('dragging');
       if (moved) el._dragged = true; else if (fromBoard) this.partyClick(c);
-      if (moved && mk && mk.drag) { const w = mk.drag; mk.w = w; delete mk.drag; this.adapter.party.save(c.uid, {at: this.model.proj.toLL(w).map(this.model.proj.round), realm: this.st.realm, level: this.st.level, hidden: !!c.hidden}); } };
+      if (moved && mk && mk.drag) { const w = mk.drag; mk.w = w; delete mk.drag; this.saveParty(c, w); } };
     el.classList.add('dragging');
     window.addEventListener('pointermove', mv, true); window.addEventListener('pointerup', up, true);
   }
@@ -953,7 +970,7 @@ export class AtlasView {
   startNote(on) {
     this.placing = !!on; this.root.classList.toggle('placing', this.placing); this.layerRoot?.classList.toggle('placing', this.placing);
     this.renderGmButtons();
-    if (this.placing) { this.adapter.notify?.('Click on the map where the note goes (Esc to cancel).'); this.sc?.showHud?.(); }
+    if (this.placing) { this.adapter.notify?.(tr('Click on the map where the note goes (Esc to cancel).')); this.sc?.showHud?.(); }
   }
   placeNote(w) {
     this.startNote(false);
@@ -973,22 +990,22 @@ export class AtlasView {
     const edit = n.mine, icons = ['note', 'pin', 'star', 'eye', 'skull', 'drop', 'crown', 'key', 'swords', 'haven', 'flame', 'raven', 'church', 'glass', 'coin', 'grave'];
     const back = `<div class="detbar"><button type="button" class="back" data-act="back">${svg('back', 2)} Back</button></div>`;
     if (!edit) {
-      this.el.pane.innerHTML = `<div class="det" style="--c:${esc(n.color || n.authorColor || '#e8d27a')}">${back}<div class="dsub">Note by ${esc(n.authorName || 'someone')}${n.shared ? '' : ' · private'}</div><h2>${esc(n.title || 'Note')}</h2><div class="body notebody">${esc(n.html || '').replace(/\n/g, '<br>')}</div><button type="button" class="btn" data-act="center">${svg('target')} Centre on map</button>${this.isGM ? `<button type="button" class="btn" data-act="note-del">${svg('trash')} Delete this note</button>` : ''}</div>`;
+      this.el.pane.innerHTML = `<div class="det" style="--c:${esc(n.color || n.authorColor || '#e8d27a')}">${back}<div class="dsub">Note by ${esc(n.authorName || 'someone')}${n.shared ? '' : ' · private'}</div><h2>${esc(n.title || tr('Note'))}</h2><div class="body notebody">${esc(n.html || '').replace(/\n/g, '<br>')}</div><button type="button" class="btn" data-act="center">${svg('target')} Centre on map</button>${this.isGM ? `<button type="button" class="btn" data-act="note-del">${svg('trash')} Delete this note</button>` : ''}</div>`;
       return;
     }
-    this.el.pane.innerHTML = `<div class="det notef" style="--c:${esc(n.color || '#e8d27a')}">${back}<div class="dsub">${n.isNew ? 'New note' : 'Your note'}</div>
-      <form class="ed-form" autocomplete="off"><div class="ef wide"><label>Title</label><input type="text" name="title" value="${esc(n.title || '')}" placeholder="What is here?"></div>
-      <div class="ef wide"><label>Text</label><textarea name="html" rows="5" placeholder="Your notes…">${esc(n.html || '')}</textarea></div>
-      <div class="ef"><label>Icon</label><select name="icon">${icons.map(i => `<option value="${i}" ${i === (n.icon || 'note') ? 'selected' : ''}>${i}</option>`).join('')}</select></div>
-      <div class="ef"><label>Colour</label><input type="color" name="color" value="${esc(n.color || '#e8d27a')}"></div>
+    this.el.pane.innerHTML = `<div class="det notef" style="--c:${esc(n.color || '#e8d27a')}">${back}<div class="dsub">${n.isNew ? tr('New note') : tr('Your note')}</div>
+      <form class="ed-form" autocomplete="off"><div class="ef wide"><label>${tr('Title')}</label><input type="text" name="title" value="${esc(n.title || '')}" placeholder="${tr('What is here?')}"></div>
+      <div class="ef wide"><label>${tr('Text')}</label><textarea name="html" rows="5" placeholder="${tr('Your notes…')}">${esc(n.html || '')}</textarea></div>
+      <div class="ef"><label>${tr('Icon')}</label><select name="icon">${icons.map(i => `<option value="${i}" ${i === (n.icon || 'note') ? 'selected' : ''}>${i}</option>`).join('')}</select></div>
+      <div class="ef"><label>${tr('Colour')}</label><input type="color" name="color" value="${esc(n.color || '#e8d27a')}"></div>
       <div class="ef wide notevis"><label><input type="radio" name="shared" value="0" ${n.shared ? '' : 'checked'}> Only me</label><label><input type="radio" name="shared" value="1" ${n.shared ? 'checked' : ''}> Everyone</label></div>
       <div class="ed-actions"><button type="submit" class="btn primary">${svg('check', 2)} Save</button>${n.isNew ? '' : `<button type="button" class="btn" data-act="note-del">${svg('trash')} Delete</button>`}<button type="button" class="btn" data-act="center">${svg('target')}</button></div></form></div>`;
     const form = this.el.pane.querySelector('form');
     form.querySelector('[name=title]').focus();
     form.onsubmit = async e => {
       e.preventDefault(); const f = form.elements;
-      const out = {id: n.id, at: n.at, realm: n.realm, level: n.level, title: f.title.value.trim() || 'Note', html: f.html.value, icon: f.icon.value, color: f.color.value, shared: f.shared.value === '1', t: Date.now()};
-      try { await this.adapter.notes.save(out); } catch (err) { this.adapter.notify?.('Could not save the note: ' + err.message, 'error'); return; }
+      const out = {id: n.id, at: n.at, realm: n.realm, level: n.level, title: f.title.value.trim() || tr('Note'), html: f.html.value, icon: f.icon.value, color: f.color.value, shared: f.shared.value === '1', t: Date.now()};
+      try { await this.adapter.notes.save(out); } catch (err) { this.adapter.notify?.(tr('Could not save the note: ') + err.message, 'error'); return; }
       this._noteDraft = null; this.detailId = null; this.tab = 'notes'; this.render(); this.buildMarkers();
     };
   }
@@ -996,10 +1013,10 @@ export class AtlasView {
     const N = this.adapter.notes; if (!N) return '<div class="empty">Notes are not available here.</div>';
     const all = this.visibleNotes(), mine = all.filter(n => n.mine), others = all.filter(n => !n.mine);
     const realmName = n => { const r = this.model.atlas.realms[n.realm]; return r ? r.name : ''; };
-    const row = n => this.itemRow({id: 'note:' + n.id, c: n.color || n.authorColor || '#e8d27a', g: n.icon || 'note', n: n.title || 'Note', s: (n.mine ? (n.shared ? 'shared with everyone' : 'only you') : `${n.authorName || ''}${n.shared ? '' : ' · private'}`) + (n.realm !== this.st.realm ? ' · ' + realmName(n) : ''), tag: ''});
+    const row = n => this.itemRow({id: 'note:' + n.id, c: n.color || n.authorColor || '#e8d27a', g: n.icon || 'note', n: n.title || tr('Note'), s: (n.mine ? (n.shared ? 'shared with everyone' : 'only you') : `${n.authorName || ''}${n.shared ? '' : ' · private'}`) + (n.realm !== this.st.realm ? ' · ' + realmName(n) : ''), tag: ''});
     return `<button type="button" class="btn" data-act="note-new">${svg('note')} Add a note to the map</button><p class="hint">Notes are yours: the Storyteller's map stays as it is. Choose “Everyone” to share a note with the group.</p>` +
-      `<div class="grp">My notes <span class="n">${mine.length}</span></div>${mine.map(row).join('') || '<div class="empty-s">None yet.</div>'}` +
-      `<div class="grp">Shared by others <span class="n">${others.length}</span></div>${others.map(row).join('') || `<div class="empty-s">${this.notesShared ? 'None yet.' : 'Hidden (see the Map tab).'}</div>`}`;
+      `<div class="grp">${tr('My notes ')}<span class="n">${mine.length}</span></div>${mine.map(row).join('') || '<div class="empty-s">None yet.</div>'}` +
+      `<div class="grp">${tr('Shared by others ')}<span class="n">${others.length}</span></div>${others.map(row).join('') || `<div class="empty-s">${this.notesShared ? tr('None yet.') : tr('Hidden (see the Map tab).')}</div>`}`;
   }
 
   /* ----- detail ----- */
@@ -1011,9 +1028,9 @@ export class AtlasView {
     const t = this.tierOf(it, coll), known = t >= TIER.BASIC, full = t >= TIER.FULL;
     const color = known ? this.colorOf(it) : '#9a9aa4', f = this.factionOf(it, coll), cat = m.category(it.cat);
     const H = [];
-    H.push(`<div class="detbar"><button type="button" class="back" data-act="back">${svg('back', 2)} Back to ${esc((this.rv.terms[this.tab] || '').toLowerCase())}</button><span class="dbtns">${(this.opts.canEdit ?? this.isGM) && (this.opts.editorFactory || this.sc) ? `<button type="button" class="lnk" data-act="edit-item" title="Edit">${svg('pen')} Edit</button>` : ''}${this.isGM && this.adapter.share ? `<button type="button" class="lnk" data-act="share-item" title="Show this entry to the players">${svg('share')} Show</button>` : ''}</span></div>`);
+    H.push(`<div class="detbar"><button type="button" class="back" data-act="back">${svg('back', 2)} ${esc(tr('Back to {what}', {what: (this.rv.terms[this.tab] || '').toLowerCase()}))}</button><span class="dbtns">${(this.opts.canEdit ?? this.isGM) && (this.opts.editorFactory || this.sc) ? `<button type="button" class="lnk" data-act="edit-item" title="${tr('Edit')}">${svg('pen')} Edit</button>` : ''}${this.isGM && this.adapter.share ? `<button type="button" class="lnk" data-act="share-item" title="${tr('Show this entry to the players')}">${svg('share')} Show</button>` : ''}</span></div>`);
     if (!known) {
-      H.push(`<div class="dsub">Unknown</div><h2>${esc(this.nameOf(it, coll))}</h2><p class="lead unknown-note">${esc(it.aliasText || (coll === 'people' ? 'You have heard of them, but know nothing more.' : 'You know something is here, but nothing more.'))}</p>`);
+      H.push(`<div class="dsub">${tr('Unknown')}</div><h2>${esc(this.nameOf(it, coll))}</h2><p class="lead unknown-note">${esc(it.aliasText || (coll === 'people' ? tr('You have heard of them, but know nothing more.') : tr('You know something is here, but nothing more.')))}</p>`);
     } else {
       const pills = [];
       if (f) pills.push(`<span class="pill" style="--c:${esc(f.color)}"><span class="sw"></span>${esc(f.name)}</span>`);
@@ -1021,19 +1038,19 @@ export class AtlasView {
       if (it.precision && A.precisions[it.precision]) { const p = A.precisions[it.precision]; pills.push(`<span class="pill prec" style="border-style:${esc(p.border || 'solid')};color:${esc(p.color || 'inherit')};border-color:${esc(withAlpha(p.color || '#888', 0.55))}">${esc(p.name)}</span>`); }
       if (it.status && A.statuses[it.status]) { const s = A.statuses[it.status]; pills.push(`<span class="pill status s-${esc(it.status)}" ${s.color ? `style="color:${esc(s.color)};border-color:${esc(withAlpha(s.color, .5))}"` : ''}>${esc(s.name)}</span>`); }
       if (it.domainStatus && m.domainStatuses()[it.domainStatus]) { const s = m.domainStatuses()[it.domainStatus]; pills.push(`<span class="pill" style="--c:${esc(s.color || color)}"><span class="sw"></span>${esc(s.name)}</span>`); }
-      if (it.rating && full) pills.push(`<span class="pill rating" style="--c:${esc(color)}"><span class="sw"></span>${esc(it.rating.label || 'Rating')} ${it.rating.value}/${it.rating.max || 5}${it.rating.text ? ' · ' + esc(it.rating.text) : ''}</span>`);
+      if (it.rating && full) pills.push(`<span class="pill rating" style="--c:${esc(color)}"><span class="sw"></span>${esc(it.rating.label || tr('Rating'))} ${it.rating.value}/${it.rating.max || 5}${it.rating.text ? ' · ' + esc(it.rating.text) : ''}</span>`);
       for (const tg of it.tags || []) pills.push(`<span class="pill ${esc(tg.cls || '')}" ${tg.color ? `style="--c:${esc(tg.color === true || tg.color === 'auto' ? color : tg.color)}"` : ''}>${tg.color ? '<span class="sw"></span>' : ''}${esc(tg.text)}</span>`);
-      if (this.veiled(it, coll)) pills.push(`<span class="pill st">Hidden from players</span>`);
+      if (this.veiled(it, coll)) pills.push(`<span class="pill st">${tr('Hidden from players')}</span>`);
       const lvl = coll !== 'people' && it.realm && m.atlas.realms[it.realm] ? m.realm(it.realm).levels : null;
       const levelName = lvl && lvl.length > 1 && it.level && it.level !== lvl[0].id ? (lvl.find(l => l.id === it.level) || {}).name : '';
-      const kick = coll === 'people' ? this.clanOf(it).kicker || TYPE_NAMES.people : [it.kicker || (coll === 'places' && cat ? cat.name : coll === 'auras' ? (it.rating && it.rating.label) || 'Phenomenon' : TYPE_NAMES[coll]), it.kicker ? '' : levelName].filter(Boolean).join(' · ');
-      if (coll === 'people' && it.falseKicker && this.st.storyteller) pills.push(`<span class="pill st" title="What others believe; choose per player under What players see">Passes as: ${esc(it.falseKicker)}</span>`);
+      const kick = coll === 'people' ? this.clanOf(it).kicker || TYPE_NAMES.people : [it.kicker || (coll === 'places' && cat ? cat.name : coll === 'auras' ? (it.rating && it.rating.label) || tr('Phenomenon') : tr(TYPE_NAMES[coll])), it.kicker ? '' : levelName].filter(Boolean).join(' · ');
+      if (coll === 'people' && it.falseKicker && this.st.storyteller) pills.push(`<span class="pill st" title="${tr('What others believe; choose per player under What players see')}">Passes as: ${esc(it.falseKicker)}</span>`);
       H.push(`<div class="dsub">${esc(kick)}</div><h2>${nameHtml(it.name || '')}</h2>${it.sub ? `<div class="dsub">${esc(it.sub)}</div>` : ''}`);
       H.push(`<div class="meta">${pills.join('')}</div>`);
-      const pic = it.img || (coll === 'people' ? this.docInfo(it.uuid)?.img : null);
+      const pic = this.docInfo(it.uuid)?.img || it.img;
       if (pic) H.push(`<figure class="portrait${coll === 'people' ? '' : ' wide'}"><img src="${esc(this.resolveUrl(pic))}" alt="${esc(it.name)}" loading="lazy"></figure>`);
       if (coll === 'people') H.push(this.sheetButton(it));
-      if (coll === 'auras' && it.rating && full) H.push(`<div class="bigrating"><b>${esc(it.rating.label || 'Rating')}</b><span>${it.rating.value}</span><small>of ${it.rating.max || 10}</small>${this.ratingBar(Object.assign({warn: false}, it.rating))}</div>`);
+      if (coll === 'auras' && it.rating && full) H.push(`<div class="bigrating"><b>${esc(it.rating.label || tr('Rating'))}</b><span>${it.rating.value}</span><small>of ${it.rating.max || 10}</small>${this.ratingBar(Object.assign({warn: false}, it.rating))}</div>`);
       // every piece (callout, fact, figure, haunt, domain, relation) follows its own say for this viewer, not only the tier
       const notes = (it.notes || []).filter(n => m.noteVisible(n, it, coll, st));
       const facts = (it.facts || []).filter(f2 => m.noteVisible(f2, it, coll, st));
@@ -1043,40 +1060,42 @@ export class AtlasView {
       notes.filter(n => n.kind === 'law').forEach(n => H.push(this.noteHtml(n, tierTag(n))));
       if (full && it.brief && st.storyteller && it.html) H.push(`<div class="scene basicdesc"><b>${svg('eye')} Basic description: what players at Basic read</b><div class="enrich">${it.brief}</div></div>`);
       if (full && (it.html || it.brief)) H.push(`<div class="body enrich">${it.html || it.brief}</div>`);
-      else if (!full) H.push(it.brief ? `<div class="body brief enrich">${it.brief}</div>` : `<p class="lead unknown-note">Nothing more is known yet.</p>`);
+      else if (!full) H.push(it.brief ? `<div class="body brief enrich">${it.brief}</div>` : `<p class="lead unknown-note">${tr('Nothing more is known yet.')}</p>`);
       if (facts.length && coll !== 'people') { const fs = facts.filter(f2 => !(it.tags || []).some(tg => tg.text === `${f2.k} ${stripHtml(f2.v)}`)); if (fs.length) H.push(`<dl class="facts">${fs.map(f2 => `<dt>${esc(f2.k)}</dt><dd>${f2.v || ''}${f2.secret ? `<span class="tiertag">${esc(tierTag(f2))}</span>` : ''}</dd>`).join('')}</dl>`); }
       notes.filter(n => n.kind !== 'law').forEach(n => H.push(this.noteHtml(n, tierTag(n))));
       if (full) {
         H.push(this.crossHtml(it, coll));
-        if (it.uuid && this.adapter.openUuid && coll !== 'people') { const di = this.docInfo(it.uuid); if (!di || di.canOpen) H.push(`<button type="button" class="cross doc" data-uuid="${esc(it.uuid)}">${svg(di && di.documentName === 'Actor' ? 'sheet' : di && di.documentName === 'Scene' ? 'scene' : 'book')}<span><b>${di && di.documentName === 'Actor' ? 'Character sheet' : di && di.documentName === 'Scene' ? 'Go to the scene' : 'Open linked document'}</b><small>${esc(di ? di.name : (it.uuidName || it.uuid))}</small></span></button>`); }
+        if (it.uuid && this.adapter.openUuid && coll !== 'people') { const di = this.docInfo(it.uuid); if (!di || di.canOpen) H.push(`<button type="button" class="cross doc" data-uuid="${esc(it.uuid)}">${svg(di && di.documentName === 'Actor' ? 'sheet' : di && di.documentName === 'Scene' ? 'scene' : 'book')}<span><b>${di && di.documentName === 'Actor' ? tr('Character sheet') : di && di.documentName === 'Scene' ? tr('Go to the scene') : tr('Open linked document')}</b><small>${esc(di ? di.name : (it.uuidName || it.uuid))}</small></span></button>`); }
       }
+      if (coll === 'places') { const here = this.partyList().filter(c => c.place === it.id && (this.isGM || c.mine || !c.hidden));
+        if (here.length) H.push(`<div class="herenow"><b>${tr('Here now')}</b>${here.map(c => `<span class="pcchip" style="--c:${esc(c.color || '#d8b45a')}">${c.img ? `<img src="${esc(this.resolveUrl(c.img))}" alt="">` : ''}${esc(c.name)}</span>`).join('')}</div>`); }
       if (coll === 'places') {
         if (full) {
           const zs = m.containingZones(it, st).filter(z => z.id !== it.zone); if (it.zone) zs.unshift(m.item(it.zone));
-          H.push(section('Lies within', zs.filter(Boolean).map(z => z.id)));
-          H.push(section('Routes', [...m.routesAt(it.id), ...m.routesNear(it, st)].map(r => r.id)));
-          H.push(section('Close by', m.nearby(it, st, A.closeBy || 250).slice(0, 8).map(p => p.id)));
+          H.push(section(tr('Lies within'), zs.filter(Boolean).map(z => z.id)));
+          H.push(section(tr('Routes'), [...m.routesAt(it.id), ...m.routesNear(it, st)].map(r => r.id)));
+          H.push(section(tr('Close by'), m.nearby(it, st, A.closeBy || 250).slice(0, 8).map(p => p.id)));
         }
-        H.push(section('Figures here', this.figuresAt(it, coll).map(p => p.id)));
+        H.push(section(tr('Figures here'), this.figuresAt(it, coll).map(p => p.id)));
       } else if (coll === 'zones') {
-        H.push(section('Claimed by', this.ownersOf(it).map(p => p.id)));
-        if (full) { H.push(section('Inside', m.placesInZone(it, st).filter(p => !p.hidden).map(p => p.id)));
-          const inside = new Set(m.placesInZone(it, st).map(p => p.id)); H.push(section('Routes', Object.values(A.routes).filter(r => (r.ends || []).some(e => inside.has(e)) && m.inRealm(r, st)).map(r => r.id))); }
-        H.push(section('Figures here', this.figuresAt(it, coll).map(p => p.id)));
+        H.push(section(tr('Claimed by'), this.ownersOf(it).map(p => p.id)));
+        if (full) { H.push(section(tr('Inside'), m.placesInZone(it, st).filter(p => !p.hidden).map(p => p.id)));
+          const inside = new Set(m.placesInZone(it, st).map(p => p.id)); H.push(section(tr('Routes'), Object.values(A.routes).filter(r => (r.ends || []).some(e => inside.has(e)) && m.inRealm(r, st)).map(r => r.id))); }
+        H.push(section(tr('Figures here'), this.figuresAt(it, coll).map(p => p.id)));
       } else if (coll === 'routes') {
-        if (full) H.push(section('Ends', it.ends || []));
-        H.push(section('Figures here', this.figuresAt(it, coll).map(p => p.id)));
+        if (full) H.push(section(tr('Ends'), it.ends || []));
+        H.push(section(tr('Figures here'), this.figuresAt(it, coll).map(p => p.id)));
       } else if (coll === 'people') {
-        H.push(section('Where to find them', this.hauntsOf(it)));
+        H.push(section(tr('Where to find them'), this.hauntsOf(it)));
         H.push(this.domainHtml(it));
         H.push(this.relationsHtml(it));
       }
-      if (full && it.links && it.links.length) H.push(section('See also', it.links.map(l => l.id).filter(i => !(it.anchor === i))));
+      if (full && it.links && it.links.length) H.push(section(tr('See also'), it.links.map(l => l.id).filter(i => !(it.anchor === i))));
     }
     if (!known) (it.notes || []).filter(n => m.isSecret(n) && m.noteVisible(n, it, coll, st)).forEach(n => H.push(this.noteHtml(n, this.secretTag(n))));
     if (coll !== 'people' && coll !== 'pages') H.push(`<button type="button" class="btn" data-act="center">${svg('target')} Centre on map</button>`);
     if (this.isGM && st.storyteller) H.push(this.revealPanel(it, coll));
-    if (it.src && full) H.push(`<div class="src">${/^(Improvised|From the|Domains)/.test(it.src) ? '' : 'Source: '}${it.src}</div>`);
+    if (it.src && full) H.push(`<div class="src">${/^(Improvised|From the|Domains)/.test(it.src) ? '' : tr('Source: ')}${it.src}</div>`);
     this.el.pane.innerHTML = `<div class="det" style="--c:${esc(color)}">${H.join('')}</div>`;
     this.el.pane.scrollTop = 0;
     this.enrichIn(this.el.pane);
@@ -1087,9 +1106,9 @@ export class AtlasView {
   /** "Character sheet" button for a person linked to an Actor the viewer may open. */
   sheetButton(p) {
     const di = this.docInfo(p.uuid);
-    if (!di) return p.uuid && this.isGM && this.st.storyteller && this.adapter.docInfo ? `<p class="hint">The linked Actor no longer exists.</p>` : '';
+    if (!di) return p.uuid && this.isGM && this.st.storyteller && this.adapter.docInfo ? `<p class="hint">${tr('The linked Actor no longer exists.')}</p>` : '';
     if (!di.canOpen) return '';
-    return `<button type="button" class="cross doc" data-uuid="${esc(p.uuid)}">${svg('sheet')}<span><b>${di.documentName === 'Actor' ? 'Character sheet' : 'Open linked document'}</b><small>${esc(di.name)}${this.isGM && this.st.storyteller && di.documentName === 'Actor' ? ` · ${di.owners ? esc(di.owners) : 'GM only'}` : ''}</small></span></button>`;
+    return `<button type="button" class="cross doc" data-uuid="${esc(p.uuid)}">${svg('sheet')}<span><b>${di.documentName === 'Actor' ? tr('Character sheet') : tr('Open linked document')}</b><small>${esc(di.name)}${this.isGM && this.st.storyteller && di.documentName === 'Actor' ? ` · ${di.owners ? esc(di.owners) : 'GM only'}` : ''}</small></span></button>`;
   }
   /** A person found by a short name ("Scott", "Gracis") in relation rows; only unambiguous matches. */
   personByName(name) {
@@ -1107,7 +1126,7 @@ export class AtlasView {
     return id ? this.model.item(id) : null;
   }
   /** "Secret" tag on callouts and relations; the Storyteller also sees who knows it. */
-  secretTag(n) { if (!this.model.isSecret(n)) return ''; return this.isGM && this.st.storyteller ? `Secret · known to ${this.model.secretAudience(n, this.players())}` : 'Secret'; }
+  secretTag(n) { if (!this.model.isSecret(n)) return ''; return this.isGM && this.st.storyteller ? `Secret · known to ${this.model.secretAudience(n, this.players())}` : tr('Secret'); }
   /** Relations: this person's view of others, others' view of them, and (Storyteller) inline editing. */
   relationsHtml(p) {
     const m = this.model, st = this.st, gm = this.isGM && st.storyteller && (this.opts.canEdit ?? this.isGM);
@@ -1118,13 +1137,13 @@ export class AtlasView {
       for (const r of m.relRows(q)) { const tid = r.ref && !/^Actor\./.test(r.ref) ? r.ref : this.personByName(r.a)?.id; if (tid === p.id && m.noteVisible(r, q, 'people', st)) theirs.push({q, r}); }
     }
     if (!own.length && !theirs.length && !gm) return '';
-    let h = `<h3>${esc(p.relations?.title || 'Relations')}</h3>`;
+    let h = `<h3>${esc(p.relations?.title || tr('Relations'))}</h3>`;
     h += own.length ? `<div class="rel">${own.map(r => this.relationRow(r, p, gm)).join('')}</div>` : (gm ? '<p class="hint">No relations yet.</p>' : '');
     if (gm) {
       const ppl = sortBy(Object.values(m.atlas.people).filter(q => q.id !== p.id), q => q.name || '');
-      h += `<div class="reladd" data-person="${esc(p.id)}"><select data-rel="ref"><option value="">Who…</option>${ppl.map(q => `<option value="${esc(q.id)}">${esc(q.name || q.id)}</option>`).join('')}</select><input data-rel="b" type="text" placeholder="Attitude (e.g. Hatred, Ally)"><label title="Hidden from players until you reveal it"><input data-rel="secret" type="checkbox"> Secret</label><button type="button" class="mini" data-act="rel-add">${svg('plus', 2)} Add</button></div>`;
+      h += `<div class="reladd" data-person="${esc(p.id)}"><select data-rel="ref"><option value="">${tr('Who…')}</option>${ppl.map(q => `<option value="${esc(q.id)}">${esc(q.name || q.id)}</option>`).join('')}</select><input data-rel="b" type="text" placeholder="${tr('Attitude (e.g. Hatred, Ally)')}"><label title="${tr('Hidden from players until you reveal it')}"><input data-rel="secret" type="checkbox"> Secret</label><button type="button" class="mini" data-act="rel-add">${svg('plus', 2)} Add</button></div>`;
     }
-    if (theirs.length) h += `<h3>How others see them</h3><div class="rel">${theirs.map(({q, r}) => `<span><button type="button" class="rlink" data-go="${esc(q.id)}">${esc(this.nameOf(q, 'people'))}</button></span><span>${esc(r.b || '')}${m.isSecret(r) ? `<span class="tiertag">${esc(this.secretTag(r))}</span>` : ''}</span>`).join('')}</div>`;
+    if (theirs.length) h += `<h3>${tr('How others see them')}</h3><div class="rel">${theirs.map(({q, r}) => `<span><button type="button" class="rlink" data-go="${esc(q.id)}">${esc(this.nameOf(q, 'people'))}</button></span><span>${esc(r.b || '')}${m.isSecret(r) ? `<span class="tiertag">${esc(this.secretTag(r))}</span>` : ''}</span>`).join('')}</div>`;
     return h;
   }
   async addRelation(pid, ref, b, secret) {
@@ -1150,7 +1169,7 @@ export class AtlasView {
     const nm = target ? `<button type="button" class="rlink" data-go="${esc(target.id)}" title="Open ${esc(this.nameOf(target, 'people'))}">${esc(w || this.nameOf(target, 'people'))}</button>` : esc(w);
     const sheet = ai && ai.canOpen ? `<button type="button" class="rsheet" data-uuid="${esc(actor)}" title="Character sheet: ${esc(ai.name)}">${svg('sheet')}</button>` : '';
     const tag = !Array.isArray(r) && this.model.isSecret(r) ? `<span class="tiertag">${esc(this.secretTag(r))}</span>` : '';
-    const del = gm && !Array.isArray(r) ? `<button type="button" class="rdel" data-act="rel-del" data-person="${esc(owner.id)}" data-idx="${r.i}" title="Remove this relation">${svg('x', 2)}</button>` : '';
+    const del = gm && !Array.isArray(r) ? `<button type="button" class="rdel" data-act="rel-del" data-person="${esc(owner.id)}" data-idx="${r.i}" title="${tr('Remove this relation')}">${svg('x', 2)}</button>` : '';
     return `<span>${nm}${sheet}</span><span>${esc(a)}${tag}${del}</span>`;
   }
   noteHtml(n, tierTag) { return `<div class="scene${n.kind ? ' ' + esc(n.kind) : ''}${this.model.isSecret(n) ? ' secret' : ''}">${n.title || tierTag ? `<b>${esc(n.title || '')}${tierTag ? `<span class="tiertag">${esc(tierTag)}</span>` : ''}</b>` : ''}<div class="enrich">${n.html || ''}</div></div>`; }
@@ -1159,8 +1178,8 @@ export class AtlasView {
     const ds = this.domainsOf(p);
     const gmEdit = this.isGM && this.st.storyteller && (this.opts.editorFactory || this.sc) && L;
     if (!ds.length && !gmEdit) return '';
-    return `<h3>Domain</h3>` + ds.map(z => `<div class="zrow">${this.refRow(z.id)}<button type="button" class="eye" data-hide="${esc(z.id)}" aria-pressed="${!this.hiddenItems.has(z.id)}" title="Show or hide this domain on the map">${svg(this.hiddenItems.has(z.id) ? 'eyeoff' : 'share')}</button>${gmEdit ? `<button type="button" class="eye" data-act="edit-domain" data-zone="${esc(z.id)}" title="Edit the shape and details">${svg('pen')}</button>` : ''}</div>`).join('') +
-      (gmEdit ? `<button type="button" class="btn small" data-act="new-domain" data-person="${esc(p.id)}">${svg('poly')} ${ds.length ? 'Draw another domain' : 'Draw a domain'}</button>` : '');
+    return `<h3>${tr('Domain')}</h3>` + ds.map(z => `<div class="zrow">${this.refRow(z.id)}<button type="button" class="eye" data-hide="${esc(z.id)}" aria-pressed="${!this.hiddenItems.has(z.id)}" title="${tr('Show or hide this domain on the map')}">${svg(this.hiddenItems.has(z.id) ? 'eyeoff' : 'share')}</button>${gmEdit ? `<button type="button" class="eye" data-act="edit-domain" data-zone="${esc(z.id)}" title="${tr('Edit the shape and details')}">${svg('pen')}</button>` : ''}</div>`).join('') +
+      (gmEdit ? `<button type="button" class="btn small" data-act="new-domain" data-person="${esc(p.id)}">${svg('poly')} ${ds.length ? tr('Draw another domain') : tr('Draw a domain')}</button>` : '');
   }
   /** Storyteller panel: who sees this entry, and how much. */
   revealPanel(it, coll) {
@@ -1169,9 +1188,9 @@ export class AtlasView {
     const allVal = r.all ?? (it.gm ? 0 : '');
     const def = m.defaultTier(coll);
     return `<div class="reveal" data-reveal-id="${esc(it.id)}" data-reveal-coll="${esc(coll)}"><h3>${svg('share')} What players see</h3>
-      <label><span>Everyone</span><select data-rv="*"><option value="" ${allVal === '' ? 'selected' : ''}>default (${esc(m.tierName(def))})</option>${opt(allVal, false)}</select></label>
+      <label><span>${tr('Everyone')}</span><select data-rv="*"><option value="" ${allVal === '' ? 'selected' : ''}>default (${esc(m.tierName(def))})</option>${opt(allVal, false)}</select></label>
       ${ps.map(p => `<label><span style="color:${esc(p.color || 'inherit')}">${esc(p.name)}</span><select data-rv="${esc(p.id)}">${opt((r.users || {})[p.id] ?? '', true)}</select></label>`).join('') || '<p class="hint">No player accounts yet.</p>'}
-      <div class="rv-quick"><button type="button" class="mini" data-rvq="0">Hide from all</button><button type="button" class="mini" data-rvq="1">Existence</button><button type="button" class="mini" data-rvq="2">Basic</button><button type="button" class="mini" data-rvq="3">Full</button></div>
+      <div class="rv-quick"><button type="button" class="mini" data-rvq="0">${tr('Hide from all')}</button><button type="button" class="mini" data-rvq="1">Existence</button><button type="button" class="mini" data-rvq="2">Basic</button><button type="button" class="mini" data-rvq="3">Full</button></div>
       <p class="hint">0 hidden · 1 only that it exists · 2 name, picture and a vague description · 3 full description and ordinary pieces. Each piece below can also be shown or hidden on its own.</p>${this.piecesPanel(it, coll)}</div>`;
   }
   /** The pieces of an entry that can be shown or hidden on their own: [{key, label, def}]. */
@@ -1180,8 +1199,8 @@ export class AtlasView {
     const secretOr = (n, d) => m.isSecret(n) ? 'hidden: a secret' : d;
     if (coll === 'people' && (it.kicker || it.falseKicker)) { const tc = stripGeneration(it.kicker) || '?'; out.push({key: 'link:clan', label: it.falseKicker ? `Clan: ${tc} (passes as ${stripGeneration(it.falseKicker)})` : `Clan: ${tc}`, def: it.falseKicker ? 'the false clan with Basic' : 'shown with Basic', clan: !!it.falseKicker}); }
     if (it.faction && m.faction(it.faction)) out.push({key: 'link:faction', label: `Allegiance: ${m.faction(it.faction).name}`, def: it.falseKicker ? 'hidden (has a false clan)' : 'shown with Basic'});
-    (it.facts || []).forEach((f2, i) => out.push({key: `facts:${i}`, label: `${f2.k || 'Fact'}: ${stripHtml(f2.v || '')}`.slice(0, 90), def: secretOr(f2, 'shown with Full')}));
-    (it.notes || []).forEach((n, i) => out.push({key: `notes:${i}`, label: (n.title || stripHtml(n.html || '').slice(0, 60) || 'Callout'), def: secretOr(n, 'shown with Full')}));
+    (it.facts || []).forEach((f2, i) => out.push({key: `facts:${i}`, label: `${f2.k || tr('Fact')}: ${stripHtml(f2.v || '')}`.slice(0, 90), def: secretOr(f2, 'shown with Full')}));
+    (it.notes || []).forEach((n, i) => out.push({key: `notes:${i}`, label: (n.title || stripHtml(n.html || '').slice(0, 60) || tr('Callout')), def: secretOr(n, 'shown with Full')}));
     if (['places', 'zones', 'routes'].includes(coll)) m.peopleAt(it).forEach(p => out.push({key: `fig:${p.id}`, label: `Figure here: ${p.name || p.id}`, def: 'shown with Full'}));
     if (coll === 'zones') (it.owners || []).forEach(pid => out.push({key: `link:owner:${pid}`, label: `Claimed by: ${nm(pid)}`, def: 'shown with Full'}));
     if (coll === 'people') {
@@ -1204,9 +1223,9 @@ export class AtlasView {
   piecesPanel(it, coll) {
     const list = this.pieces(it, coll), ps = this.players(); if (!list.length) return '';
     const val = (rv, who) => { const v = who === '*' ? rv?.all : rv?.users?.[who]; return v === undefined || v === null || v === '' ? '' : String(+v); };
-    const sel = (key, who, v, clan) => `<select data-pc="${esc(key)}" data-who="${esc(who)}" title="${who === '*' ? 'Everyone' : 'This player'}: · default, ✓ shown${clan ? ' (true clan), 🎭 the false clan' : ''}, ✗ hidden"><option value="" ${v === '' ? 'selected' : ''}>·</option><option value="1" ${v === '1' ? 'selected' : ''}>✓</option>${clan ? `<option value="2" ${v === '2' ? 'selected' : ''}>🎭</option>` : ''}<option value="0" ${v === '0' ? 'selected' : ''}>✗</option></select>`;
+    const sel = (key, who, v, clan) => `<select data-pc="${esc(key)}" data-who="${esc(who)}" title="${who === '*' ? tr('Everyone') : tr('This player')}: · default, ✓ shown${clan ? ' (true clan), 🎭 the false clan' : ''}, ✗ hidden"><option value="" ${v === '' ? 'selected' : ''}>·</option><option value="1" ${v === '1' ? 'selected' : ''}>✓</option>${clan ? `<option value="2" ${v === '2' ? 'selected' : ''}>🎭</option>` : ''}<option value="0" ${v === '0' ? 'selected' : ''}>✗</option></select>`;
     return `<h3>${svg('eye')} Piece by piece</h3><p class="hint">· its default (in grey) · ✓ shown · ✗ hidden · 🎭 the false clan. A choice for one player wins over “All”.</p>
-      <div class="pieces-wrap"><table class="pieces"><tr><th></th><th>All</th>${ps.map(p => `<th title="${esc(p.name)}" style="color:${esc(p.color || 'inherit')}">${esc(p.name)}</th>`).join('')}</tr>` +
+      <div class="pieces-wrap"><table class="pieces"><tr><th></th><th>${tr('All')}</th>${ps.map(p => `<th title="${esc(p.name)}" style="color:${esc(p.color || 'inherit')}">${esc(p.name)}</th>`).join('')}</tr>` +
       list.map(({key, label, def, clan}) => { const rv = this.pieceReveal(it, key); return `<tr><td><span>${esc(label)}</span><small>${esc(def)}</small></td><td>${sel(key, '*', val(rv, '*'), clan)}</td>${ps.map(p => `<td>${sel(key, p.id, val(rv, p.id), clan)}</td>`).join('')}</tr>`; }).join('') + `</table></div>`;
   }
   async setPiece(id, key, who, val) {
@@ -1252,7 +1271,7 @@ export class AtlasView {
     const ok = t => t && m.known(t, m.collOf(t.id), this.st);
     const btn = (target, label, icon, names) => { if (!target) return; out.push(`<button type="button" class="cross" data-go="${esc(target)}">${svg(icon || 'gate')}<span><b>${esc(label)}</b><small>${esc(names)}</small></span></button>`); };
     const viewOf = t => { const h = m.homeOf(t); return h ? m.view(h.realm, h.level) : null; };
-    if (it.anchor) { const a = m.item(it.anchor); if (ok(a)) { const v = viewOf(a); seen.add(a.id); btn(a.id, v ? (v.crossLabel || `Go to ${v.name}`) : 'Go to anchor', v && v.crossIcon, this.nameOf(a)); } }
+    if (it.anchor) { const a = m.item(it.anchor); if (ok(a)) { const v = viewOf(a); seen.add(a.id); btn(a.id, v ? (v.crossLabel || `Go to ${v.name}`) : tr('Go to anchor'), v && v.crossIcon, this.nameOf(a)); } }
     const twins = (m.anchoredBy.get(it.id) || []).map(i => m.item(i)).filter(t => ok(t) && !seen.has(t.id));
     const groups = new Map();
     for (const t of twins) { const h = m.homeOf(t); if (!h) continue; if (h.realm === this.st.realm && m.inLevel(t, this.st)) continue; const k = h.realm + ':' + h.level; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(t); }
@@ -1282,10 +1301,10 @@ export class AtlasView {
     if (pcb) { const P = this.adapter.party, d = pcb.dataset, uid = d.pcFind || d.pcPlace || d.pcHide || d.pcClear, c = this.partyList().find(x => x.uid === uid); if (!c) return;
       if (d.pcFind) { if (c.realm !== this.st.realm) this.setRealm(c.realm, true); if (c.level && c.level !== this.st.level) this.setLevel(c.level, true); this.render(true); this.focusAt(c.at); }
       else if (d.pcPlace) this.startParty(uid);
-      else if (d.pcHide) P.save(uid, {at: c.at, realm: c.realm, level: c.level, hidden: !c.hidden});
+      else if (d.pcHide) P.save(uid, {at: c.at, realm: c.realm, level: c.level, hidden: !c.hidden, place: c.place, entered: c.entered});
       else if (d.pcClear) P.remove(uid);
       return; }
-    if (act0 && act0.dataset.act === 'note-del') { const id = String(this.detailId || '').slice(5); const n = this.visibleNotes().find(x => x.id === id); if (n) Promise.resolve(this.adapter.confirm ? this.adapter.confirm('Delete note', `Delete “${n.title || 'Note'}”?`) : true).then(ok => { if (ok) this.adapter.notes.remove(n).then(() => { this.detailId = null; this.render(); this.buildMarkers(); }); }); return; }
+    if (act0 && act0.dataset.act === 'note-del') { const id = String(this.detailId || '').slice(5); const n = this.visibleNotes().find(x => x.id === id); if (n) Promise.resolve(this.adapter.confirm ? this.adapter.confirm(tr('Delete note'), `Delete “${n.title || tr('Note')}”?`) : true).then(ok => { if (ok) this.adapter.notes.remove(n).then(() => { this.detailId = null; this.render(); this.buildMarkers(); }); }); return; }
     if (act0 && act0.dataset.act === 'mt-home') { this.home(); return; }
     if (act0 && act0.dataset.act === 'mt-find') { this.openFinder(); return; }
     if (act0 && act0.dataset.act === 'mt-hide') { this.setAtlasHidden(!this.atlasHidden); return; }
@@ -1314,13 +1333,13 @@ export class AtlasView {
   closeFinder() { this.el.finder.hidden = true; this.root.focus({preventScroll: true}); }
   runFinder() {
     const q = this.el.fq.value.trim().toLowerCase(), m = this.model;
-    if (!q) { this.el.fres.innerHTML = `<div class="fhint">Type to search every realm and level: places, zones, routes and people.</div>`; return; }
+    if (!q) { this.el.fres.innerHTML = `<div class="fhint">${tr('Type to search every realm and level: places, zones, routes and people.')}</div>`; return; }
     const words = q.split(/\s+/);
     const hits = m.searchIndex().filter(h => m.known(h.it, h.coll, this.st)).map(h => { const t = this.tierOf(h.it, h.coll); const name = this.fullName(h.it, h.coll); const cl = h.coll === 'people' && t >= TIER.BASIC ? ' ' + Object.values(this.clanOf(h.it)).join(' ').toLowerCase() : ''; const text = (t >= TIER.FULL ? h.text : t >= TIER.BASIC ? h.brief : name.toLowerCase()) + cl; return {h, name, text}; })
       .filter(x => words.every(w => x.text.includes(w)))
       .map(x => Object.assign(x, {score: (x.name.toLowerCase().startsWith(q) ? 3 : 0) + (x.name.toLowerCase().includes(q) ? 2 : 0) + (x.h.it.realm === this.st.realm ? 0.5 : 0)}))
       .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name)).slice(0, 40);
-    this.el.fres.innerHTML = hits.length ? hits.map(({h, name}) => { const it = h.it; const known = this.tierOf(it, h.coll) >= TIER.BASIC; const rr = it.realm && m.atlas.realms[Array.isArray(it.realm) ? it.realm[0] : it.realm]; const realm = h.coll === 'people' ? 'Person' : rr ? (rr.name + (it.level && rr.levels.length > 1 && it.level !== rr.levels[0].id ? ' · ' + ((rr.levels.find(l => l.id === it.level) || {}).name || '') : '')) : TYPE_NAMES[h.coll];
-      return `<button type="button" class="fitem" data-id="${esc(it.id)}"><span class="fl" style="--c:${esc(known ? this.colorOf(it) : '#9a9aa4')}">${esc(realm)}</span><span class="fn">${esc(name)}<small>${esc(known ? (it.sub || this.kindLabel(h.coll, it)) : '?')}</small></span></button>`; }).join('') : `<div class="fhint">Nothing found.</div>`;
+    this.el.fres.innerHTML = hits.length ? hits.map(({h, name}) => { const it = h.it; const known = this.tierOf(it, h.coll) >= TIER.BASIC; const rr = it.realm && m.atlas.realms[Array.isArray(it.realm) ? it.realm[0] : it.realm]; const realm = h.coll === 'people' ? tr('Person') : rr ? (rr.name + (it.level && rr.levels.length > 1 && it.level !== rr.levels[0].id ? ' · ' + ((rr.levels.find(l => l.id === it.level) || {}).name || '') : '')) : tr(TYPE_NAMES[h.coll]);
+      return `<button type="button" class="fitem" data-id="${esc(it.id)}"><span class="fl" style="--c:${esc(known ? this.colorOf(it) : '#9a9aa4')}">${esc(realm)}</span><span class="fn">${esc(name)}<small>${esc(known ? (it.sub || this.kindLabel(h.coll, it)) : '?')}</small></span></button>`; }).join('') : `<div class="fhint">${tr('Nothing found.')}</div>`;
   }
 }

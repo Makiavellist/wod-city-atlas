@@ -1,3 +1,4 @@
+Old Standard TT: Copyright 2011 The Old Standard Project Authors.
 Ponomar: Copyright 2025 The Ponomar Project Authors (https://github.com/slavonic/ponomar).
 Triodion: Copyright 2025 The Triodion Project Authors (https://github.com/slavonic/Triodion).
 Rubik Wet Paint, Rubik Burned, Rubik Glitch: Copyright 2020 The Rubik Filtered Project Authors (https://github.com/NaN-xyz/Rubik-Filtered).

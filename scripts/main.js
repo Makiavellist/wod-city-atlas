@@ -6,9 +6,12 @@ import {rebasePaths} from './core/store.js';
 import {blankAtlas} from './core/templates.js';
 import {Clock, registerClockSettings} from './foundry/clock.js';
 import {CalendarApp, Events, registerCalendarSettings} from './foundry/calendar.js';
+import {setLang} from './core/i18n.js';
 import {EFFECTS, effectsDialog, sendEffect, showEffect} from './foundry/effects.js';
 
 Hooks.once('init', () => {
+  game.settings.register(MOD, 'uiLang', {name: 'Atlas language for players / Язык атласа', hint: 'The language of the atlas window and the map as players see them (the Storyteller’s editor stays in English).', scope: 'world', config: true, type: String, choices: {ru: 'Русский', en: 'English'}, default: 'ru', requiresReload: true});
+  setLang(game.settings.get(MOD, 'uiLang'));
   game.settings.register(MOD, 'animate', {name: 'WCA.SettingAnimate', hint: 'WCA.SettingAnimateHint', scope: 'client', config: true, type: Boolean, default: true});
   game.settings.register(MOD, 'openJournalAsAtlas', {name: 'WCA.SettingOpenJournal', hint: 'WCA.SettingOpenJournalHint', scope: 'world', config: true, type: Boolean, default: true});
   game.settings.register(MOD, 'defaultOwnership', {name: 'WCA.SettingOwnership', hint: 'WCA.SettingOwnershipHint', scope: 'world', config: true, type: String, default: 'OBSERVER',

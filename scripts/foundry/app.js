@@ -76,13 +76,13 @@ function partyApi(app) {
         const pos = (u.getFlag?.(MOD, 'pos') || {})[eid()] || null; const mine = u.id === game.user.id;
         if (u.isGM && !pos) continue;
         if (!seeAll && !mine && (!others || !pos || pos.hidden)) continue;
-        out.push({uid: u.id, uuid: u.character?.uuid || null, name: u.character?.name || u.name, player: u.character ? u.name : '', img: img(u), color: u.color?.css ?? (typeof u.color === 'string' ? u.color : undefined), mine, at: pos?.at || null, realm: pos?.realm, level: pos?.level, hidden: !!pos?.hidden});
+        out.push({uid: u.id, uuid: u.character?.uuid || null, name: u.character?.name || u.name, player: u.character ? u.name : '', img: img(u), color: u.color?.css ?? (typeof u.color === 'string' ? u.color : undefined), mine, at: pos?.at || null, realm: pos?.realm, level: pos?.level, hidden: !!pos?.hidden, place: pos?.place || null, entered: pos?.entered || 0});
       }
       return out;
     },
     async save(uid, pos) {
       const u = game.users.get(uid); if (!u || (u.id !== game.user.id && !game.user.isGM)) return;
-      await u.update({[`flags.${MOD}.pos.${eid()}`]: {at: pos.at, realm: pos.realm, level: pos.level || null, hidden: !!pos.hidden, t: Date.now()}});
+      await u.update({[`flags.${MOD}.pos.${eid()}`]: {at: pos.at, realm: pos.realm, level: pos.level || null, hidden: !!pos.hidden, place: pos.place || null, entered: pos.place ? (pos.entered || Date.now()) : 0, t: Date.now()}});
     },
     async remove(uid) {
       const u = game.users.get(uid); if (!u || (u.id !== game.user.id && !game.user.isGM)) return;
@@ -119,7 +119,8 @@ export function docInfo(uuid) {
   const isActor = d.documentName === 'Actor';
   const canOpen = game.user.isGM || (typeof d.testUserPermission === 'function' ? d.testUserPermission(game.user, 'LIMITED') : true);
   const owners = isActor && game.user.isGM && typeof d.testUserPermission === 'function' ? game.users.filter(u => !u.isGM && d.testUserPermission(u, 'OWNER')).map(u => u.name).join(', ') : '';
-  return {documentName: d.documentName || '', name: d.name || uuid, img: d.img && !DEFAULT_ICON.test(d.img) ? d.img : null, canOpen, owners: owners ? `played by ${owners}` : ''};
+  const pic = d.img || d.thumb || d.background?.src || null;
+  return {documentName: d.documentName || '', name: d.name || uuid, img: pic && !DEFAULT_ICON.test(pic) ? pic : null, canOpen, owners: owners ? `played by ${owners}` : ''};
 }
 export function actorTypes() {
   let types = [];

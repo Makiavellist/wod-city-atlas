@@ -1,9 +1,14 @@
 /* WoD City Atlas — all rules are scoped under .wca so nothing leaks into Foundry. */
-@font-face{font-family:'IM Fell English';font-style:normal;font-weight:400;font-display:swap;src:url(../fonts/im-fell-english-latin-400-normal.woff2) format('woff2')}
-@font-face{font-family:'IM Fell English';font-style:italic;font-weight:400;font-display:swap;src:url(../fonts/im-fell-english-latin-400-italic.woff2) format('woff2')}
-@font-face{font-family:'IM Fell English SC';font-style:normal;font-weight:400;font-display:swap;src:url(../fonts/im-fell-english-sc-latin-400-normal.woff2) format('woff2')}
+@font-face{font-family:'IM Fell English';font-style:normal;font-weight:400;font-display:swap;src:url(../fonts/im-fell-english-latin-400-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'IM Fell English';font-style:italic;font-weight:400;font-display:swap;src:url(../fonts/im-fell-english-latin-400-italic.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'IM Fell English SC';font-style:normal;font-weight:400;font-display:swap;src:url(../fonts/im-fell-english-sc-latin-400-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
 @font-face{font-family:'Pirata One';font-style:normal;font-weight:400;font-display:swap;src:url(../fonts/pirata-one-latin-400-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
 @font-face{font-family:'Pirata One';font-style:normal;font-weight:400;font-display:swap;src:url(../fonts/pirata-one-latin-ext-400-normal.woff2) format('woff2');unicode-range:U+0100-02AF,U+0304,U+0308,U+0329,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+/* Cyrillic: the same faces borrow Old Standard TT, Cormorant SC and Ponomar for Russian text */
+@font-face{font-family:'IM Fell English';font-style:normal;font-weight:400;font-display:swap;src:url(../fonts/old-standard-tt-cyrillic-400-normal.woff2) format('woff2');unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:'IM Fell English';font-style:italic;font-weight:400;font-display:swap;src:url(../fonts/old-standard-tt-cyrillic-400-italic.woff2) format('woff2');unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:'IM Fell English SC';font-style:normal;font-weight:400;font-display:swap;src:url(../fonts/cormorant-sc-cyrillic-500-normal.woff2) format('woff2');unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:'Pirata One';font-style:normal;font-weight:400;font-display:swap;src:url(../fonts/ponomar-cyrillic-400-normal.woff2) format('woff2');unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
 @font-face{font-family:'Alegreya Sans';font-style:normal;font-weight:400;font-display:swap;src:url(../fonts/alegreya-sans-latin-400-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
 @font-face{font-family:'Alegreya Sans';font-style:normal;font-weight:400;font-display:swap;src:url(../fonts/alegreya-sans-latin-ext-400-normal.woff2) format('woff2');unicode-range:U+0100-02AF,U+0304,U+0308,U+0329,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
 @font-face{font-family:'Alegreya Sans';font-style:normal;font-weight:400;font-display:swap;src:url(../fonts/alegreya-sans-cyrillic-400-normal.woff2) format('woff2');unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
@@ -623,3 +628,19 @@ body.wca-clock-on .wca.scene-map .wca-scenebar{top:84px}
 .wca .wca-pane{scrollbar-color:color-mix(in srgb,var(--wca-accent) 60%,#000) transparent}
 .wca .wca-tip{border-color:color-mix(in srgb,var(--wca-accent) 55%,transparent)}
 .wca .mbtn:hover,.wca .seg button:hover{box-shadow:0 0 10px color-mix(in srgb,var(--wca-accent) 45%,transparent)}
+
+/* characters inside a place: docked on the rim of its pin, the pin ringed in their colour */
+.wca .wca-pin.s-party.docked .pin,.wca .zl-lo .wca-pin.s-party.docked .pin{left:-14px!important;top:-14px!important;width:28px!important;height:28px!important;border-width:2px!important;box-shadow:0 0 0 2px rgba(0,0,0,.6),0 0 10px var(--c)}
+.wca .wca-pin.s-party.docked .lbl{display:none!important}
+.wca .wca-pin.s-party.docked:hover .lbl{display:block!important;top:18px}
+.wca .wca-pin.occupied .pin{box-shadow:0 0 0 3px rgba(10,8,12,.7),0 0 0 5px var(--oc),0 0 18px var(--oc)!important}
+.wca .wca-pin.s-party.entering .pin{animation:wca-enter 1.4s cubic-bezier(.2,.8,.2,1)!important}
+.wca .wca-pin.welcome .pin{animation:wca-welcome 1.6s ease-out}
+@keyframes wca-enter{0%{transform:scale(1.9);opacity:.3;filter:brightness(2)}45%{transform:scale(.7);opacity:1}70%{transform:scale(1.12)}100%{transform:scale(1);filter:none}}
+@keyframes wca-welcome{0%{box-shadow:0 0 0 3px rgba(10,8,12,.7),0 0 0 5px var(--oc),0 0 0 0 var(--oc)}40%{box-shadow:0 0 0 3px rgba(10,8,12,.7),0 0 0 5px var(--oc),0 0 0 22px transparent;transform:scale(1.25)}100%{transform:scale(1)}}
+@media (prefers-reduced-motion: reduce){.wca .wca-pin.s-party.entering .pin,.wca .wca-pin.welcome .pin{animation:none!important}}
+.wca-tip .tipocc,.tipocc{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+.tipocc span,.wca .herenow .pcchip{display:inline-flex;align-items:center;gap:4px;padding:1px 7px 1px 2px;border:1px solid var(--c);border-radius:999px;font-size:12px}
+.tipocc img,.wca .herenow .pcchip img{width:18px;height:18px;border-radius:50%;object-fit:cover;object-position:50% 20%}
+.wca .herenow{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:4px 0 12px}
+.wca .herenow b{font:12px var(--f-sc,inherit);letter-spacing:.12em;text-transform:uppercase;opacity:.75;margin-right:4px}

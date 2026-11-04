@@ -2,9 +2,13 @@
  * top of the screen with the hours left until dawn (or until dusk, for the unlucky). */
 import {MOD} from './journal-store.js';
 import {esc} from '../core/util.js';
+import {lang} from '../core/i18n.js';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const DAYS_RU = ['воскресенье', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота'];
+const MONTHS_RU_OF = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+const ru = () => lang() === 'ru';
 const DEFAULT = {t: Date.UTC(1991, 9, 26, 23, 0)};
 
 /* Time is kept as a "wall clock" value: the UTC fields of t are the local date and time in the chronicle city. */
@@ -48,8 +52,8 @@ function sunAround(t) {
   const nextDusk = t < set0 ? set0 : at(1, 'set');
   return {day, nextDawn, nextDusk};
 }
-const fmtSpan = ms => { if (!Number.isFinite(ms)) return '—'; const m = Math.max(0, Math.round(ms / 6e4)); const h = Math.floor(m / 60); return h ? `${h}h ${String(m % 60).padStart(2, '0')}m` : `${m}m`; };
-const fmtTime = (t, h24) => { const p = parts(t); if (h24) return `${String(p.h).padStart(2, '0')}:${String(p.mi).padStart(2, '0')}`; const h = p.h % 12 || 12; return `${h}:${String(p.mi).padStart(2, '0')} ${p.h < 12 ? 'AM' : 'PM'}`; };
+const fmtSpan = ms => { if (!Number.isFinite(ms)) return '—'; const m = Math.max(0, Math.round(ms / 6e4)); const h = Math.floor(m / 60); return ru() ? (h ? `${h} ч ${String(m % 60).padStart(2, '0')} мин` : `${m} мин`) : h ? `${h}h ${String(m % 60).padStart(2, '0')}m` : `${m}m`; };
+const fmtTime = (t, h24) => { const p = parts(t); if (h24 || ru()) return `${String(p.h).padStart(2, '0')}:${String(p.mi).padStart(2, '0')}`; const h = p.h % 12 || 12; return `${h}:${String(p.mi).padStart(2, '0')} ${p.h < 12 ? 'AM' : 'PM'}`; };
 
 export const Clock = {
   get() { const v = game.settings.get(MOD, 'clock'); return v && Number.isFinite(v.t) ? v : DEFAULT; },
@@ -59,6 +63,8 @@ export const Clock = {
   async nextDawn() { const s = sunAround(this.get().t); if (s.nextDawn) return this.set(s.nextDawn); },
   describe(t = this.get().t) {
     const p = parts(t), s = sunAround(t);
+    if (ru()) return {date: `${DAYS_RU[p.wd]}, ${p.d} ${MONTHS_RU_OF[p.mo]} ${p.y}`, time: fmtTime(t, true), day: s.day,
+      sun: s.day ? `День · до заката ${fmtSpan(s.nextDusk - t)}` : `Ночь · до рассвета ${fmtSpan(s.nextDawn - t)}`, dawnMs: s.nextDawn - t};
     return {date: `${DAYS[p.wd]}, ${p.d} ${MONTHS[p.mo]} ${p.y}`, time: fmtTime(t, game.settings.get(MOD, 'clock24')), day: s.day,
       sun: s.day ? `Daylight · dusk in ${fmtSpan(s.nextDusk - t)}` : `Night · dawn in ${fmtSpan(s.nextDawn - t)}`, dawnMs: s.nextDawn - t};
   },

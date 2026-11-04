@@ -3,9 +3,14 @@
 import {MOD} from './journal-store.js';
 import {Clock} from './clock.js';
 import {esc} from '../core/util.js';
+import {lang} from '../core/i18n.js';
 
 const {ApplicationV2, DialogV2} = foundry.applications.api;
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const MONTHS_EN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const MONTHS_RU = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+const MONTHS_RU_OF = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+const RU = () => lang() === 'ru';
+const L = (en, ru) => RU() ? ru : en;
 const pad = n => String(n).padStart(2, '0');
 const dayKey = t => { const d = new Date(t); return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`; };
 
@@ -20,6 +25,7 @@ export const Events = {
 
 export class CalendarApp extends ApplicationV2 {
   static DEFAULT_OPTIONS = {id: 'wca-calendar', classes: ['wca-calendar-app'], tag: 'section', window: {title: 'Chronicle calendar', icon: 'fa-solid fa-calendar-days', resizable: true}, position: {width: 560, height: 'auto'}};
+  get title() { return L('Chronicle calendar', 'Календарь хроники'); }
   static show() { const a = foundry.applications.instances.get('wca-calendar') || new CalendarApp(); a.render({force: true}); return a; }
   constructor(o) { super(o); const d = new Date(Clock.get().t); this.y = d.getUTCFullYear(); this.m = d.getUTCMonth(); this.sel = dayKey(Clock.get().t); }
   async _renderHTML() {
@@ -37,14 +43,14 @@ export class CalendarApp extends ApplicationV2 {
     const [sy, sm, sd] = this.sel.split('-').map(Number);
     const players = game.users.filter(u => !u.isGM);
     const who = e => e.vis === 'all' ? 'Everyone' : e.vis === 'gm' ? 'Storyteller only' : (e.users || []).map(id => game.users.get(id)?.name || '?').join(', ') || 'nobody';
-    const evHtml = list.length ? list.map(e => `<div class="cal-ev v-${e.vis}"><div class="cal-evh"><b>${e.time ? `<span class="t">${esc(e.time)}</span> ` : ''}${esc(e.title)}</b>${gm ? `<small>${esc(who(e))}</small><span class="cal-evb"><button type="button" data-edit="${e.id}" title="Edit"><i class="fa-solid fa-pen"></i></button><button type="button" data-del="${e.id}" title="Delete"><i class="fa-solid fa-trash"></i></button></span>` : ''}</div>${e.text ? `<div class="cal-evt">${esc(e.text).replace(/\n/g, '<br>')}</div>` : ''}</div>`).join('') : '<p class="cal-none">Nothing written for this night.</p>';
+    const evHtml = list.length ? list.map(e => `<div class="cal-ev v-${e.vis}"><div class="cal-evh"><b>${e.time ? `<span class="t">${esc(e.time)}</span> ` : ''}${esc(e.title)}</b>${gm ? `<small>${esc(who(e))}</small><span class="cal-evb"><button type="button" data-edit="${e.id}" title="Edit"><i class="fa-solid fa-pen"></i></button><button type="button" data-del="${e.id}" title="Delete"><i class="fa-solid fa-trash"></i></button></span>` : ''}</div>${e.text ? `<div class="cal-evt">${esc(e.text).replace(/\n/g, '<br>')}</div>` : ''}</div>`).join('') : `<p class="cal-none">${L('Nothing written for this night.', 'На эту ночь ничего не записано.')}</p>`;
     const el = document.createElement('div'); el.className = 'wca-cal';
-    el.innerHTML = `<header class="cal-head"><button type="button" data-nav="-1" title="Previous month"><i class="fa-solid fa-chevron-left"></i></button><h2>${MONTHS[this.m]} ${this.y}</h2><button type="button" data-nav="1" title="Next month"><i class="fa-solid fa-chevron-right"></i></button><button type="button" class="cal-now" data-nav="0" title="Back to the current night">Tonight</button></header>
-      <div class="cal-grid">${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => `<span class="cal-wd">${d}</span>`).join('')}${cells}</div>
-      <section class="cal-daypane"><h3>${sd} ${MONTHS[sm - 1]} ${sy}${this.sel === today ? ' · tonight' : ''}</h3>${evHtml}
+    el.innerHTML = `<header class="cal-head"><button type="button" data-nav="-1" title="${L('Previous month', 'Предыдущий месяц')}"><i class="fa-solid fa-chevron-left"></i></button><h2>${(RU() ? MONTHS_RU : MONTHS_EN)[this.m]} ${this.y}</h2><button type="button" data-nav="1" title="${L('Next month', 'Следующий месяц')}"><i class="fa-solid fa-chevron-right"></i></button><button type="button" class="cal-now" data-nav="0" title="${L('Back to the current night', 'К текущей ночи')}">${L('Tonight', 'Сегодня')}</button></header>
+      <div class="cal-grid">${(RU() ? ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'] : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']).map(d => `<span class="cal-wd">${d}</span>`).join('')}${cells}</div>
+      <section class="cal-daypane"><h3>${sd} ${(RU() ? MONTHS_RU_OF : MONTHS_EN)[sm - 1]} ${sy}${this.sel === today ? L(' · tonight', ' · этой ночью') : ''}</h3>${evHtml}
       ${gm ? `<form class="cal-form" autocomplete="off"><input type="hidden" name="id" value=""><div class="row"><input type="text" name="title" placeholder="New event: Elysium at the Pabst, a debt comes due…" required><input type="time" name="time"></div><textarea name="text" rows="2" placeholder="Details (optional)"></textarea>
         <div class="row vis"><label><input type="radio" name="vis" value="all" checked> Everyone</label><label><input type="radio" name="vis" value="gm"> Storyteller only</label>${players.length ? `<label><input type="radio" name="vis" value="some"> Only:</label><span class="cal-users">${players.map(u => `<label><input type="checkbox" name="u" value="${u.id}"> ${esc(u.name)}</label>`).join('')}</span>` : ''}</div>
-        <div class="row act"><button type="submit"><i class="fa-solid fa-feather"></i> <span class="lbl">Add to ${sd} ${MONTHS[sm - 1]}</span></button><button type="button" data-clockday title="Move the clock to this day, keeping the time"><i class="fa-solid fa-clock"></i> Set the clock to this day</button></div></form>` : ''}</section>`;
+        <div class="row act"><button type="submit"><i class="fa-solid fa-feather"></i> <span class="lbl">Add to ${sd} ${MONTHS_EN[sm - 1]}</span></button><button type="button" data-clockday title="Move the clock to this day, keeping the time"><i class="fa-solid fa-clock"></i> Set the clock to this day</button></div></form>` : ''}</section>`;
     return el;
   }
   _replaceHTML(result, content) { content.replaceChildren(result); }
