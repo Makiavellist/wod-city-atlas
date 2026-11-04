@@ -6,7 +6,7 @@ import {normalize} from '../core/model.js';
 import {blankAtlas, LOOKS} from '../core/templates.js';
 import {esc} from '../core/util.js';
 import {renderSnapshot, lookSig} from '../core/snapshot.js';
-import {planLooks, applyLooks, fromPreset} from '../core/looks.js';
+import {planUpgrade, applyLooks, fromPreset} from '../core/looks.js';
 import {JournalStore, MOD, isAtlasEntry} from './journal-store.js';
 import {SceneAtlas} from './scene-layer.js';
 
@@ -225,7 +225,8 @@ export function shareView(entry, state) {
   ui.notifications.info(L('Shared', 'Shown to the players who can see this atlas.'));
 }
 export function onSocket(msg) {
-  if (msg && msg.action === 'breach') { import('./breach.js').then(m => m.showBreach({text: msg.text || ''})); return; }
+  if (msg && msg.action === 'breach') { import('./effects.js').then(m => m.showEffect('breach', {text: msg.text || ''})); return; } // from 1.10 and older
+  if (msg && msg.action === 'effect') { import('./effects.js').then(m => m.receiveEffect(msg)); return; }
   if (msg && msg.action === 'reveal') {
     if (game.user.isGM || (msg.ids && !msg.ids.includes(game.user.id))) return;
     const entry = game.journal.get(msg.entryId); if (!entry || !entry.testUserPermission(game.user, 'OBSERVER')) return;
@@ -318,13 +319,13 @@ export async function upgradeLooks(entry, store) {
     LOOKS_ASKED.add(entry.id);
     const pre = normalize(await presetAtlas(store.atlas.preset || 'milwaukee') || {});
     if (!pre.looks || (store.atlas.looks || 0) >= pre.looks) return false;
-    const plan = planLooks(store.atlas, pre, {realms: pre.looksRealms || null});
+    const plan = planUpgrade(store.atlas, pre);
     if (!plan.items.length) { await store.setMeta(plan.meta); return false; }
-    const names = (pre.looksRealms || Object.keys(pre.realms)).map(r => (store.atlas.realms[r] || pre.realms[r] || {}).name || r).join(', ');
-    const ok = await DialogV2.confirm({window: {title: 'City Atlas: a new look'}, rejectClose: false, modal: true,
-      content: `<p>This version of the City Atlas redraws <b>${esc(names)}</b>. Give <b>${esc(entry.name)}</b> the new look?</p><p class="hint">Only colours, effects and map styles change (${plan.items.length} entries). Texts, positions and what players can see stay as they are. You can do it later from <i>Edit → Import / export → Refresh realm looks</i>.</p>`,
-      yes: {label: 'Use the new look'}, no: {label: 'Keep the old one'}});
-    if (ok) { await applyLooks(store, plan); ui.notifications.info(`${entry.name}: ${names} now has its new look.`); return true; }
+    const what = plan.parts.join('; ');
+    const ok = await DialogV2.confirm({window: {title: 'City Atlas: an update for your atlas'}, rejectClose: false, modal: true,
+      content: `<p>This version of the City Atlas brings <b>${esc(what)}</b>. Add it to <b>${esc(entry.name)}</b>?</p><p class="hint">${plan.items.length} entries change. Nothing you wrote is overwritten: descriptions are only added where an entry has none, and what players can see stays as it is. You can bring looks in later from <i>Edit → Import / export → Refresh realm looks</i>.</p>`,
+      yes: {label: 'Update the atlas'}, no: {label: 'Not this time'}});
+    if (ok) { await applyLooks(store, plan); ui.notifications.info(`${entry.name}: updated (${what}).`); return true; }
     await store.setMeta(plan.meta); return false;
   } catch (err) { console.warn(`${MOD} | could not update the atlas look`, err); return false; }
 }

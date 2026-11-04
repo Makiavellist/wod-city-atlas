@@ -47,6 +47,7 @@ export function rebasePaths(atlas, base) {
     if (it.img) it.img = fix(it.img);
     if (it.fillImage && it.fillImage.src) it.fillImage.src = fix(it.fillImage.src);
     if (it.html) it.html = fixHtml(it.html);
+    if (it.brief) it.brief = fixHtml(it.brief);
     for (const n of it.notes || []) n.html = fixHtml(n.html);
   }
   return atlas;

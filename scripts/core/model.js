@@ -161,12 +161,18 @@ export class AtlasModel {
   /* ----- secrets: callouts and relations that are revealed one by one ----- */
   /** A secret is hidden from players until revealed to everyone or to them. Older data: gm notes or tier 4+. */
   isSecret(n) { if (!n) return false; if (n.secret !== undefined) return !!n.secret; return !!n.gm || (n.tier != null && n.tier !== '' && +n.tier > TIER.FULL); }
-  /** Revealed to this viewer? reveal = {all: 0|1, users: {userId: 0|1}}. */
+  /** One piece's own say for this viewer: reveal = {all: 0|1, users: {userId: 0|1}} → true (shown), false (hidden) or undefined (its default). */
+  decision(r, as) {
+    if (!r) return undefined;
+    const u = r.users && as != null && as !== '*' ? r.users[as] : undefined; if (u !== undefined && u !== null && u !== '') return !!+u;
+    if (r.all !== undefined && r.all !== null && r.all !== '') return !!+r.all;
+    return undefined;
+  }
+  /** Revealed to this viewer? (a secret with no say for them stays hidden) */
   secretKnown(n, it, coll, st) {
     if (st.storyteller) return true;
-    const r = n.reveal, as = st.as;
-    if (r) { const u = r.users && as != null && as !== '*' ? r.users[as] : undefined; if (u !== undefined && u !== null && u !== '') return !!+u; if (r.all !== undefined && r.all !== null && r.all !== '') return !!+r.all; }
-    if (n.secret === undefined && n.tier != null && n.tier !== '' && +n.tier > TIER.FULL) return this._rawTier(it, coll, as) >= +n.tier; // version 1.1 data
+    const d = this.decision(n.reveal, st.as); if (d !== undefined) return d;
+    if (n.secret === undefined && n.tier != null && n.tier !== '' && +n.tier > TIER.FULL) return this._rawTier(it, coll, st.as) >= +n.tier; // version 1.1 data
     return false;
   }
   /** Who knows a secret, for the Storyteller: 'everyone', 'nobody' or a list of names. */
@@ -175,13 +181,21 @@ export class AtlasModel {
     const who = players.filter(p => us[p.id] !== undefined && us[p.id] !== '' ? !!+us[p.id] : all).map(p => p.name);
     return all && who.length === players.length ? 'everyone' : who.length ? who.join(', ') : 'nobody yet';
   }
-  /** Ordinary callouts show with full knowledge; secrets show once revealed (to anyone who knows the entry exists). */
+  /** Callouts, facts and relations: ordinary ones show with full knowledge, secrets once revealed; either can be shown
+   *  or hidden for everyone or for one player on its own (to anyone who knows the entry exists). */
   noteVisible(n, it, coll, st) {
     if (st.storyteller) return true;
-    const t = this.tier(it, coll, st);
-    if (this.isSecret(n)) return t >= TIER.EXIST && this.secretKnown(n, it, coll, st);
-    return t >= TIER.FULL;
+    const t = this.tier(it, coll, st); if (t < TIER.EXIST) return false;
+    if (this.isSecret(n)) return this.secretKnown(n, it, coll, st);
+    return this.decision(n.reveal, st.as) ?? t >= TIER.FULL;
   }
+  /** A link that is not an object of its own (a figure at a place, a person's haunt, a domain's owner, an allegiance):
+   *  its say is kept on the entry, it.reveals[key]; otherwise it follows `def`. */
+  linkVisible(it, key, st, def) { if (st.storyteller) return true; return this.decision(it && it.reveals && it.reveals[key], st.as) ?? !!def; }
+  /** Is this entry's allegiance (faction) shown to the viewer? By default once its name is known. */
+  factionShown(it, st, coll) { if (!st || st.storyteller || !it.faction) return true; return this.linkVisible(it, 'faction', st, this.tier(it, coll || this.collOf(it.id), st) >= TIER.BASIC); }
+  /** A person seen at a place (or zone, route): one link, kept on the person as 'at:<placeId>' whichever side lists it. */
+  figureVisible(place, person, st, placeColl) { return this.known(person, 'people', st) && this.linkVisible(person, 'at:' + place.id, st, this.tier(place, placeColl || this.collOf(place.id), st) >= TIER.FULL); }
   /** Relation rows as objects: {a: who, b: attitude, ref: personId|Actor uuid, secret, reveal}. Old rows were arrays. */
   relRows(p) {
     const rows = (p && p.relations && p.relations.rows) || [];
@@ -231,9 +245,10 @@ export class AtlasModel {
   /* ---------- appearance lookups ---------- */
   faction(id) { return this.atlas.factions[id] || null; }
   category(id) { return this.atlas.categories[id] || null; }
-  colorOf(it) {
+  /** An entry's colour; with a viewer's state, an allegiance hidden from them does not colour it. */
+  colorOf(it, st) {
     if (it.color) return it.color;
-    const f = it.faction && this.atlas.factions[it.faction]; if (f && f.color) return f.color;
+    const f = it.faction && this.atlas.factions[it.faction]; if (f && f.color && this.factionShown(it, st)) return f.color;
     const c = it.cat && this.atlas.categories[it.cat]; if (c && c.color) return c.color;
     return '#d8cbb0';
   }
@@ -328,8 +343,8 @@ export class AtlasModel {
     const out = [];
     for (const c of ['places', 'zones', 'routes', 'people']) for (const it of Object.values(this.atlas[c])) {
       if (it.decor || it.hidden) continue;
-      const cat = c === 'places' ? this.atlas.categories[it.cat] : null, f = this.atlas.factions[it.faction];
-      out.push({id: it.id, coll: c, it, name: it.name || '', text: [it.name, it.sub, it.kicker, it.tag, cat && cat.name, f && f.name, stripHtml(it.html)].filter(Boolean).join(' ').toLowerCase()});
+      const cat = c === 'places' ? this.atlas.categories[it.cat] : null;
+      out.push({id: it.id, coll: c, it, name: it.name || '', text: [it.name, it.sub, it.kicker, it.tag, cat && cat.name, stripHtml(it.html)].filter(Boolean).join(' ').toLowerCase(), brief: [it.name, it.sub, it.kicker, it.tag, stripHtml(it.brief)].filter(Boolean).join(' ').toLowerCase()});
     }
     return (this._searchIdx = out);
   }

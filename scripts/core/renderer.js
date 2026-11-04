@@ -192,7 +192,7 @@ export class Renderer {
     const g = this.m.geo(zn, 'zones'); if (!g.rings || !g.rings.length || !this.vis(g.bb, 200)) return;
     const x = this.ctx, z = this.cam.z, on = !opts.echo && (this.v.sel === zn.id || this.v.hover === zn.id || this.v.sel === zn.ref || this.v.hover === zn.ref);
     const unknown = !opts.echo && this.m.tier(zn, 'zones', this.v.st) < 2;
-    const col = unknown ? '#9a9aa4' : (opts.color || this.m.colorOf(zn));
+    const col = unknown ? '#9a9aa4' : (opts.color || this.m.colorOf(zn, this.v.st));
     const st0 = zn.style || (zn.domainStatus && this.m.atlas.styles['domain-' + zn.domainStatus] ? 'domain-' + zn.domainStatus : null);
     const passes = opts.echo ? [opts.echo] : unknown ? [{stroke: 'rgba(200,200,210,.55)', width: 1.3, dash: [3, 5], fill: '#9a9aa4', fillAlpha: 0.05}] : this.m.passes(st0 || {stroke: col, width: 1.6, fill: col, fillAlpha: 0.12});
     const mk = () => { x.beginPath(); g.rings.forEach(r => this.path(r, true)); };
@@ -230,7 +230,7 @@ export class Renderer {
     const st = Object.assign({}, this.v.st, {realm: e.realm, level: e.level || this.m.realm(e.realm).levels[0].id, layerOn: () => true, catOn: () => true});
     for (const zn of Object.values(this.m.atlas.zones)) {
       if (!this.m.visible(zn, 'zones', st) || (e.layers && !e.layers.includes(zn.layer))) continue;
-      this.drawZone(zn, {echo: {width: 1.2, dash: [2, 5], stroke: this.m.colorOf(zn), fillAlpha: 0, strokeAlpha: e.alpha ?? 0.28}, color: this.m.colorOf(zn)});
+      this.drawZone(zn, {echo: {width: 1.2, dash: [2, 5], stroke: this.m.colorOf(zn, this.v.st), fillAlpha: 0, strokeAlpha: e.alpha ?? 0.28}, color: this.m.colorOf(zn, this.v.st)});
     }
   }
 
@@ -241,7 +241,7 @@ export class Renderer {
     for (const r of this.routeList()) {
       if (this.skip(this.m.moves(r.style))) continue;
       const g = this.m.geo(r, 'routes'); if (!g.parts || !g.parts.length || !this.vis(g.bb, 60)) continue;
-      const on = this.v.sel === r.id || this.v.hover === r.id, unknown = this.m.tier(r, 'routes', this.v.st) < 2, col = unknown ? '#9a9aa4' : this.m.colorOf(r);
+      const on = this.v.sel === r.id || this.v.hover === r.id, unknown = this.m.tier(r, 'routes', this.v.st) < 2, col = unknown ? '#9a9aa4' : this.m.colorOf(r, this.v.st);
       const passes = unknown ? [{stroke: 'rgba(200,200,210,.5)', width: 1.6, dash: [2, 6]}] : this.m.passes(r.style || {stroke: col, width: 2.4, dash: [6, 4]});
       for (const p of passes) {
         if (p.minZoom && z < p.minZoom || p.maxZoom && z > p.maxZoom) continue;
@@ -406,7 +406,7 @@ export class Renderer {
       const sz = Math.max(g.bb[2] - g.bb[0], g.bb[3] - g.bb[1]) * s; if (sz < (L.minPx ?? 50) || sz > W * 4.5) continue;
       let [x, y] = this.ts(g.c); if (L.top) y = this.ts([0, g.bb[1]])[1] + 22;
       if (x < -100 || y < -30 || x > W + 100 || y > H + 30) continue;
-      const col = this.m.colorOf(zn), on = this.v.sel === zn.id || this.v.hover === zn.id, fs = L.size || (sz > 340 ? 14 : 12);
+      const col = this.m.colorOf(zn, this.v.st), on = this.v.sel === zn.id || this.v.hover === zn.id, fs = L.size || (sz > 340 ? 14 : 12);
       const text = (L.text || zn.name || '').toUpperCase(); if (!text) continue;
       const opt = {font: `${L.italic ? 'italic ' : ''}${fs}px ${this.font(L.font || 'sc')}`, ls: L.ls ?? 3, color: L.color || col, halo: L.halo || 'rgba(8,8,10,.9)', hw: 4, avoid: true, h: fs + (L.sub ? 22 : 6), glow: on ? col : (L.glow || null)};
       let ok = false;

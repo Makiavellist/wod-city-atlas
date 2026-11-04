@@ -71,10 +71,18 @@ Every realm, level, layer, place category, place, zone, route, glow, person and 
 |---|---|
 | 0 · Hidden | nothing |
 | 1 · Existence | a grey "?" pin or outline called *Unknown place* (or a name you choose) |
-| 2 · Basic | name, subtitle, category, faction, picture |
-| 3 · Full | the description, facts, links, people, relations, routes and ordinary callouts |
+| 2 · Basic | name, subtitle, category, faction, picture, and a short, vague **Basic description**: what a neonate might overhear |
+| 3 · Full | the full description, facts, links, people, relations, routes and ordinary callouts |
 
-**Secrets** are revealed one by one. Mark a callout or a relation as *secret* (in the edit form, or add a secret relation straight from the dossier); it stays hidden until you reveal it. The *What players see* panel at the bottom of an entry's dossier lists its secrets: reveal each to everyone, or say for each player whether they know it. A player who knows a secret sees it even if they only know the entry exists.
+**Every piece separately.** Below the tiers, the *What players see* panel lists the pieces of the entry one by one, each with a setting for **All** and for each player (· follows the tier, ✓ shown, ✗ hidden):
+- every fact and callout (mark one *secret* and it stays hidden until you reveal it);
+- the allegiance (faction): hide it and the player sees no faction name or colour, and the person is listed under *Allegiance unknown*;
+- every figure at a place and every owner of a domain;
+- on a character: every relation, every place where they can be found (*Where to find them*) and every domain they hold.
+
+A piece you show is visible even if the player knows the entry only at Basic or Existence, so you can give away one fact or one connection without the full card. The edit form sets the same for facts (*Who knows it*).
+
+The **Basic description** (*Basic description* in the edit form) is what a player at Basic reads instead of the full text. Every entry of the Milwaukee preset has one; atlases made from it receive them with the 1.11 update (only where an entry has none).
 
 - **One entry:** open it in Storyteller view. At the bottom of its dossier, the *What players see* panel sets the tier for **Everyone** and, if you like, a different tier for each player. The same panel is in its edit form.
 - **Many at once:** *Edit → Player visibility* has a table for realms, levels, layers and categories (shown/hidden per player), the default tier for everything you haven't configured, tier names, and a bulk tool ("all Havens in the Waking realm → Basic for Anna").
@@ -86,7 +94,12 @@ Every realm, level, layer, place category, place, zone, route, glow, person and 
 - **Crossing animations.** Every realm switch plays a short animation in the new realm's manner (Dreaming sparks, Shadowlands ash, Gauntlet mist for the Umbra, waking blood); levels sink or rise. Pick one per realm in *Edit → Realms & levels*.
 - **Chronicle clock.** The in-game date and time, with the hours until dawn, at the top of everyone's screen. The Storyteller hovers it to move it (−1h, −10m, +10m, +1h, Dusk, Dawn) or presses the pen to set any date and time. It only moves when you move it. From a macro: `game.modules.get('wod-city-atlas').api.clock.advance(60)`, `.set(Date.UTC(1991, 9, 31, 22, 0))`, `.nextDusk()`.
 - **Characters on the map.** Every player's character appears on atlas scenes as a portrait pin taken from their Actor. Players drag their own; the Storyteller drags anyone and manages them in *Map tab → Characters* (place, find, hide from the others, remove). The people button on the scene toolbar jumps there.
-- **Masquerade violation.** The red theatre-masks button (Storyteller only, in the Token and Notes tool columns) flashes a full-screen MASQUERADE VIOLATION alert on every screen. Shift-click adds a line of text.
+- **Storyteller effects.** Two Storyteller-only buttons in the Token and Notes tool columns. The red theatre masks flash MASQUERADE VIOLATION on every screen at once. The ghost opens the effects picker: choose an effect, send it to **everyone or only to the players you tick**, add a line of text if you like, and *Try it on me* first. The effects:
+  - *The Beast*: **Frenzy** (the screen floods red, shakes and beats like a heart), **Rötschreck** (flames climb the screen), **The Hunger** (a slow red pulse at the edges);
+  - *The mind*: **A lapse of judgement** (subtle: the world swims out of focus for a moment), **Confusion** (the room sways and the colours slide), **Ominous foreboding** (the colour drains and the dark closes in), **Being watched** (an eye opens in the dark, looks about and shuts);
+  - *Malkavian*: **Whispers** (cryptic phrases flicker across the screen; write your own, separated by |), **Fractured sight** (the picture breaks into shifted, miscoloured slices), **The looking-glass** (the whole screen is the wrong way round for a few seconds).
+  
+  They fade by themselves and never block play; with *reduce motion* on, they stay still. Macros: `api.effect('foreboding', {users: [game.users.getName('Anna').id], text: 'Something is wrong.'})`, `api.effects()` for the picker, `api.breach()`.
 - **Chronicle calendar.** The calendar button on the clock opens a month view where the Storyteller writes events for any night, for everyone, for the Storyteller only, or for particular players.
 - **Masquerade look.** Foundry's own interface is restyled in black, bone and blood, and takes on the colours of the realm shown on the atlas scene. Each player can turn it off in the module settings.
 - **New looks arrive by themselves.** When a new version of the module redraws a realm of the Milwaukee preset, the Storyteller is asked once whether to give their atlas the new look (only colours, effects and map styles change). Atlas scenes then redraw their picture to match. *Edit → Import / export → Refresh realm looks* does the same by hand, for every realm.

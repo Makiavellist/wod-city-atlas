@@ -6,7 +6,7 @@ import {rebasePaths} from './core/store.js';
 import {blankAtlas} from './core/templates.js';
 import {Clock, registerClockSettings} from './foundry/clock.js';
 import {CalendarApp, Events, registerCalendarSettings} from './foundry/calendar.js';
-import {broadcastBreach, showBreach} from './foundry/breach.js';
+import {EFFECTS, effectsDialog, sendEffect, showEffect} from './foundry/effects.js';
 
 Hooks.once('init', () => {
   game.settings.register(MOD, 'animate', {name: 'WCA.SettingAnimate', hint: 'WCA.SettingAnimateHint', scope: 'client', config: true, type: Boolean, default: true});
@@ -61,8 +61,11 @@ Hooks.once('ready', () => {
     clock: Clock,
     /** The chronicle calendar: api.calendar.show(), api.events.visible(). */
     calendar: CalendarApp, events: Events,
-    /** The red alert: api.breach() for everyone (GM), api.breach(true) to add a line of text. */
-    breach: withText => broadcastBreach(withText), showBreach,
+    /** Storyteller effects: api.effect('frenzy'), api.effect('foreboding', {users: [userId], text: 'Something is wrong.'}),
+     *  api.effects() opens the picker. Kinds: Object.keys(api.EFFECTS). */
+    effect: (kind, opts) => sendEffect(kind, opts), effects: kind => effectsDialog(kind), showEffect, EFFECTS,
+    /** The red alert to everyone, as before: api.breach(), or api.breach('a line of text'). */
+    breach: text => sendEffect('breach', {text: typeof text === 'string' ? text : undefined}),
     JournalStore, isAtlasEntry
   };
 });
@@ -79,13 +82,16 @@ Hooks.on('getSceneControlButtons', controls => {
     onChange: () => { if (SceneAtlas.current) SceneAtlas.current.toggleHud(); else AtlasLauncher.show(); }};
 });
 
-/* The Storyteller's "MASQUERADE VIOLATION" alarm, on the Token and Notes tool columns (works with or without an atlas). */
+/* The Storyteller's effects (Masquerade violation, Frenzy, Rötschreck, foreboding…), on the Token and Notes tool columns:
+ * click for the picker; Shift-click the mask for the Masquerade alarm straight away. Works with or without an atlas. */
 Hooks.on('getSceneControlButtons', controls => {
   if (!game.user.isGM) return;
   for (const g of [controls.tokens, controls.notes]) {
     if (!g || !g.tools) continue;
-    g.tools.wcaBreach = {name: 'wcaBreach', title: 'Masquerade violation! (shows on every screen; Shift-click to add a line)', icon: 'fa-solid fa-masks-theater wca-breach-tool', order: 900, button: true, visible: true,
-      onChange: (event) => broadcastBreach(!!event?.shiftKey)};
+    g.tools.wcaBreach = {name: 'wcaBreach', title: 'Masquerade violation! (on every screen at once)', icon: 'fa-solid fa-masks-theater wca-breach-tool', order: 900, button: true, visible: true,
+      onChange: () => sendEffect('breach')};
+    g.tools.wcaEffects = {name: 'wcaEffects', title: 'Storyteller effects: Frenzy, Rötschreck, foreboding, Malkavian… (to everyone or chosen players)', icon: 'fa-solid fa-ghost wca-breach-tool', order: 901, button: true, visible: true,
+      onChange: () => effectsDialog()};
   }
 });
 

@@ -514,9 +514,19 @@
 .wca .notebody{white-space:normal}
 
 /* ---------- secrets and relations ---------- */
-.wca .secrow{border-top:1px solid var(--wca-line);padding:8px 0;display:grid;gap:4px}
-.wca .secrow b{font:14px var(--f-head);color:var(--wca-bone)}
-.wca .secrow label,.wca .secretf label{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px}
+/* piece-by-piece visibility table (Storyteller) */
+.wca .pieces-wrap{overflow-x:auto;margin:4px -2px 6px}
+.wca table.pieces{width:100%;border-collapse:collapse;font-size:12.5px}
+.wca table.pieces th{font:11px/1.2 var(--f-sc);letter-spacing:.06em;color:var(--wca-muted);text-align:center;padding:2px 3px;max-width:64px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wca table.pieces td{border-top:1px solid var(--wca-line);padding:4px 2px;vertical-align:middle;text-align:center}
+.wca table.pieces td:first-child{text-align:left;width:100%}
+.wca table.pieces td:first-child span{display:block;color:var(--wca-bone);line-height:1.25}
+.wca table.pieces td:first-child small{display:block;color:var(--wca-faint);font-size:11px}
+.wca table.pieces select{width:40px;padding:1px 2px;font-size:13px;text-align:center;background:var(--wca-panel2);color:var(--wca-bone);border:1px solid var(--wca-line);border-radius:3px}
+.wca table.pieces select:has(option[value="1"]:checked){border-color:#6fbf73;color:#9fe0a0}
+.wca table.pieces select:has(option[value="0"]:checked){border-color:#c0504d;color:#ff9a96}
+.wca .body.brief{font-style:italic;color:color-mix(in srgb,var(--wca-bone) 82%,transparent)}
+.wca .secretf label{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px}
 .wca .secretf{display:grid;gap:4px}
 .wca .reladd{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0 12px}
 .wca .reladd select,.wca .reladd input[type=text]{flex:1;min-width:120px;background:var(--wca-panel2);border:1px solid var(--wca-line);border-radius:3px;padding:3px 6px;height:28px}
@@ -602,7 +612,7 @@ body.wca-clock-on .wca.scene-map .wca-scenebar{top:84px}
 .wca .wca-tabs button{transition:color .2s,text-shadow .2s}
 .wca .wca-tabs button[aria-selected="true"]{text-shadow:0 0 10px color-mix(in srgb,var(--wca-accent) 70%,transparent);border-bottom-color:var(--wca-accent);box-shadow:0 6px 10px -8px var(--wca-accent)}
 .wca .det h2{text-shadow:0 2px 3px #000,0 0 14px color-mix(in srgb,var(--wca-accent) 30%,transparent)}
-.wca .det .body>p:first-child::first-letter{float:left;font:2.6em/.85 var(--f-title);color:var(--wca-accent);margin:.06em .08em 0 0;text-shadow:0 0 8px color-mix(in srgb,var(--wca-accent) 50%,transparent)}
+.wca .det .body:not(.brief)>p:first-child::first-letter{float:left;font:2.6em/.85 var(--f-title);color:var(--wca-accent);margin:.06em .08em 0 0;text-shadow:0 0 8px color-mix(in srgb,var(--wca-accent) 50%,transparent)}
 .wca .grp::before{content:'';width:6px;height:6px;flex:none;background:var(--wca-accent);transform:rotate(45deg);box-shadow:0 0 5px var(--wca-accent)}
 .wca .item:hover,.wca .item.hot{background:linear-gradient(90deg,color-mix(in srgb,var(--wca-accent) 22%,transparent),var(--wca-panel2) 70%)}
 .wca .btn:hover{box-shadow:0 0 10px color-mix(in srgb,var(--wca-accent) 40%,transparent)}
