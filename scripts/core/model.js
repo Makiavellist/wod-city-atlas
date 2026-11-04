@@ -193,7 +193,24 @@ export class AtlasModel {
    *  its say is kept on the entry, it.reveals[key]; otherwise it follows `def`. */
   linkVisible(it, key, st, def) { if (st.storyteller) return true; return this.decision(it && it.reveals && it.reveals[key], st.as) ?? !!def; }
   /** Is this entry's allegiance (faction) shown to the viewer? By default once its name is known. */
-  factionShown(it, st, coll) { if (!st || st.storyteller || !it.faction) return true; return this.linkVisible(it, 'faction', st, this.tier(it, coll || this.collOf(it.id), st) >= TIER.BASIC); }
+  factionShown(it, st, coll) { if (!st || st.storyteller || !it.faction) return true; return this.linkVisible(it, 'faction', st, !it.falseKicker && this.tier(it, coll || this.collOf(it.id), st) >= TIER.BASIC); } // someone with a false clan keeps their true allegiance hidden too
+  /**
+   * A person's clan (or kind) line as this viewer may see it. Generation never shows to players. The Storyteller decides
+   * per player: reveals.clan = 1 true clan, 2 the false clan (falseKicker, what others believe), 0 nothing; by default
+   * the false clan if there is one, otherwise the true clan, from Basic.
+   * @returns {{kicker: string, tag: string, which: 'true'|'false'|'none'}}
+   */
+  clanOf(p, st) {
+    const tagOf = k => stripGeneration(k).split('·')[0].trim();
+    if (!p) return {kicker: '', tag: '', which: 'none'};
+    if (!st || st.storyteller) return {kicker: p.kicker || '', tag: p.tag || tagOf(p.kicker), which: 'true'};
+    const r = p.reveals && p.reveals.clan, raw = v => v === undefined || v === null || v === '' ? undefined : +v;
+    let c = raw(r && r.users && st.as != null && st.as !== '*' ? r.users[st.as] : undefined) ?? raw(r && r.all);
+    if (c === undefined) c = this.tier(p, 'people', st) < TIER.BASIC ? 0 : p.falseKicker ? 2 : 1;
+    if (c === 2 && p.falseKicker) return {kicker: stripGeneration(p.falseKicker), tag: tagOf(p.falseKicker), which: 'false'};
+    if (c >= 1) return {kicker: stripGeneration(p.kicker), tag: p.tag || tagOf(p.kicker), which: 'true'};
+    return {kicker: '', tag: '', which: 'none'};
+  }
   /** A person seen at a place (or zone, route): one link, kept on the person as 'at:<placeId>' whichever side lists it. */
   figureVisible(place, person, st, placeColl) { return this.known(person, 'people', st) && this.linkVisible(person, 'at:' + place.id, st, this.tier(place, placeColl || this.collOf(place.id), st) >= TIER.FULL); }
   /** Relation rows as objects: {a: who, b: attitude, ref: personId|Actor uuid, secret, reveal}. Old rows were arrays. */
@@ -344,8 +361,11 @@ export class AtlasModel {
     for (const c of ['places', 'zones', 'routes', 'people']) for (const it of Object.values(this.atlas[c])) {
       if (it.decor || it.hidden) continue;
       const cat = c === 'places' ? this.atlas.categories[it.cat] : null;
-      out.push({id: it.id, coll: c, it, name: it.name || '', text: [it.name, it.sub, it.kicker, it.tag, cat && cat.name, stripHtml(it.html)].filter(Boolean).join(' ').toLowerCase(), brief: [it.name, it.sub, it.kicker, it.tag, stripHtml(it.brief)].filter(Boolean).join(' ').toLowerCase()});
+      out.push({id: it.id, coll: c, it, name: it.name || '', text: [it.name, it.nameTr, it.sub, c === 'people' ? '' : it.kicker, cat && cat.name, stripHtml(it.html)].filter(Boolean).join(' ').toLowerCase(), brief: [it.name, it.nameTr, it.sub, c === 'people' ? '' : it.kicker, stripHtml(it.brief)].filter(Boolean).join(' ').toLowerCase()});
     }
     return (this._searchIdx = out);
   }
 }
+
+/** "Ventrue · 8th generation" → "Ventrue": a clan line without its generation (never shown to players). */
+export function stripGeneration(k) { return String(k || '').split('·').map(x => x.trim()).filter(x => x && !/generation|поколени/i.test(x)).join(' · '); }

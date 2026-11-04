@@ -57,14 +57,16 @@ export async function applyLooks(store, plan) {
 
 /**
  * Everything a newer preset brings to an atlas made from it, since the atlas's `looks` version. The preset lists its
- * updates as [{looks: n, realms?: [ids], shapes?: [zone ids], briefs?: true}]: new looks for those realms, corrected
- * shapes for those zones, and Basic descriptions for entries that have none (never overwriting the Storyteller's).
+ * updates as [{looks: n, realms?: [ids], shapes?: [zone ids], fields?: {coll: [keys]}}]: new looks for those realms,
+ * corrected shapes for those zones, and those fields copied from the preset onto every entry the atlas shares with it
+ * (replacing what was there: Basic descriptions, Existence texts, translated names…).
  * opts.all: every look and every listed fix, whatever the atlas's version ("Refresh realm looks").
  * @returns {{items, meta, parts: string[]}} parts: short words for what changes, for the question to the Storyteller
  */
 export function planUpgrade(atlas, pre, {all = false} = {}) {
   const from = all ? -1 : atlas.looks || 0, todo = (pre.updates || []).filter(u => u.looks > from);
-  const realms = [...new Set(todo.flatMap(u => u.realms || []))], shapes = [...new Set(todo.flatMap(u => u.shapes || []))], briefs = todo.some(u => u.briefs);
+  const realms = [...new Set(todo.flatMap(u => u.realms || []))], shapes = [...new Set(todo.flatMap(u => u.shapes || []))];
+  const fields = {}; for (const u of todo) for (const [c, ks] of Object.entries(u.fields || {})) fields[c] = [...new Set([...(fields[c] || []), ...ks])];
   const plan = all ? planLooks(atlas, pre) : realms.length ? planLooks(atlas, pre, {realms}) : {items: [], meta: {looks: pre.looks || 0, preset: atlas.preset || pre.preset}};
   const parts = [], byKey = new Map(plan.items.map(e => [e[0] + ':' + e[1], e]));
   const edit = (coll, id) => { let e = byKey.get(coll + ':' + id); if (!e) { e = [coll, id, clone(atlas[coll][id])]; byKey.set(coll + ':' + id, e); plan.items.push(e); } return e[2]; };
@@ -72,10 +74,12 @@ export function planUpgrade(atlas, pre, {all = false} = {}) {
   let n = 0;
   for (const id of shapes) { const z = atlas.zones[id], p = (pre.zones || {})[id]; if (!z || !p || !same(z.realm, p.realm) || same(z.rings, p.rings)) continue; edit('zones', id).rings = clone(p.rings); n++; }
   if (n) parts.push(`the outline of ${n} ${n === 1 ? 'zone' : 'zones'}`);
-  if (briefs) {
-    let b = 0;
-    for (const coll of ['places', 'people', 'zones', 'routes', 'auras']) for (const [id, p] of Object.entries(pre[coll] || {})) { const it = atlas[coll][id]; if (!p.brief || !it || it.brief) continue; edit(coll, id).brief = p.brief; b++; }
-    if (b) parts.push(`short Basic descriptions for ${b} entries`);
+  let f = 0;
+  for (const [coll, keys] of Object.entries(fields)) for (const [id, p] of Object.entries(pre[coll] || {})) {
+    const it = atlas[coll] && atlas[coll][id]; if (!it || keys.every(k => same(it[k], p[k]))) continue;
+    const d = edit(coll, id); for (const k of keys) { if (p[k] === undefined) delete d[k]; else d[k] = clone(p[k]); } f++;
   }
+  if (f) parts.push(`new texts for ${f} entries (${[...new Set(Object.values(fields).flat())].map(k => FIELD_NAMES[k] || k).join(', ')})`);
   return {items: plan.items, meta: plan.meta, parts};
 }
+const FIELD_NAMES = {brief: 'Basic descriptions', alias: 'names while unknown', aliasText: 'texts while unknown', nameTr: 'translated names', tag: 'short tags', falseKicker: 'false clans', sub: 'role lines'};

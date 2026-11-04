@@ -236,6 +236,8 @@
 .wca .btn:hover{border-color:var(--wca-gold);color:var(--wca-gold)}
 .wca .btn.primary{background:var(--wca-gold);color:#1a1510;border-color:var(--wca-gold)}
 .wca .btn.danger{border-color:#7a3a3a;color:#ffb4a8}
+.wca .hideall{display:flex;flex-direction:column;gap:6px;margin:10px 0 14px;padding:10px;border:1px solid #7a3a3a;border-radius:4px;background:rgba(120,20,20,.12)}
+.wca .hideall .btn{align-self:flex-start}
 .wca .scene{background:var(--wca-panel2);border:1px solid var(--wca-line);border-left:3px solid var(--wca-gold);border-radius:3px;padding:10px 12px;margin:4px 0 14px;font-size:14.5px;line-height:1.5}
 .wca .scene b{display:block;font:12px/1.2 var(--f-sc);letter-spacing:.14em;text-transform:uppercase;color:var(--wca-gold);margin-bottom:4px}
 .wca .scene.secret{border-left-color:#e07a9a}
@@ -525,6 +527,8 @@
 .wca table.pieces select{width:40px;padding:1px 2px;font-size:13px;text-align:center;background:var(--wca-panel2);color:var(--wca-bone);border:1px solid var(--wca-line);border-radius:3px}
 .wca table.pieces select:has(option[value="1"]:checked){border-color:#6fbf73;color:#9fe0a0}
 .wca table.pieces select:has(option[value="0"]:checked){border-color:#c0504d;color:#ff9a96}
+.wca table.pieces select:has(option[value="2"]:checked){border-color:#a07ad0;color:#d2b8ff}
+.wca .det h2 .tr{font-size:.62em;font-style:italic;opacity:.72}
 .wca .body.brief{font-style:italic;color:color-mix(in srgb,var(--wca-bone) 82%,transparent)}
 .wca .secretf label{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px}
 .wca .secretf{display:grid;gap:4px}

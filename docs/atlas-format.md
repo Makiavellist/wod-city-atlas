@@ -15,8 +15,8 @@ Exported atlases are plain JSON. Every collection is an object keyed by id. Ids 
   "closeBy": 60, "scale": {"metersPerUnit": 2, "unit": "mi"},
   "theme": {…}, "statuses": {"dead": {"name": "Destroyed", "mark": "†", "fade": true, "hideable": true}},
   "precisions": {"canon": {"name": "Exact", "border": "solid"}},
-  "preset": "milwaukee", "looks": 7, // made from a bundled preset, and the version of its looks (a newer one is offered once)
-  "updates": [{"looks": 7, "realms": ["umbra"], "shapes": ["t-lupine"], "briefs": true}], // presets only: what each looks version brings
+  "preset": "milwaukee", "looks": 8, // made from a bundled preset, and the version of its looks (a newer one is offered once)
+  "updates": [{"looks": 8, "realms": ["umbra"], "shapes": ["t-lupine"], "fields": {"places": ["brief", "alias"]}}], // presets only: what each looks version brings (fields are copied over, replacing)
   "realms": {}, "layers": {}, "categories": {}, "factions": {}, "styles": {},
   "places": {}, "zones": {}, "routes": {}, "labels": {}, "auras": {}, "people": {}, "pages": {}
 }
@@ -44,7 +44,7 @@ Effect types: `gradient` (linear/radial), `fog`, `vignette`, `stars` and `waves`
 
 ## Map items
 
-All map items take `realm`, `level` (or `levels: []`), `layer`, `gm` (Storyteller only), `name`, `sub`, `kicker`, `brief` (the Basic description, html), `html`, `img`, `notes: [{title, html, kind: scene|law|secret|play, gm, secret, reveal}]`, `facts: [{k, v, secret, reveal}]`, `tags: [{text, color}]`, `people: [ids]`, `anchor` (twin in another realm), `links: [{id, label}]`, `uuid` (Foundry document) and `src`.
+All map items take `realm`, `level` (or `levels: []`), `layer`, `gm` (Storyteller only), `name`, `nameTr` (translated name, shown in brackets in cards and lists), `alias` and `aliasText` (name and text at Existence), `sub`, `kicker`, `brief` (the Basic description, html), `html`, `img`, `notes: [{title, html, kind: scene|law|secret|play, gm, secret, reveal}]`, `facts: [{k, v, secret, reveal}]`, `tags: [{text, color}]`, `people: [ids]`, `anchor` (twin in another realm), `links: [{id, label}]`, `uuid` (Foundry document) and `src`.
 
 - **place**: `at`, `cat`, `faction`, `color`, `icon`, `precision`, `zone`, `hidden` (no pin), `zoom`, `pin: {border, glow, bg: [c1, c2], anim: "pulse"}`.
 - **zone**: `rings: [[pt…], …]` (even-odd), `style` (name or object), `owners`, `container`, `rating: {label, value, max, text}`, `label: {text, sub, at, minZoom, font, ls, color, halo, italic, subFont}`, `noLabel`, `fillImage: {src, minZoom, alpha}`, `ref` (clicking opens another entry), `order`.
@@ -65,7 +65,7 @@ Colours may be `auto` or `auto:0.3`, meaning the item's own colour (from its fac
 
 ## People and pages
 
-- **person**: `name`, `kicker`, `sub`, `tag`, `faction`, `group: {realmId: factionId}`, `status`, `icon`, `img`, `html`, `notes`, `facts`, `relations: {title, rows: [[who, attitude]]}`, `at: [ids]`, `realms: ["waking", "waking:underground", …]`, `uuid`.
+- **person**: `name`, `kicker` (clan line; a part containing “generation” is never shown to players), `falseKicker` (false clan), `tag` (short clan), `sub`, `faction`, `group: {realmId: factionId}`, `status`, `icon`, `img`, `html`, `notes`, `facts`, `relations: {title, rows: [[who, attitude]]}`, `at: [ids]`, `realms: ["waking", "waking:underground", …]`, `uuid`.
 - **page**: `title`, `realm`, `level`/`levels`, `tab` (pages|places|people|zones), `order`, `gm`, `html`. Inside `html`, `.gm-only` and `.player-only` hide text from players or from the Storyteller, `data-link="id"` makes a link to an entry, and the classes `tl`, `hook`, `lead`, `note` and `council` give the timeline, hook and table looks.
 
 ## Visibility
@@ -74,7 +74,7 @@ Anything a player can be shown carries `reveal: {all: tier, users: {userId: tier
 
 Pieces of an entry are decided one by one, with `1` shown, `0` hidden and no value meaning "follow the tier":
 - facts, notes and relation rows: their own `reveal: {all, users}`; with `secret: true` they stay hidden until shown;
-- links, on the item, in `reveals: {key: {all, users}}`: `faction` (allegiance), `at:<placeId>` (on a person: seen at that place, whichever side lists the link), `owner:<personId>` (on a zone: that domain owner).
+- links, on the item, in `reveals: {key: {all, users}}`: `faction` (allegiance), `clan` (on a person: 1 true clan, 2 false clan, 0 hidden; by default the false clan if there is one), `at:<placeId>` (on a person: seen at that place, whichever side lists the link), `owner:<personId>` (on a zone: that domain owner).
 
 Without a decision, the allegiance shows from Basic, figures, owners, facts and relations from Full.
 

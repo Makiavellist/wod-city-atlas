@@ -285,6 +285,7 @@ export class AtlasEditor {
       color: {k: 'color', t: 'color', label: 'Colour', help: 'overrides faction/category'},
       icon: {k: 'icon', t: 'icon', label: 'Icon'},
       gm: {k: 'reveal', t: 'reveal', label: 'What players see', help: '0 hidden · 1 existence · 2 basic · 3 full · 4+ secrets', wide: true, defLabel: `default (${self.m.tierName(self.m.defaultTier(coll))})`},
+      nameTr: {k: 'nameTr', t: 'text', label: 'Name in translation', help: 'shown in brackets after the name', ph: 'Театр Пабст'},
       alias: {k: 'alias', t: 'text', label: 'Name while unknown', help: 'shown at tier 1 (existence only)', ph: coll === 'people' ? 'A stranger in a long coat' : 'A house nobody visits'},
       aliasText: {k: 'aliasText', t: 'text', label: 'Text while unknown', wide: true, ph: 'You know something is here, but nothing more.'},
       html: {k: 'html', t: 'html', label: 'Description', wide: true},
@@ -341,11 +342,11 @@ export class AtlasEditor {
   fields(coll) {
     const C = this.common(coll), self = this, posLabel = this.proj.kind === 'mercator' ? 'Position [lat, lng]' : 'Position [x, y]';
     switch (coll) {
-      case 'places': return [{k: 'name', t: 'text', label: 'Name', wide: true}, C.sub, C.realm, C.level, {k: 'cat', t: 'select', label: 'Category', opts: d => self.catOpts(d.realm)}, C.faction, C.layer,
+      case 'places': return [{k: 'name', t: 'text', label: 'Name', wide: true}, C.nameTr, C.sub, C.realm, C.level, {k: 'cat', t: 'select', label: 'Category', opts: d => self.catOpts(d.realm)}, C.faction, C.layer,
         {k: 'precision', t: 'select', label: 'Placement', opts: () => self.precOpts(), show: () => self.precOpts().length}, C.color, C.icon, {k: 'pin.shape', t: 'select', label: 'Pin shape', opts: SHAPE_OPTS, none: 'As its category'}, {k: 'pin.photo', t: 'check', label: 'Use the picture as the pin', help: 'its own, its linked Actor’s, or a person’s there'}, C.gm, C.alias, C.aliasText, {k: 'hidden', t: 'check', label: 'No map pin', help: 'listed but not drawn'},
         C.brief, C.html, C.img, C.notes, C.people, {k: 'zone', t: 'ref', label: 'Inside zone', wide: true, refs: () => self.refList(['zones'])}, C.anchor, C.links, C.facts, C.tags, C.uuid,
         {k: 'at', t: 'coords', label: posLabel}, {k: 'zoom', t: 'number', label: 'Focus zoom'}, C.kicker, C.order, C.src];
-      case 'zones': return [{k: 'name', t: 'text', label: 'Name', wide: true}, C.sub, C.realm, C.level, C.layer, C.faction, C.color, ...this.styleFields(), C.gm, C.alias, C.aliasText,
+      case 'zones': return [{k: 'name', t: 'text', label: 'Name', wide: true}, C.nameTr, C.sub, C.realm, C.level, C.layer, C.faction, C.color, ...this.styleFields(), C.gm, C.alias, C.aliasText,
         {k: 'domainStatus', t: 'select', label: 'Domain status', opts: () => Object.entries(self.m.domainStatuses()).map(([k, v]) => [k, v.name]), show: d => d.layer && d.layer === self.m.domainLayer()},
         {k: 'container', t: 'check', label: 'Lists places inside it', help: '“Lies within”'}, {k: 'noLabel', t: 'check', label: 'No name on the map'},
         {k: 'label.text', t: 'text', label: 'Map label text'}, {k: 'label.sub', t: 'text', label: 'Map label second line'}, {k: 'label.minZoom', t: 'number', label: 'Label min zoom'},
@@ -353,16 +354,16 @@ export class AtlasEditor {
         {k: 'owners', t: 'refs', label: 'Claimed by (domain owners)', wide: true, refs: () => self.refList(['people'])}, C.people,
         {k: 'rating.label', t: 'text', label: 'Rating name', ph: 'Danger'}, {k: 'rating.value', t: 'number', label: 'Rating'}, {k: 'rating.max', t: 'number', label: 'Rating max', ph: '5'}, {k: 'rating.text', t: 'text', label: 'Rating words'},
         {k: 'ref', t: 'ref', label: 'Clicking opens', help: 'show another entry instead', wide: true, refs: () => self.refList(['places'])}, C.anchor, C.links, C.facts, C.tags, C.uuid, C.kicker, {k: 'order', t: 'number', label: 'Draw order', help: 'higher is on top'}, C.src];
-      case 'routes': return [{k: 'name', t: 'text', label: 'Name', wide: true}, C.sub, C.realm, C.level, C.layer, C.faction, C.color, ...this.styleFields(), {k: 'curve', t: 'number', label: 'Curve', help: '0.2 bends each segment'}, C.gm, C.alias,
+      case 'routes': return [{k: 'name', t: 'text', label: 'Name', wide: true}, C.nameTr, C.sub, C.realm, C.level, C.layer, C.faction, C.color, ...this.styleFields(), {k: 'curve', t: 'number', label: 'Curve', help: '0.2 bends each segment'}, C.gm, C.alias,
         C.brief, C.html, C.notes, {k: 'ends', t: 'refs', label: 'Ends at', wide: true, refs: () => self.refList(['places', 'zones'])}, C.people, C.links, C.facts, C.tags, C.uuid, C.kicker, C.order, C.src];
       case 'labels': return [{k: 'text', t: 'text', label: 'Text', wide: true}, C.realm, C.level, C.layer, {k: 'size', t: 'number', label: 'Size (px)'}, {k: 'font', t: 'select', label: 'Font', opts: [['sc', 'Small caps'], ['head', 'Book serif'], ['body', 'Sans'], ['title', 'Blackletter']], none: 'Default'},
         {k: 'italic', t: 'check', label: 'Italic'}, {k: 'ls', t: 'number', label: 'Letter spacing'}, {k: 'color', t: 'color', label: 'Colour'}, {k: 'halo', t: 'color', label: 'Halo'}, {k: 'glow', t: 'color', label: 'Glow'},
         {k: 'angle', t: 'number', label: 'Angle (°)'}, {k: 'minZoom', t: 'number', label: 'Min zoom'}, {k: 'maxZoom', t: 'number', label: 'Max zoom'}, {k: 'noAvoid', t: 'check', label: 'Always draw (ignore collisions)'}, C.gm, {k: 'at', t: 'coords', label: posLabel}];
-      case 'auras': return [{k: 'name', t: 'text', label: 'Name (tooltip)', wide: true}, C.realm, C.level, C.layer, {k: 'mode', t: 'select', label: 'Kind', opts: [['glow', 'Glow'], ['dark', 'Shadow'], ['desat', 'Grey-out (Banality)'], ['vortex', 'Vortex'], ['moon', 'Moon']], none: false},
+      case 'auras': return [{k: 'name', t: 'text', label: 'Name (tooltip)', wide: true}, C.nameTr, C.realm, C.level, C.layer, {k: 'mode', t: 'select', label: 'Kind', opts: [['glow', 'Glow'], ['dark', 'Shadow'], ['desat', 'Grey-out (Banality)'], ['vortex', 'Vortex'], ['moon', 'Moon']], none: false},
         {k: 'color', t: 'color', label: 'Colour'}, {k: 'radius', t: 'number', label: this.proj.kind === 'mercator' ? 'Radius (m)' : 'Radius (map units)'}, {k: 'px', t: 'number', label: 'Minimum radius (px)'}, {k: 'pulse', t: 'check', label: 'Pulse'}, {k: 'flicker', t: 'check', label: 'Flicker'},
         {k: 'rating.label', t: 'text', label: 'Value name', ph: 'Glamour, Banality, Shroud, Gauntlet…'}, {k: 'rating.value', t: 'number', label: 'Value'}, {k: 'rating.max', t: 'number', label: 'Scale max', ph: '10'}, {k: 'rating.text', t: 'text', label: 'Value words', ph: 'a deep well'},
-        {k: 'decor', t: 'check', label: 'Decoration only', help: 'not clickable, not listed'}, C.gm, C.alias, C.brief, C.html, C.notes, C.facts, {k: 'at', t: 'coords', label: posLabel}];
-      case 'people': return [{k: 'name', t: 'text', label: 'Name', wide: true}, {k: 'kicker', t: 'text', label: 'Clan / kind line', wide: true, ph: 'Ventrue · 8th generation'}, {k: 'sub', t: 'text', label: 'Role', wide: true}, C.faction, {k: 'tag', t: 'text', label: 'Short tag', ph: 'Ventrue'},
+        {k: 'decor', t: 'check', label: 'Decoration only', help: 'not clickable, not listed'}, C.gm, C.alias, C.aliasText, C.brief, C.html, C.notes, C.facts, {k: 'at', t: 'coords', label: posLabel}];
+      case 'people': return [{k: 'name', t: 'text', label: 'Name', wide: true}, {k: 'kicker', t: 'text', label: 'Clan / kind line', wide: true, ph: 'Ventrue · 8th generation', help: 'the generation is never shown to players'}, {k: 'falseKicker', t: 'text', label: 'False clan', wide: true, ph: 'Tremere', help: 'what others believe; per player under What players see'}, {k: 'sub', t: 'text', label: 'Role', wide: true}, C.faction, {k: 'tag', t: 'text', label: 'Short tag', ph: 'Ventrue'},
         {k: 'status', t: 'select', label: 'Status', opts: () => self.statusOpts()}, C.icon, C.color, C.gm, C.alias, C.aliasText, {k: 'realms', t: 'multi', label: 'Listed under', help: 'which realms and levels show this person', wide: true, opts: () => self.realmKeyOpts()},
         C.img, C.brief, C.html, C.notes, {k: 'at', t: 'refs', label: 'Where to find them', wide: true, refs: () => self.refList(['places', 'zones', 'routes'])},
         {k: 'uuid', t: 'actor', label: 'Linked Actor', help: 'their character sheet in the Actors tab', wide: true, otherLabel: u => `Other document: ${u}`},
@@ -606,6 +607,7 @@ export class AtlasEditor {
     const def = a.revealDefault == null || a.revealDefault === '' ? 3 : +a.revealDefault;
     pane.innerHTML = `<div class="ed"><div class="ed-top"><button type="button" class="back" data-ed="back">${svg('back', 2)} Back</button></div><h2>Player visibility</h2>
       <p class="hint">Decide what each player can see. A hidden realm, level, layer or category hides everything in it. Individual places, zones, people and pages have their own <b>What players see</b> panel, in their dossier (Storyteller view) and in their edit form. Use <b>View as</b> in the layers menu to check a player's view.</p>
+      <div class="hideall"><button type="button" class="btn danger" data-ed="hideall">${svg('eyeoff')} Hide everything from every player</button><span class="hint">Every place, zone, route, glow and person goes back to <b>${esc(m.tiers()[0])}</b> for all players, every fact, secret, relation and connection back to its default, and new entries start hidden. Realms, layers, categories and chronicle pages are not touched.</span></div>
       <h3>Defaults</h3>
       <label class="vrow">Unconfigured entries are shown to players at <select data-def>${tiers.map((n, i) => `<option value="${i}" ${def === i ? 'selected' : ''}>${i} · ${esc(n)}</option>`).join('')}</select></label>
       <details class="raw"><summary>Rename the tiers</summary><div class="tiernames">${tiers.map((n, i) => `<label>${i}<input type="text" data-tiername="${i}" value="${esc(n)}"></label>`).join('')}<p class="hint">Deeper secrets are no longer tiers: mark a callout or relation as secret, then reveal it to everyone or to particular players.</p></div></details>
@@ -643,6 +645,10 @@ export class AtlasEditor {
     };
     pane.onclick = async e => { const b = e.target.closest('button[data-ed]'); if (!b) return;
       if (b.dataset.ed === 'back') this.back();
+      else if (b.dataset.ed === 'hideall') {
+        if (!await this.confirm('Hide everything?', 'Every place, zone, route, glow and person will be hidden from every player, with all their facts, secrets, relations and connections. This cannot be undone with Undo.')) return;
+        const n = await this.hideAll(); this.v.applyView(); this.v.dirty(); this.renderVisibility(); this.notify(`Hidden from every player: ${n} entries.`);
+      }
       else if (b.dataset.ed === 'bulk') {
         const list = bulkSel(), who = pane.querySelector('[data-b="who"]').value, tv = pane.querySelector('[data-b="tier"]').value, coll = pane.querySelector('[data-b="coll"]').value;
         if (!list.length) return this.notify('Nothing matches those filters.', 'warn');
@@ -652,6 +658,20 @@ export class AtlasEditor {
         if (tv !== '' && +tv > 0) this.A.notifyReveal?.({ids: who === '*' ? null : [who], name: `${list.length} entries`});
       }
     };
+  }
+
+  /** Storyteller: every entry back to Hidden for every player, every piece back to its default, new entries hidden. */
+  async hideAll() {
+    const a = this.m.atlas, items = [], bare = n => { n = Object.assign({}, n); delete n.reveal; return n; };
+    for (const c of ['places', 'zones', 'routes', 'auras', 'people']) for (const it0 of Object.values(a[c])) {
+      const it = clone(it0); it.reveal = {all: 0}; delete it.reveals; delete it.gm;
+      for (const k of ['facts', 'notes']) if (Array.isArray(it[k])) it[k] = it[k].map(bare);
+      if (it.relations && Array.isArray(it.relations.rows)) it.relations = Object.assign({}, it.relations, {rows: this.m.relRows(it).map(({i, ...r}) => bare(r))});
+      items.push([c, it.id, it]);
+    }
+    if (items.length) await this.store.setItems(items);
+    await this.store.setMeta({revealDefault: 0});
+    return items.length;
   }
 
   /* ================= show as a Foundry scene ================= */
@@ -771,7 +791,7 @@ export class AtlasEditor {
   }
   async refreshLooks() {
     let pre; try { pre = await this.A.loadPreset('milwaukee'); } catch (e) { pre = null; } if (!pre) return this.notify('Could not load the preset.', 'error');
-    if (!await this.confirm('Refresh realm looks?', 'The colours, effects and map styles of the realms, zones, routes, glows and place categories will be replaced by the preset’s, the preset’s corrected outlines are applied, and Basic descriptions are added where an entry has none. Your texts, positions and visibility are not touched.')) return;
+    if (!await this.confirm('Refresh realm looks?', 'The colours, effects and map styles of the realms, zones, routes, glows and place categories will be replaced by the preset’s, the preset’s corrected outlines are applied, and its short texts (Basic and Existence descriptions, translated names) replace those of the entries it shares with this atlas. Full descriptions, positions and visibility are not touched.')) return;
     const plan = planUpgrade(this.m.atlas, normalize(pre), {all: true}), n = await applyLooks(this.store, plan);
     this.v.applyView(); this.v.dirty(); this.notify(n ? `Refreshed from the preset: ${plan.parts.join('; ')}.` : 'The atlas already matches the preset.');
   }

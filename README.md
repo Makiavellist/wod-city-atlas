@@ -70,19 +70,23 @@ Every realm, level, layer, place category, place, zone, route, glow, person and 
 | Tier | The player sees |
 |---|---|
 | 0 · Hidden | nothing |
-| 1 · Existence | a grey "?" pin or outline called *Unknown place* (or a name you choose) |
-| 2 · Basic | name, subtitle, category, faction, picture, and a short, vague **Basic description**: what a neonate might overhear |
+| 1 · Existence | a grey "?" pin or outline with only a generic name and line (*Name while unknown*, *Text while unknown*: “Церковь — Здесь церковь.”) |
+| 2 · Basic | name, role, category, faction, clan (never the generation), picture, and a short, vague **Basic description**: what a neonate might overhear |
 | 3 · Full | the full description, facts, links, people, relations, routes and ordinary callouts |
 
 **Every piece separately.** Below the tiers, the *What players see* panel lists the pieces of the entry one by one, each with a setting for **All** and for each player (· follows the tier, ✓ shown, ✗ hidden):
 - every fact and callout (mark one *secret* and it stays hidden until you reveal it);
 - the allegiance (faction): hide it and the player sees no faction name or colour, and the person is listed under *Allegiance unknown*;
 - every figure at a place and every owner of a domain;
-- on a character: every relation, every place where they can be found (*Where to find them*) and every domain they hold.
+- on a character: the clan, every relation, every place where they can be found (*Where to find them*) and every domain they hold.
+
+**Clans and generations.** A character's generation is never shown to players. The clan can be shown (✓), hidden (✗) or shown as the **false clan** (🎭) for each player; fill in *False clan* in the edit form (Maximus and Jesselin pass as Tremere in the preset). Someone with a false clan also keeps their true allegiance hidden until you show it.
+
+**Hide everything.** *Edit → Player visibility → Hide everything from every player* puts every place, zone, route, glow and person back to Hidden for all players, resets every fact, secret, relation and connection to its default, and makes new entries start hidden. Realms, layers, categories and chronicle pages are left alone.
 
 A piece you show is visible even if the player knows the entry only at Basic or Existence, so you can give away one fact or one connection without the full card. The edit form sets the same for facts (*Who knows it*).
 
-The **Basic description** (*Basic description* in the edit form) is what a player at Basic reads instead of the full text. Every entry of the Milwaukee preset has one; atlases made from it receive them with the 1.11 update (only where an entry has none).
+The **Basic description** (*Basic description* in the edit form) is what a player at Basic reads instead of the full text. In the Milwaukee preset the Basic and Existence texts are in Russian, and every place, zone, route and glow has its Russian name in brackets (*Name in translation*), shown in cards, lists, tooltips and search (the map lettering keeps the short name). Atlases made from the preset receive them with the update.
 
 - **One entry:** open it in Storyteller view. At the bottom of its dossier, the *What players see* panel sets the tier for **Everyone** and, if you like, a different tier for each player. The same panel is in its edit form.
 - **Many at once:** *Edit → Player visibility* has a table for realms, levels, layers and categories (shown/hidden per player), the default tier for everything you haven't configured, tier names, and a bulk tool ("all Havens in the Waking realm → Basic for Anna").

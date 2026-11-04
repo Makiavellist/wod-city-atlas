@@ -323,7 +323,7 @@ export async function upgradeLooks(entry, store) {
     if (!plan.items.length) { await store.setMeta(plan.meta); return false; }
     const what = plan.parts.join('; ');
     const ok = await DialogV2.confirm({window: {title: 'City Atlas: an update for your atlas'}, rejectClose: false, modal: true,
-      content: `<p>This version of the City Atlas brings <b>${esc(what)}</b>. Add it to <b>${esc(entry.name)}</b>?</p><p class="hint">${plan.items.length} entries change. Nothing you wrote is overwritten: descriptions are only added where an entry has none, and what players can see stays as it is. You can bring looks in later from <i>Edit → Import / export → Refresh realm looks</i>.</p>`,
+      content: `<p>This version of the City Atlas brings <b>${esc(what)}</b>. Add it to <b>${esc(entry.name)}</b>?</p><p class="hint">${plan.items.length} entries change. Positions, full descriptions, facts and what players can see stay as they are; the preset’s short texts (Basic and Existence descriptions, translated names) replace the old ones. You can bring looks in later from <i>Edit → Import / export → Refresh realm looks</i>.</p>`,
       yes: {label: 'Update the atlas'}, no: {label: 'Not this time'}});
     if (ok) { await applyLooks(store, plan); ui.notifications.info(`${entry.name}: updated (${what}).`); return true; }
     await store.setMeta(plan.meta); return false;
