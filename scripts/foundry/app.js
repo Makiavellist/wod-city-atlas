@@ -45,6 +45,9 @@ export function makeAdapter(app) {
     docInfo: uuid => docInfo(uuid),
     actors: () => game.actors.filter(a => game.user.isGM || a.testUserPermission(game.user, 'LIMITED')).map(a => ({uuid: a.uuid, name: a.name, img: a.img, folder: a.folder?.name || ''})).sort((a, b) => a.name.localeCompare(b.name)),
     actorTypes: () => actorTypes(),
+    // each player's character, as in Foundry's User Configuration
+    playerCharacters: game.user.isGM ? () => game.users.filter(u => !u.isGM).map(u => ({id: u.id, name: u.name, uuid: u.character?.uuid || ''})) : null,
+    setCharacter: game.user.isGM ? async (uid, uuid) => { const u = game.users.get(uid); if (!u) return; const a = uuid ? await fromUuid(uuid) : null; await u.update({character: a?.id ?? null}); } : null,
     createActors: game.user.isGM ? (list, o) => createActors(list, o) : null,
     // personal notes on the map, kept in each user's own flags (players can write those, not the atlas)
     notes: notesApi(app),
@@ -146,6 +149,16 @@ async function createActors(list, {type, ownership = 0, bio = true} = {}) {
 }
 
 /* ================= finding people by Actor ================= */
+/** Entries in any atlas linked to this Foundry document (an Actor on a person, a Scene or Journal on a place, zone or route). */
+export function findByUuid(uuid, colls = ['places', 'zones', 'routes', 'people']) {
+  const out = [];
+  for (const e of game.journal) {
+    if (!isAtlasEntry(e) || !e.testUserPermission(game.user, 'OBSERVER')) continue;
+    for (const page of e.pages) { const coll = page.getFlag(MOD, 'coll'); if (!colls.includes(coll)) continue; const items = page.getFlag(MOD, 'items') || {};
+      for (const [id, raw] of Object.entries(items)) { if (typeof raw === 'string' && !raw.includes(uuid)) continue; try { const it = typeof raw === 'string' ? JSON.parse(raw) : raw; if (it && it.uuid === uuid) out.push({entry: e, id, name: it.name, coll}); } catch (err) {} } }
+  }
+  return out;
+}
 export function findPeopleByActor(uuid) {
   const out = [];
   for (const e of game.journal) {

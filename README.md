@@ -82,7 +82,7 @@ Every realm, level, layer, place category, place, zone, route, glow, person and 
 
 **Clans and generations.** A character's generation is never shown to players. The clan can be shown (✓), hidden (✗) or shown as the **false clan** (🎭) for each player; fill in *False clan* in the edit form (Maximus and Jesselin pass as Tremere in the preset). Someone with a false clan also keeps their true allegiance hidden until you show it.
 
-**Hide everything.** *Edit → Player visibility → Hide everything from every player* puts every place, zone, route, glow and person back to Hidden for all players, resets every fact, secret, relation and connection to its default, and makes new entries start hidden. Realms, layers, categories and chronicle pages are left alone.
+**Hide everything.** Right-click the atlas in the Journal tab → *Hide everything from players…* (or *Edit → Player visibility*) → *Hide everything from every player* puts every place, zone, route, glow and person back to Hidden for all players, resets every fact, secret, relation and connection to its default, and makes new entries start hidden. Realms, layers, categories and chronicle pages are left alone.
 
 A piece you show is visible even if the player knows the entry only at Basic or Existence, so you can give away one fact or one connection without the full card. The edit form sets the same for facts (*Who knows it*).
 

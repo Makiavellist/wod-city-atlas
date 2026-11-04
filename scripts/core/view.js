@@ -1048,7 +1048,7 @@ export class AtlasView {
       notes.filter(n => n.kind !== 'law').forEach(n => H.push(this.noteHtml(n, tierTag(n))));
       if (full) {
         H.push(this.crossHtml(it, coll));
-        if (it.uuid && this.adapter.openUuid && coll !== 'people') { const di = this.docInfo(it.uuid); if (!di || di.canOpen) H.push(`<button type="button" class="cross doc" data-uuid="${esc(it.uuid)}">${svg(di && di.documentName === 'Actor' ? 'sheet' : 'book')}<span><b>${di && di.documentName === 'Actor' ? 'Character sheet' : 'Open linked document'}</b><small>${esc(di ? di.name : (it.uuidName || it.uuid))}</small></span></button>`); }
+        if (it.uuid && this.adapter.openUuid && coll !== 'people') { const di = this.docInfo(it.uuid); if (!di || di.canOpen) H.push(`<button type="button" class="cross doc" data-uuid="${esc(it.uuid)}">${svg(di && di.documentName === 'Actor' ? 'sheet' : di && di.documentName === 'Scene' ? 'scene' : 'book')}<span><b>${di && di.documentName === 'Actor' ? 'Character sheet' : di && di.documentName === 'Scene' ? 'Go to the scene' : 'Open linked document'}</b><small>${esc(di ? di.name : (it.uuidName || it.uuid))}</small></span></button>`); }
       }
       if (coll === 'places') {
         if (full) {

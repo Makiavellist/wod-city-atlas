@@ -1,5 +1,5 @@
 /* World of Darkness City Atlas — entry point for Foundry VTT v13. */
-import {AtlasApp, AtlasLauncher, createAtlas, onSocket, resolveUrl, findPeopleByActor, openInAtlas} from './foundry/app.js';
+import {AtlasApp, AtlasLauncher, createAtlas, onSocket, resolveUrl, findPeopleByActor, findByUuid, openInAtlas} from './foundry/app.js';
 import {SceneAtlas, showDiagnosis} from './foundry/scene-layer.js';
 import {JournalStore, MOD, isAtlasEntry} from './foundry/journal-store.js';
 import {rebasePaths} from './core/store.js';
@@ -128,7 +128,9 @@ const entryOf = li => game.journal.get((li instanceof HTMLElement ? li : li?.[0]
 const journalContext = (app, options) => {
   if (options.some(o => o.name === 'WCA.OpenMap')) return; // both hook names may fire
   options.unshift({name: 'WCA.OpenMap', icon: '<i class="fa-solid fa-map-location-dot"></i>', condition: li => isAtlasEntry(entryOf(li)), callback: li => { const e = entryOf(li); if (e) AtlasApp.open(e); }},
-    {name: 'Show as a Scene…', icon: '<i class="fa-solid fa-map"></i>', condition: li => game.user.isGM && isAtlasEntry(entryOf(li)), callback: li => { const e = entryOf(li); if (e) AtlasApp.open(e, {state: {edit: true, panel: 'scene'}}); }});
+    {name: 'Show as a Scene…', icon: '<i class="fa-solid fa-map"></i>', condition: li => game.user.isGM && isAtlasEntry(entryOf(li)), callback: li => { const e = entryOf(li); if (e) AtlasApp.open(e, {state: {edit: true, panel: 'scene'}}); }},
+    {name: 'Hide everything from players…', icon: '<i class="fa-solid fa-eye-slash"></i>', condition: li => game.user.isGM && isAtlasEntry(entryOf(li)), callback: li => { const e = entryOf(li); if (e) AtlasApp.open(e, {state: {edit: true, panel: 'visibility'}}); }},
+    {name: 'Link to Actors (players and people)…', icon: '<i class="fa-solid fa-link"></i>', condition: li => game.user.isGM && isAtlasEntry(entryOf(li)), callback: li => { const e = entryOf(li); if (e) AtlasApp.open(e, {state: {edit: true, panel: 'actorlink'}}); }});
 };
 Hooks.on('getJournalEntryContextOptions', journalContext);
 Hooks.on('getJournalDirectoryEntryContext', journalContext);
@@ -168,6 +170,15 @@ const actorContext = (app, options) => {
     callback: li => { const a = game.actors.get(liId(li)); const hit = a && findPeopleByActor(a.uuid)[0]; if (hit) openInAtlas(hit.entry, hit.id); }});
 };
 Hooks.on('getActorContextOptions', actorContext);
+/* Scenes tab: "Show in City Atlas" for Scenes linked to a place, zone or route. */
+const sceneContext = (app, options) => {
+  if (options.some(o => o.name === 'WCA.ShowInAtlas')) return;
+  options.push({name: 'WCA.ShowInAtlas', icon: '<i class="fa-solid fa-map-location-dot"></i>',
+    condition: li => { const sc = game.scenes.get(liId(li)); return !!sc && findByUuid(sc.uuid, ['places', 'zones', 'routes']).length > 0; },
+    callback: li => { const sc = game.scenes.get(liId(li)); const hit = sc && findByUuid(sc.uuid, ['places', 'zones', 'routes'])[0]; if (hit) openInAtlas(hit.entry, hit.id); }});
+};
+Hooks.on('getSceneContextOptions', sceneContext);
+Hooks.on('getSceneDirectoryEntryContext', sceneContext);
 Hooks.on('getActorDirectoryEntryContext', actorContext);
 /* Older-style (Application v1) actor sheets get a header button too. */
 Hooks.on('getActorSheetHeaderButtons', (sheet, buttons) => {

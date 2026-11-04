@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.15.1
+- **Easier to find**: right-click an atlas in the Journal tab for *Hide everything from players…* and *Link to Actors (players and people)…*. The editor's home page lists *Link to Actors* too.
+- **Players' characters** can be set right in *Link to Actors* (the same as Foundry's User Configuration → Character): the player's portrait pin shows that Actor.
+- **Scenes**: right-click a Scene in the Scenes tab for *Show in City Atlas* when a place, zone or route is linked to it; in the dossier the link reads *Go to the scene*.
+
 ## 1.15.0
 - **Gothic lettering for the effects**, with a hand per effect: Old Church Slavonic uncial (Ponomar) for НАРУШЕНИЕ МАСКАРАДА and the dark moments (Чужой взгляд, Дурное предчувствие, Ласомбра), dripping letters for Бешенство, charred letters for Ротшрек, a spidery hand for Шёпот, glitched letters for Расколотое зрение and Зазеркалье, engraved small capitals for the Tremere, and Triodion for the other lines. All free fonts (SIL OFL), bundled with the module; Ruslan Display and Old Standard TT are gone.
 
