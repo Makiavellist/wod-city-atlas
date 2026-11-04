@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.14.0
+- **The effects are in Russian**: names, descriptions, the words on screen (НАРУШЕНИЕ МАСКАРАДА, БЕШЕНСТВО, РЁТШРЕК), the default lines and the picker itself. Two Cyrillic fonts are bundled for them (Ruslan Display, Old Standard TT).
+- **Sounds of their own** for the Beast: Бешенство (a heart speeding up under a growl and a roar), Рётшрек (a whoosh of flame, roaring, crackling fire, a panicked heart), Голод (a slow heavy heart, a low ache, a long breath in). Synthesised in the browser, following Foundry's interface volume.
+- **Шёпот** now has whispering voices from every side, Russian phrases, and lasts twice as long (18 s). Your own lines are mixed in among the random ones instead of replacing them.
+- **Lasombra**: Покров Бездны, Руки Бездны, Живая тень. **Tremere**: Ритуальный круг, Кипящая кровь, Охранный знак. Each with its own picture and sound.
+
 ## 1.13.1
 - **Preset updates are applied without asking.** An atlas made from the Milwaukee preset takes a new version's changes the next time the Storyteller opens it; no more question on load. Full descriptions, positions and visibility are not touched.
 - Old update steps are folded into one, and the support for 1.10-era alerts is removed.

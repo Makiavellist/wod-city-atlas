@@ -1,3 +1,6 @@
+@font-face { font-family: 'Ruslan Display'; font-style: normal; font-weight: 400; font-display: swap; src: url(../fonts/ruslan-display-cyrillic-400-normal.woff2) format('woff2'); unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: 'Old Standard TT'; font-style: italic; font-weight: 400; font-display: swap; src: url(../fonts/old-standard-tt-cyrillic-400-italic.woff2) format('woff2'); unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: 'Old Standard TT'; font-style: normal; font-weight: 400; font-display: swap; src: url(../fonts/old-standard-tt-cyrillic-400-normal.woff2) format('woff2'); unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
 /* Storyteller effects: full-screen moments on the players' screens (scripts/foundry/effects.js). Not scoped to the
  * Masquerade theme: they show whatever the interface looks like. Each one fades by itself after --fx-ms. */
 .wca-breach-tool { color: #ff4a55 !important; text-shadow: 0 0 6px rgba(255, 40, 50, .6); }
@@ -6,10 +9,10 @@
 .wca-fx > * { transition: opacity .9s ease-in; }
 .wca-fx.out > * { opacity: 0 !important; }
 .wca-fx > i { position: absolute; inset: 0; }
-.wca-fx .fx-line { position: absolute; left: 50%; bottom: 16vh; transform: translateX(-50%); margin: 0; max-width: 70vw; text-align: center; font: italic clamp(18px, 2.4vw, 32px) 'IM Fell English', Georgia, serif;
+.wca-fx .fx-line { position: absolute; left: 50%; bottom: 16vh; transform: translateX(-50%); margin: 0; max-width: 70vw; text-align: center; font: italic clamp(18px, 2.4vw, 32px) 'IM Fell English', 'Old Standard TT', Georgia, serif;
   color: #ead7c4; text-shadow: 0 0 12px #000, 0 2px 4px #000; opacity: 0; animation: fx-line var(--fx-ms) ease-in-out forwards; }
 .wca-fx .fx-word { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; }
-.wca-fx .fx-word h1 { margin: 0; border: 0; font: 400 clamp(56px, 11vw, 170px)/.9 'Pirata One', 'IM Fell English', Georgia, serif; letter-spacing: .04em; opacity: 0; animation: fx-word var(--fx-ms) ease-out forwards; }
+.wca-fx .fx-word h1 { margin: 0; border: 0; font: 400 clamp(56px, 11vw, 170px)/.9 'Pirata One', 'Ruslan Display', 'IM Fell English', Georgia, serif; letter-spacing: .04em; opacity: 0; animation: fx-word var(--fx-ms) ease-out forwards; }
 .wca-fx .fx-word .fx-line { position: static; transform: none; margin: 2vh auto 0; }
 @keyframes fx-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes fx-out { to { opacity: 0; } }
@@ -63,7 +66,7 @@ body.wca-mirror { transform: scaleX(-1); transition: transform .35s ease; }
 
 /* Malkavian: whispers in the margins of the world */
 .fx-whispers::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at center, transparent 50%, rgba(40, 0, 60, .45) 100%); }
-.fx-whisper { position: absolute; max-width: 28vw; font: italic clamp(15px, 1.7vw, 24px) 'IM Fell English', Georgia, serif; color: #e0d4f0; text-shadow: 0 0 8px #3a0050, 0 0 2px #000, 0 2px 4px #000;
+.fx-whisper { position: absolute; max-width: 28vw; font: italic clamp(15px, 1.7vw, 24px) 'IM Fell English', 'Old Standard TT', Georgia, serif; color: #e0d4f0; text-shadow: 0 0 8px #3a0050, 0 0 2px #000, 0 2px 4px #000;
   opacity: 0; filter: blur(4px); animation: fx-whisper 3.2s ease-in-out forwards; }
 @keyframes fx-whisper { 0% { opacity: 0; filter: blur(4px); letter-spacing: .3em; } 30% { opacity: .95; filter: none; letter-spacing: .02em; } 70% { opacity: .8; } 100% { opacity: 0; filter: blur(3px); letter-spacing: .15em; } }
 /* Malkavian: the picture breaks into shifted, miscoloured slices */
@@ -71,6 +74,69 @@ body.wca-mirror { transform: scaleX(-1); transition: transform .35s ease; }
 .fx-fracture .fx-slice:nth-child(even) { backdrop-filter: invert(.85) hue-rotate(40deg); animation-duration: .52s; }
 @keyframes fx-glitch { 0% { transform: translateX(0); opacity: 1; } 25% { transform: translateX(-3%); } 50% { transform: translateX(2.5%); opacity: .4; } 75% { transform: translateX(-1%); opacity: 1; } 100% { transform: translateX(1.5%); opacity: 0; } }
 .fx-fracture .fx-line, .fx-mirror .fx-line { color: #d8f7ff; text-shadow: 2px 0 rgba(255, 0, 80, .7), -2px 0 rgba(0, 255, 230, .7), 0 2px 6px #000; }
+
+/* ----- Whispers last longer: each phrase lingers ----- */
+.fx-whispers .fx-whisper { animation-duration: 4.4s; }
+
+/* ----- Lasombra: the Abyss closes in ----- */
+@property --vr { syntax: '<length>'; inherits: false; initial-value: 150vmax; }
+.fx-abyss .fx-void { background: radial-gradient(circle at 50% 50%, transparent calc(var(--vr) * .5), rgba(4, 0, 10, .82) calc(var(--vr) * .82), #020005 var(--vr)); animation: fx-void var(--fx-ms) cubic-bezier(.5, 0, .3, 1) forwards; }
+@keyframes fx-void { 0% { --vr: 160vmax; } 30% { --vr: 34vmin; } 80% { --vr: 28vmin; } 100% { --vr: 160vmax; } }
+.fx-abyss .fx-wisp { position: absolute; left: 50%; top: 50%; width: 48vmin; height: 16vmin; margin: -8vmin 0 0 -24vmin; border-radius: 50%; background: radial-gradient(ellipse, rgba(0, 0, 0, .95), rgba(10, 0, 20, .6) 45%, transparent 70%); filter: blur(10px);
+  animation: fx-wisp var(--d) linear infinite; opacity: 0; transition: opacity 1s; }
+.fx-abyss .fx-wisp { animation-name: fx-wisp, fx-wisp-in; animation-duration: var(--d), var(--fx-ms); animation-timing-function: linear, ease-in-out; animation-iteration-count: infinite, 1; animation-fill-mode: none, forwards; }
+@keyframes fx-wisp { from { transform: rotate(var(--a)) translateX(26vmin) rotate(20deg); } to { transform: rotate(calc(var(--a) + 360deg)) translateX(26vmin) rotate(20deg); } }
+@keyframes fx-wisp-in { 0%, 20% { opacity: 0; } 35%, 80% { opacity: 1; } 100% { opacity: 0; } }
+.fx-abyss .fx-line { color: #b9a8d8; text-shadow: 0 0 10px #000, 0 0 2px #000; bottom: 42vh; }
+
+/* ----- Lasombra: arms of the Abyss ----- */
+.fx-tentacles .fx-dark { background: radial-gradient(ellipse at center, transparent 30%, rgba(4, 0, 10, .75) 85%, #020005 100%); animation: fx-close var(--fx-ms) ease-in-out forwards; }
+.fx-arms { position: absolute; inset: 0; width: 100%; height: 100%; }
+.fx-arms path { fill: #040008; stroke: rgba(110, 60, 170, .35); stroke-width: 2; filter: drop-shadow(0 0 6px rgba(70, 20, 120, .5)); }
+.fx-arms .tg { transform-box: fill-box; transform-origin: 50% 100%; transform: scaleY(0); animation: fx-arm var(--fx-ms) cubic-bezier(.3, .1, .2, 1) forwards, fx-sway 2.6s ease-in-out infinite alternate; }
+@keyframes fx-arm { 0% { transform: scaleY(0) scaleX(.6); } 30% { transform: scaleY(1) scaleX(1); } 78% { transform: scaleY(1.05) scaleX(1); } 100% { transform: scaleY(0) scaleX(.5); } }
+@keyframes fx-sway { from { rotate: calc(var(--sw) * -1); } to { rotate: var(--sw); } }
+
+/* ----- Lasombra: a shadow that walks on its own ----- */
+.fx-shadow .fx-dim { background: radial-gradient(ellipse at center, rgba(0, 0, 0, .15), rgba(0, 0, 0, .55)); animation: fx-close var(--fx-ms) ease-in-out forwards; }
+.fx-walk { position: absolute; bottom: -4vh; left: 0; height: 78vh; animation: fx-walk var(--fx-ms) linear forwards; filter: blur(3px); opacity: 0; }
+.fx-walk svg { height: 100%; width: auto; fill: #030006; animation: fx-step .95s ease-in-out infinite alternate; }
+@keyframes fx-walk { 0% { transform: translateX(-30vw); opacity: 0; } 12% { opacity: .82; } 85% { opacity: .82; } 100% { transform: translateX(110vw); opacity: 0; } }
+@keyframes fx-step { from { transform: translateY(0) skewX(-2deg); } to { transform: translateY(-1.2vh) skewX(2deg); } }
+
+/* ----- Tremere: the ritual circle ----- */
+.fx-ritual .fx-glow { background: radial-gradient(circle at center, rgba(120, 0, 20, .35), rgba(10, 0, 4, .78) 70%); animation: fx-close var(--fx-ms) ease-in-out forwards; }
+.fx-circle { position: absolute; left: 50%; top: 50%; width: min(78vmin, 720px); height: min(78vmin, 720px); transform: translate(-50%, -50%); overflow: visible; filter: drop-shadow(0 0 8px rgba(255, 40, 60, .8)) drop-shadow(0 0 22px rgba(160, 0, 30, .6)); animation: fx-circ var(--fx-ms) ease-in-out forwards; }
+.fx-circle circle, .fx-circle polygon, .fx-circle path { fill: none; stroke: #ff4b5c; stroke-width: 1.6; stroke-dasharray: 1200; stroke-dashoffset: 1200; animation: fx-draw 2.6s ease-out forwards; }
+.fx-circle .ring.r2 circle { stroke: #c89bff; } .fx-circle .dot { fill: #ffd3d8; }
+.fx-circle text { fill: #ffd9de; font: 18px 'IM Fell English SC', Georgia, serif; text-anchor: middle; opacity: 0; animation: fx-appear 1s 1.4s forwards; }
+.fx-circle .words { font-size: 15px; letter-spacing: 2px; fill: #ff8f9a; }
+.fx-circle .ring { transform-box: view-box; transform-origin: 200px 200px; }
+.fx-circle .r1 { animation: fx-turn 26s linear infinite; } .fx-circle .r2 { animation: fx-turn 18s linear infinite reverse; } .fx-circle .r3 { animation: fx-turn 40s linear infinite; }
+@keyframes fx-draw { to { stroke-dashoffset: 0; } }
+@keyframes fx-appear { to { opacity: 1; } }
+@keyframes fx-turn { to { transform: rotate(360deg); } }
+@keyframes fx-circ { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.9); } 10% { opacity: 1; } 78% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 86% { opacity: 1; transform: translate(-50%, -50%) scale(1.06); filter: drop-shadow(0 0 30px #fff) drop-shadow(0 0 60px #ff3040); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.25); } }
+.fx-ritual .fx-flash { background: radial-gradient(circle, rgba(255, 230, 235, .9), rgba(255, 60, 80, .35) 40%, transparent 70%); opacity: 0; animation: fx-flash var(--fx-ms) linear forwards; }
+@keyframes fx-flash { 0%, 80% { opacity: 0; } 85% { opacity: 1; } 100% { opacity: 0; } }
+
+/* ----- Tremere: boiling blood ----- */
+.fx-blood .fx-pulse { background: radial-gradient(ellipse at center, transparent 45%, rgba(140, 0, 15, .7) 100%); animation: fx-beat 1.4s ease-in-out infinite; }
+.fx-drop { position: absolute; bottom: -6vh; width: calc(22px * var(--s)); height: calc(32px * var(--s)); border-radius: 50% 50% 50% 50% / 38% 38% 62% 62%; background: radial-gradient(circle at 35% 65%, #ff6b74, #a00616 55%, #4a0008); box-shadow: 0 0 10px rgba(255, 30, 50, .6);
+  animation-name: fx-rise; animation-timing-function: cubic-bezier(.4, 0, .7, 1); animation-fill-mode: both; }
+@keyframes fx-rise { 0% { transform: translateY(0) scale(.6); opacity: 0; } 15% { opacity: 1; } 100% { transform: translateY(-112vh) scale(1.1, .8); opacity: 0; } }
+.fx-sigil { position: absolute; font: 7vmin/1 'Segoe UI Symbol', 'DejaVu Sans', serif; color: #ff3a4c; text-shadow: 0 0 12px #ff1030, 0 0 30px #900; opacity: 0; animation: fx-sigil 2.4s ease-out both; }
+@keyframes fx-sigil { 0% { opacity: 0; transform: scale(.4); } 30% { opacity: 1; transform: scale(1.1); } 100% { opacity: 0; transform: scale(1.5); } }
+
+/* ----- Tremere: a ward flares ----- */
+.fx-ward .fx-frame { inset: 1.2vmin; border: 2px solid rgba(190, 150, 255, .85); border-radius: 6px; box-shadow: 0 0 18px rgba(160, 110, 255, .8), inset 0 0 28px rgba(140, 90, 255, .5); animation: fx-ward var(--fx-ms) ease-out forwards; }
+@keyframes fx-ward { 0% { opacity: 0; } 6% { opacity: 1; } 20% { opacity: .55; } 30% { opacity: .9; } 85% { opacity: .7; } 100% { opacity: 0; } }
+.fx-rune { position: absolute; transform: translate(-50%, -50%); font: 4.2vmin/1 'Segoe UI Symbol', 'DejaVu Sans', serif; color: #e2d0ff; text-shadow: 0 0 8px #a070ff, 0 0 20px #6030c0; opacity: 0; animation: fx-rune var(--fx-ms) ease-out both; }
+@keyframes fx-rune { 0% { opacity: 0; } 10% { opacity: 1; } 25% { opacity: .5; } 40% { opacity: 1; } 85% { opacity: .8; } 100% { opacity: 0; } }
+.fx-ward .fx-ripple { left: 50%; top: 50%; right: auto; bottom: auto; width: 10vmin; height: 10vmin; margin: -5vmin 0 0 -5vmin; border-radius: 50%; border: 3px solid rgba(200, 170, 255, .9); box-shadow: 0 0 30px #9a6bff; animation: fx-ripple 1.6s ease-out forwards; }
+@keyframes fx-ripple { from { transform: scale(.2); opacity: 1; } to { transform: scale(16); opacity: 0; } }
+.fx-bigsign { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font: 30vmin/1 'Segoe UI Symbol', 'DejaVu Sans', serif; color: rgba(225, 205, 255, .9); text-shadow: 0 0 30px #9a6bff, 0 0 80px #5020b0; animation: fx-bigsign 2.2s ease-out forwards; }
+@keyframes fx-bigsign { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.3) rotate(-30deg); } 25% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(0); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.4) rotate(15deg); } }
 
 /* ----- MASQUERADE VIOLATION ----- */
 .wca-fx.fx-breach { pointer-events: auto; display: grid; place-items: center; cursor: pointer; animation: brk-in .35s ease-out both, brk-shake .55s .25s cubic-bezier(.36,.07,.19,.97) both; }
@@ -84,11 +150,11 @@ body.wca-mirror { transform: scaleX(-1); transition: transform .35s ease; }
 .fx-breach .brk-mask .half.l { transform-origin: 100% 50%; animation: brk-split-l .7s .25s cubic-bezier(.2,.8,.2,1) forwards; }
 .fx-breach .brk-mask .half.r { transform-origin: 0% 50%; animation: brk-split-r .7s .25s cubic-bezier(.2,.8,.2,1) forwards; }
 .fx-breach .brk-mask .drip { opacity: 0; animation: brk-drip 1.6s .8s ease-in forwards; }
-.fx-breach .brk-title { margin: 2vh 0 0; border: 0; font: 400 clamp(48px, 10vw, 150px)/.9 'Pirata One', 'IM Fell English', Georgia, serif; letter-spacing: .03em; color: #ffe9d6;
+.fx-breach .brk-title { margin: 2vh 0 0; border: 0; font: 400 clamp(48px, 10vw, 150px)/.9 'Pirata One', 'Ruslan Display', 'IM Fell English', Georgia, serif; letter-spacing: .03em; color: #ffe9d6;
   text-shadow: 0 0 12px #ff2a3a, 0 0 40px #b0101a, 0 0 90px #7a0008, 0 4px 6px #000; display: grid; animation: brk-flicker 3s .6s infinite; }
 .fx-breach .brk-title span:last-child { color: #ff3b47; text-shadow: 0 0 10px #ff2a3a, 0 0 50px #b0101a, 0 4px 6px #000; }
-.fx-breach .brk-text { margin: 2vh auto 0; max-width: 60vw; font: italic clamp(16px, 2.2vw, 28px) 'IM Fell English', Georgia, serif; color: #e9d2c0; text-shadow: 0 2px 4px #000; }
-.fx-breach .brk-hint { margin-top: 3vh; font: 12px 'IM Fell English SC', Georgia, serif; letter-spacing: .2em; color: rgba(233, 210, 192, .45); }
+.fx-breach .brk-text { margin: 2vh auto 0; max-width: 60vw; font: italic clamp(16px, 2.2vw, 28px) 'IM Fell English', 'Old Standard TT', Georgia, serif; color: #e9d2c0; text-shadow: 0 2px 4px #000; }
+.fx-breach .brk-hint { margin-top: 3vh; font: 12px 'IM Fell English SC', 'Old Standard TT', Georgia, serif; letter-spacing: .2em; color: rgba(233, 210, 192, .45); }
 @keyframes brk-in { from { opacity: 0; transform: scale(1.08); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
 @keyframes brk-out { to { opacity: 0; filter: blur(8px) brightness(.4); transform: scale(.97); } }
 @keyframes brk-shake { 10%, 90% { transform: translate(-2px, 1px); } 20%, 80% { transform: translate(4px, -2px); } 30%, 50%, 70% { transform: translate(-7px, 3px); } 40%, 60% { transform: translate(7px, -3px); } }
@@ -121,4 +187,6 @@ body.wca-mirror { transform: scaleX(-1); transition: transform .35s ease; }
   .wca-fx, .wca-fx *, body.wca-shake, body.wca-sway { animation-duration: .01s !important; animation-iteration-count: 1 !important; }
   .wca-fx .fx-line, .wca-fx .fx-word h1, .fx-whisper, .fx-watched .fx-eye { opacity: 1; filter: none; }
   .fx-watched .fx-eye { transform: translate(-50%, -50%); }
+  .fx-arms .tg { transform: none; } .fx-walk { opacity: .7; transform: translateX(40vw); } .fx-circle { opacity: 1; } .fx-circle circle, .fx-circle polygon, .fx-circle path { stroke-dashoffset: 0; } .fx-circle text { opacity: 1; }
+  .fx-drop, .fx-ripple, .fx-wisp { display: none; }
 }

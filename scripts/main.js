@@ -88,9 +88,9 @@ Hooks.on('getSceneControlButtons', controls => {
   if (!game.user.isGM) return;
   for (const g of [controls.tokens, controls.notes]) {
     if (!g || !g.tools) continue;
-    g.tools.wcaBreach = {name: 'wcaBreach', title: 'Masquerade violation! (on every screen at once)', icon: 'fa-solid fa-masks-theater wca-breach-tool', order: 900, button: true, visible: true,
+    g.tools.wcaBreach = {name: 'wcaBreach', title: 'Нарушение Маскарада! (сразу на всех экранах)', icon: 'fa-solid fa-masks-theater wca-breach-tool', order: 900, button: true, visible: true,
       onChange: () => sendEffect('breach')};
-    g.tools.wcaEffects = {name: 'wcaEffects', title: 'Storyteller effects: Frenzy, Rötschreck, foreboding, Malkavian… (to everyone or chosen players)', icon: 'fa-solid fa-ghost wca-breach-tool', order: 901, button: true, visible: true,
+    g.tools.wcaEffects = {name: 'wcaEffects', title: 'Эффекты Рассказчика: Бешенство, Рётшрек, шёпот, Бездна, ритуалы… (всем или выбранным игрокам)', icon: 'fa-solid fa-ghost wca-breach-tool', order: 901, button: true, visible: true,
       onChange: () => effectsDialog()};
   }
 });
