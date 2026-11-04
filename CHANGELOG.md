@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.14.2
+- **Ротшрек** (spelled so now) has living fire: hundreds of glowing particles rising in shifting tongues, flowing instead of bobbing.
+- Effects other than Шёпот stay gender-neutral again: Голод says «Голод сводит с ума.»
+
 ## 1.14.1
 - **Шёпот is quieter and subtler**: fewer, softer voices.
 - **315 phrases** to draw from, every one addressing the player in the feminine. As before 1.14 it shows 7 phrases (your own lines among them), but the effect still lasts 18 seconds, so each phrase stays long enough to read.

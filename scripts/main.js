@@ -90,7 +90,7 @@ Hooks.on('getSceneControlButtons', controls => {
     if (!g || !g.tools) continue;
     g.tools.wcaBreach = {name: 'wcaBreach', title: 'Нарушение Маскарада! (сразу на всех экранах)', icon: 'fa-solid fa-masks-theater wca-breach-tool', order: 900, button: true, visible: true,
       onChange: () => sendEffect('breach')};
-    g.tools.wcaEffects = {name: 'wcaEffects', title: 'Эффекты Рассказчика: Бешенство, Рётшрек, шёпот, Бездна, ритуалы… (всем или выбранным игрокам)', icon: 'fa-solid fa-ghost wca-breach-tool', order: 901, button: true, visible: true,
+    g.tools.wcaEffects = {name: 'wcaEffects', title: 'Эффекты Рассказчика: Бешенство, Ротшрек, шёпот, Бездна, ритуалы… (всем или выбранным игрокам)', icon: 'fa-solid fa-ghost wca-breach-tool', order: 901, button: true, visible: true,
       onChange: () => effectsDialog()};
   }
 });

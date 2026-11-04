@@ -22,8 +22,8 @@ const SIGILS = ['☉', '☽', '☿', '♀', '♂', '♃', '♄', '♁', '✶', '
 export const EFFECTS = {
   breach: {name: 'Нарушение Маскарада', icon: 'fa-solid fa-masks-theater', group: 'Тревога', ms: 9000, file: 'sounds/drums.wav', hint: 'Трескающаяся маска и красные буквы. Закрывается щелчком.', ph: 'В вечерних новостях показали запись.'},
   frenzy: {name: 'Бешенство', icon: 'fa-solid fa-heart-pulse', group: 'Зверь', ms: 8000, hint: 'Экран заливает красным, он трясётся под бешеный стук сердца и рык Зверя.', text: 'Зверь берёт верх.'},
-  rotschreck: {name: 'Рётшрек', icon: 'fa-solid fa-fire', group: 'Зверь', ms: 8000, hint: 'Красный Страх: по экрану ползёт пламя, ревёт огонь.', text: 'Огонь. Беги.'},
-  hunger: {name: 'Голод', icon: 'fa-solid fa-droplet', group: 'Зверь', ms: 9000, hint: 'Медленная красная пульсация по краям, тяжёлое сердце, долгий вдох.', text: 'Ты так голодна.'},
+  rotschreck: {name: 'Ротшрек', icon: 'fa-solid fa-fire', group: 'Зверь', ms: 8000, hint: 'Красный Страх: по экрану ползёт пламя, ревёт огонь.', text: 'Огонь. Беги.'},
+  hunger: {name: 'Голод', icon: 'fa-solid fa-droplet', group: 'Зверь', ms: 9000, hint: 'Медленная красная пульсация по краям, тяжёлое сердце, долгий вдох.', text: 'Голод сводит с ума.'},
   lapse: {name: 'Минутное помутнение', icon: 'fa-solid fa-cloud', group: 'Разум', ms: 6500, hint: 'Едва заметно: мир на миг расплывается.', text: ''},
   confusion: {name: 'Замешательство', icon: 'fa-solid fa-shuffle', group: 'Разум', ms: 7000, hint: 'Комната качается, цвета плывут, ничто не стоит на месте.', text: ''},
   foreboding: {name: 'Дурное предчувствие', icon: 'fa-solid fa-cloud-moon', group: 'Разум', ms: 10000, hint: 'С краёв наползает тьма, цвет уходит из мира.', text: 'Что-то не так.'},
@@ -76,7 +76,7 @@ export function showEffect(kind, {text, sound = true} = {}) {
   const body = {
     breach: `<div class="brk-bg"></div><div class="brk-crack"></div><div class="brk-inner">${MASK}<h1 class="brk-title"><span>Нарушение</span><span>Маскарада</span></h1>${line ? `<p class="brk-text">${esc(line)}</p>` : ''}<p class="brk-hint">щёлкните, чтобы закрыть</p></div>`,
     frenzy: `<i class="fx-veins"></i><i class="fx-pulse"></i><div class="fx-word"><h1>Бешенство</h1>${sub}</div>`,
-    rotschreck: `<i class="fx-heat"></i>${Array.from({length: 14}, (_, i) => `<b style="left:${(i * 7.4 - 2).toFixed(1)}%;animation-delay:${(i * 137 % 900)}ms;--h:${32 + (i * 53 % 30)}vh"></b>`).join('')}<div class="fx-word"><h1>Рётшрек</h1>${sub}</div>`,
+    rotschreck: `<i class="fx-heat"></i><canvas class="fx-fire"></canvas><div class="fx-word"><h1>Ротшрек</h1>${sub}</div>`,
     hunger: `<i class="fx-pulse"></i>${sub}`,
     lapse: `<i class="fx-swim"></i>${sub}`,
     confusion: `<i class="fx-swim"></i><i class="fx-tint"></i>${sub}`,
@@ -99,6 +99,7 @@ export function showEffect(kind, {text, sound = true} = {}) {
   }[kind];
   el.innerHTML = body;
   document.body.appendChild(el);
+  if (kind === 'rotschreck') fire(el.querySelector('.fx-fire'), ms);
   // the whole screen moves with some of them
   const bodyFx = {frenzy: 'wca-shake', rotschreck: 'wca-shake', confusion: 'wca-sway', mirror: 'wca-mirror'}[kind];
   if (bodyFx && !reduce()) { document.body.classList.add(bodyFx); setTimeout(() => document.body.classList.remove(bodyFx), kind === 'mirror' ? ms : Math.min(ms, kind === 'confusion' ? ms : 1600)); }
@@ -109,6 +110,32 @@ export function showEffect(kind, {text, sound = true} = {}) {
   const close = () => { if (!el.isConnected || el.classList.contains('out')) return; el.classList.add('out'); setTimeout(() => el.remove(), 900); };
   if (kind === 'breach') el.addEventListener('click', close);
   setTimeout(close, ms);
+}
+/** Rötschreck's fire: hundreds of glowing particles rising in tongues, drawn on a half-resolution canvas and softened,
+ *  so the flames flow instead of bobbing. Stops by itself when the effect ends. */
+function fire(cv, ms) {
+  if (!cv) return; const k = 0.5, W = cv.width = Math.ceil(innerWidth * k), H = cv.height = Math.ceil(innerHeight * k), x = cv.getContext('2d');
+  const sprite = (r, stops) => { const c = document.createElement('canvas'); c.width = c.height = r * 2; const g = c.getContext('2d'), gr = g.createRadialGradient(r, r, 0, r, r, r); stops.forEach(([o, col]) => gr.addColorStop(o, col)); g.fillStyle = gr; g.fillRect(0, 0, r * 2, r * 2); return c; };
+  const S = [sprite(32, [[0, 'rgba(255,240,190,.55)'], [0.35, 'rgba(255,200,90,.35)'], [1, 'rgba(255,140,20,0)']]), sprite(32, [[0, 'rgba(255,170,50,.55)'], [0.45, 'rgba(255,100,10,.3)'], [1, 'rgba(220,40,0,0)']]),
+    sprite(32, [[0, 'rgba(240,70,10,.45)'], [0.5, 'rgba(170,20,0,.22)'], [1, 'rgba(120,0,0,0)']]), sprite(32, [[0, 'rgba(60,20,15,.35)'], [1, 'rgba(20,8,6,0)']])];
+  const P = [], t0 = performance.now(), still = matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  const step = now => {
+    const t = (now - t0) / 1000, life = ms / 1000; if (!cv.isConnected || t > life + 1) return;
+    const grow = Math.min(1, t / 1.4) * Math.min(1, Math.max(0, (life - t) / 1.2)), n = still ? 0 : Math.round(W / 7 * grow);
+    for (let i = 0; i < n; i++) {
+      const px = Math.random() * W, tongue = Math.max(0, 0.5 + 0.5 * Math.sin(px * 0.021 + t * 2.1) * Math.sin(px * 0.006 - t * 1.1)) ** 1.4; if (Math.random() > 0.25 + tongue) continue;
+      P.push({x: px, y: H + 10, vx: (Math.random() - 0.5) * 0.6, vy: -(1.4 + Math.random() * 2.2) * (0.5 + tongue * 1.2) * H / 360, r: (10 + Math.random() * 22) * H / 360 * (0.7 + tongue * 0.6), age: 0, max: 30 + Math.random() * 40 * tongue + 10});
+    }
+    x.clearRect(0, 0, W, H); x.globalCompositeOperation = 'lighter';
+    for (let i = P.length - 1; i >= 0; i--) {
+      const p = P[i]; p.age++; if (p.age > p.max) { P.splice(i, 1); continue; }
+      const f = p.age / p.max; p.x += p.vx + Math.sin(p.y * 0.035 + t * 3 + p.r) * 0.9; p.y += p.vy; p.vy *= 0.995;
+      const img = S[Math.min(3, Math.floor(f * 4))], r = p.r * (1 - f * 0.55);
+      x.globalAlpha = f < 0.1 ? f * 10 : 1 - f * 0.6; x.drawImage(img, p.x - r, p.y - r, r * 2, r * 2);
+    }
+    x.globalAlpha = 1; requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
 }
 function shuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 

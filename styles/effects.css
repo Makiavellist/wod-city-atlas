@@ -40,11 +40,9 @@ body.wca-mirror { transform: scaleX(-1); transition: transform .35s ease; }
 /* Rötschreck: heat from below, flames climbing, the screen washes out orange */
 .fx-rotschreck .fx-heat { background: linear-gradient(0deg, rgba(255, 110, 0, .75), rgba(200, 40, 0, .35) 35%, transparent 75%); animation: fx-flare 1.1s ease-in-out infinite alternate; }
 .fx-rotschreck::after { content: ''; position: absolute; inset: 0; background: rgba(255, 120, 20, .22); mix-blend-mode: overlay; }
-.fx-rotschreck b { position: absolute; bottom: -6vh; width: 9vw; height: var(--h); border-radius: 50% 50% 20% 20% / 70% 70% 30% 30%; background: radial-gradient(ellipse at 50% 90%, #fff3b0 0%, #ffb020 28%, #ff4a00 58%, rgba(160, 0, 0, 0) 75%);
-  filter: blur(6px); mix-blend-mode: screen; transform-origin: 50% 100%; animation: fx-flame .7s ease-in-out infinite alternate; }
+.fx-rotschreck .fx-fire { position: absolute; left: 0; bottom: 0; width: 100%; height: 100%; filter: blur(5px) saturate(1.2); mix-blend-mode: screen; }
 .fx-rotschreck .fx-word h1 { color: #ffd27a; text-shadow: 0 0 14px #ff7a00, 0 0 60px #c02000, 0 4px 6px #000; }
 @keyframes fx-flare { from { opacity: .7; } to { opacity: 1; } }
-@keyframes fx-flame { from { transform: scale(.85, .8) skewX(-4deg); opacity: .75; } to { transform: scale(1.1, 1.15) skewX(5deg); opacity: 1; } }
 
 /* A lapse of judgement: the world swims out of focus for a moment, then comes back. Subtle on purpose. */
 .fx-lapse .fx-swim, .fx-confusion .fx-swim { backdrop-filter: blur(0); animation: fx-blur var(--fx-ms) ease-in-out forwards; }
