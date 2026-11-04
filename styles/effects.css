@@ -1,6 +1,17 @@
-@font-face { font-family: 'Ruslan Display'; font-style: normal; font-weight: 400; font-display: swap; src: url(../fonts/ruslan-display-cyrillic-400-normal.woff2) format('woff2'); unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
-@font-face { font-family: 'Old Standard TT'; font-style: italic; font-weight: 400; font-display: swap; src: url(../fonts/old-standard-tt-cyrillic-400-italic.woff2) format('woff2'); unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
-@font-face { font-family: 'Old Standard TT'; font-style: normal; font-weight: 400; font-display: swap; src: url(../fonts/old-standard-tt-cyrillic-400-normal.woff2) format('woff2'); unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: 'WCA Ponomar'; font-style: normal; font-weight: 400; font-display: swap; src: url(../fonts/ponomar-cyrillic-400-normal.woff2) format('woff2'); unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: 'WCA Ponomar'; font-style: normal; font-weight: 400; font-display: swap; src: url(../fonts/ponomar-latin-400-normal.woff2) format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'WCA Triodion'; font-style: normal; font-weight: 400; font-display: swap; src: url(../fonts/triodion-cyrillic-400-normal.woff2) format('woff2'); unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: 'WCA Triodion'; font-style: normal; font-weight: 400; font-display: swap; src: url(../fonts/triodion-latin-400-normal.woff2) format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'WCA Wet Paint'; font-style: normal; font-weight: 400; font-display: swap; src: url(../fonts/rubik-wet-paint-cyrillic-400-normal.woff2) format('woff2'); unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: 'WCA Wet Paint'; font-style: normal; font-weight: 400; font-display: swap; src: url(../fonts/rubik-wet-paint-latin-400-normal.woff2) format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'WCA Burned'; font-style: normal; font-weight: 400; font-display: swap; src: url(../fonts/rubik-burned-cyrillic-400-normal.woff2) format('woff2'); unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: 'WCA Burned'; font-style: normal; font-weight: 400; font-display: swap; src: url(../fonts/rubik-burned-latin-400-normal.woff2) format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'WCA Glitch'; font-style: normal; font-weight: 400; font-display: swap; src: url(../fonts/rubik-glitch-cyrillic-400-normal.woff2) format('woff2'); unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: 'WCA Glitch'; font-style: normal; font-weight: 400; font-display: swap; src: url(../fonts/rubik-glitch-latin-400-normal.woff2) format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'WCA Marck'; font-style: normal; font-weight: 400; font-display: swap; src: url(../fonts/marck-script-cyrillic-400-normal.woff2) format('woff2'); unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: 'WCA Marck'; font-style: normal; font-weight: 400; font-display: swap; src: url(../fonts/marck-script-latin-400-normal.woff2) format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'WCA Cormorant SC'; font-style: normal; font-weight: 400; font-display: swap; src: url(../fonts/cormorant-sc-cyrillic-500-normal.woff2) format('woff2'); unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: 'WCA Cormorant SC'; font-style: normal; font-weight: 400; font-display: swap; src: url(../fonts/cormorant-sc-latin-500-normal.woff2) format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
 /* Storyteller effects: full-screen moments on the players' screens (scripts/foundry/effects.js). Not scoped to the
  * Masquerade theme: they show whatever the interface looks like. Each one fades by itself after --fx-ms. */
 .wca-breach-tool { color: #ff4a55 !important; text-shadow: 0 0 6px rgba(255, 40, 50, .6); }
@@ -9,10 +20,10 @@
 .wca-fx > * { transition: opacity .9s ease-in; }
 .wca-fx.out > * { opacity: 0 !important; }
 .wca-fx > i { position: absolute; inset: 0; }
-.wca-fx .fx-line { position: absolute; left: 50%; bottom: 16vh; transform: translateX(-50%); margin: 0; max-width: 70vw; text-align: center; font: italic clamp(18px, 2.4vw, 32px) 'IM Fell English', 'Old Standard TT', Georgia, serif;
+.wca-fx .fx-line { position: absolute; left: 50%; bottom: 16vh; transform: translateX(-50%); margin: 0; max-width: 70vw; text-align: center; font: italic clamp(18px, 2.4vw, 32px) 'WCA Triodion', 'IM Fell English', Georgia, serif;
   color: #ead7c4; text-shadow: 0 0 12px #000, 0 2px 4px #000; opacity: 0; animation: fx-line var(--fx-ms) ease-in-out forwards; }
 .wca-fx .fx-word { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; }
-.wca-fx .fx-word h1 { margin: 0; border: 0; font: 400 clamp(56px, 11vw, 170px)/.9 'Pirata One', 'Ruslan Display', 'IM Fell English', Georgia, serif; letter-spacing: .04em; opacity: 0; animation: fx-word var(--fx-ms) ease-out forwards; }
+.wca-fx .fx-word h1 { margin: 0; border: 0; font: 400 clamp(56px, 11vw, 170px)/.9 'WCA Ponomar', 'Pirata One', Georgia, serif; letter-spacing: .04em; opacity: 0; animation: fx-word var(--fx-ms) ease-out forwards; }
 .wca-fx .fx-word .fx-line { position: static; transform: none; margin: 2vh auto 0; }
 @keyframes fx-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes fx-out { to { opacity: 0; } }
@@ -64,7 +75,7 @@ body.wca-mirror { transform: scaleX(-1); transition: transform .35s ease; }
 
 /* Malkavian: whispers in the margins of the world */
 .fx-whispers::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at center, transparent 50%, rgba(40, 0, 60, .45) 100%); }
-.fx-whisper { position: absolute; max-width: 28vw; font: italic clamp(15px, 1.7vw, 24px) 'IM Fell English', 'Old Standard TT', Georgia, serif; color: #e0d4f0; text-shadow: 0 0 8px #3a0050, 0 0 2px #000, 0 2px 4px #000;
+.fx-whisper { position: absolute; max-width: 28vw; font: italic clamp(15px, 1.7vw, 24px) 'WCA Triodion', 'IM Fell English', Georgia, serif; color: #e0d4f0; text-shadow: 0 0 8px #3a0050, 0 0 2px #000, 0 2px 4px #000;
   opacity: 0; filter: blur(4px); animation: fx-whisper 3.2s ease-in-out forwards; }
 @keyframes fx-whisper { 0% { opacity: 0; filter: blur(4px); letter-spacing: .3em; } 30% { opacity: .95; filter: none; letter-spacing: .02em; } 70% { opacity: .8; } 100% { opacity: 0; filter: blur(3px); letter-spacing: .15em; } }
 /* Malkavian: the picture breaks into shifted, miscoloured slices */
@@ -148,11 +159,11 @@ body.wca-mirror { transform: scaleX(-1); transition: transform .35s ease; }
 .fx-breach .brk-mask .half.l { transform-origin: 100% 50%; animation: brk-split-l .7s .25s cubic-bezier(.2,.8,.2,1) forwards; }
 .fx-breach .brk-mask .half.r { transform-origin: 0% 50%; animation: brk-split-r .7s .25s cubic-bezier(.2,.8,.2,1) forwards; }
 .fx-breach .brk-mask .drip { opacity: 0; animation: brk-drip 1.6s .8s ease-in forwards; }
-.fx-breach .brk-title { margin: 2vh 0 0; border: 0; font: 400 clamp(48px, 10vw, 150px)/.9 'Pirata One', 'Ruslan Display', 'IM Fell English', Georgia, serif; letter-spacing: .03em; color: #ffe9d6;
+.fx-breach .brk-title { margin: 2vh 0 0; border: 0; font: 400 clamp(48px, 10vw, 150px)/.9 'WCA Ponomar', 'Pirata One', Georgia, serif; letter-spacing: .03em; color: #ffe9d6;
   text-shadow: 0 0 12px #ff2a3a, 0 0 40px #b0101a, 0 0 90px #7a0008, 0 4px 6px #000; display: grid; animation: brk-flicker 3s .6s infinite; }
 .fx-breach .brk-title span:last-child { color: #ff3b47; text-shadow: 0 0 10px #ff2a3a, 0 0 50px #b0101a, 0 4px 6px #000; }
-.fx-breach .brk-text { margin: 2vh auto 0; max-width: 60vw; font: italic clamp(16px, 2.2vw, 28px) 'IM Fell English', 'Old Standard TT', Georgia, serif; color: #e9d2c0; text-shadow: 0 2px 4px #000; }
-.fx-breach .brk-hint { margin-top: 3vh; font: 12px 'IM Fell English SC', 'Old Standard TT', Georgia, serif; letter-spacing: .2em; color: rgba(233, 210, 192, .45); }
+.fx-breach .brk-text { margin: 2vh auto 0; max-width: 60vw; font: italic clamp(16px, 2.2vw, 28px) 'WCA Triodion', 'IM Fell English', Georgia, serif; color: #e9d2c0; text-shadow: 0 2px 4px #000; }
+.fx-breach .brk-hint { margin-top: 3vh; font: 12px 'WCA Cormorant SC', 'IM Fell English SC', Georgia, serif; letter-spacing: .2em; color: rgba(233, 210, 192, .45); }
 @keyframes brk-in { from { opacity: 0; transform: scale(1.08); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
 @keyframes brk-out { to { opacity: 0; filter: blur(8px) brightness(.4); transform: scale(.97); } }
 @keyframes brk-shake { 10%, 90% { transform: translate(-2px, 1px); } 20%, 80% { transform: translate(4px, -2px); } 30%, 50%, 70% { transform: translate(-7px, 3px); } 40%, 60% { transform: translate(7px, -3px); } }
@@ -188,3 +199,14 @@ body.wca-mirror { transform: scaleX(-1); transition: transform .35s ease; }
   .fx-arms .tg { transform: none; } .fx-walk { opacity: .7; transform: translateX(40vw); } .fx-circle { opacity: 1; } .fx-circle circle, .fx-circle polygon, .fx-circle path { stroke-dashoffset: 0; } .fx-circle text { opacity: 1; }
   .fx-drop, .fx-ripple, .fx-wisp { display: none; }
 }
+
+/* ----- lettering: gothic, and a hand per effect where it fits ----- */
+.wca-fx .fx-line, .fx-breach .brk-text { font-style: normal; font-size: clamp(20px, 2.6vw, 36px); letter-spacing: .02em; }
+.fx-frenzy .fx-word h1 { font-family: 'WCA Wet Paint', 'WCA Ponomar', serif; letter-spacing: .02em; }
+.fx-rotschreck .fx-word h1 { font-family: 'WCA Burned', 'WCA Ponomar', serif; letter-spacing: .02em; }
+.fx-breach .brk-title { letter-spacing: .01em; }
+.fx-whisper { font-family: 'WCA Marck', 'WCA Triodion', serif; font-style: normal; font-size: clamp(17px, 1.9vw, 27px); }
+.fx-fracture .fx-line, .fx-mirror .fx-line { font-family: 'WCA Glitch', 'WCA Triodion', serif; }
+.fx-abyss .fx-line, .fx-tentacles .fx-line, .fx-shadow .fx-line, .fx-watched .fx-line, .fx-foreboding .fx-line { font-family: 'WCA Ponomar', serif; font-size: clamp(24px, 3vw, 44px); }
+.fx-ritual .fx-line, .fx-blood .fx-line, .fx-ward .fx-line { font-family: 'WCA Cormorant SC', serif; letter-spacing: .08em; }
+.fx-circle text { font-family: 'WCA Cormorant SC', 'IM Fell English SC', Georgia, serif; }

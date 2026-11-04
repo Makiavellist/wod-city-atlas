@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.15.0
+- **Gothic lettering for the effects**, with a hand per effect: Old Church Slavonic uncial (Ponomar) for НАРУШЕНИЕ МАСКАРАДА and the dark moments (Чужой взгляд, Дурное предчувствие, Ласомбра), dripping letters for Бешенство, charred letters for Ротшрек, a spidery hand for Шёпот, glitched letters for Расколотое зрение and Зазеркалье, engraved small capitals for the Tremere, and Triodion for the other lines. All free fonts (SIL OFL), bundled with the module; Ruslan Display and Old Standard TT are gone.
+
 ## 1.14.2
 - **Ротшрек** (spelled so now) has living fire: hundreds of glowing particles rising in shifting tongues, flowing instead of bobbing.
 - Effects other than Шёпот stay gender-neutral again: Голод says «Голод сводит с ума.»
