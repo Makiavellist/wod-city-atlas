@@ -101,7 +101,7 @@ The **Basic description** (*Basic description* in the edit form) is what a playe
 - **Storyteller effects (in Russian).** Two Storyteller-only buttons in the Token and Notes tool columns. The red theatre masks flash НАРУШЕНИЕ МАСКАРАДА on every screen at once. The ghost opens the picker: choose an effect, send it to **everyone or only to the players you tick**, add a line of text if you like, and *Попробовать на себе* first. The effects:
   - *Зверь*: **Бешенство** (red flood, shaking, a heart speeding up under the Beast's growl), **Рётшрек** (flames climbing, roaring and crackling fire), **Голод** (a slow red pulse, a heavy heart, a long breath in);
   - *Разум*: **Минутное помутнение**, **Замешательство**, **Дурное предчувствие**, **Чужой взгляд**;
-  - *Малкавиане*: **Шёпот** (eighteen seconds of Russian phrases and whispering voices; your own lines, separated by |, are mixed in among the random ones), **Расколотое зрение**, **Зазеркалье**;
+  - *Малкавиане*: **Шёпот** (soft whispering voices and seven Russian phrases over eighteen seconds, drawn from 315; your own lines, separated by |, are mixed in among the random ones), **Расколотое зрение**, **Зазеркалье**;
   - *Ласомбра*: **Покров Бездны** (living darkness closes in to a narrow circle, with a sub-bass hum), **Руки Бездны** (tentacles of shadow rise from the edges), **Живая тень** (a shadow walks across the screen on its own, with footsteps);
   - *Тремер*: **Ритуальный круг** (a hermetic circle draws itself and turns, with a chant and bells), **Кипящая кровь** (blood drops rising, sigils flaring, bubbling), **Охранный знак** (a ward flares around the screen with a ringing shimmer).
 

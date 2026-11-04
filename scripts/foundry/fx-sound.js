@@ -84,11 +84,11 @@ const SOUNDS = {
   },
   /* Whispers: breathy voices at the edge of hearing, from every side. */
   whispers(a, out, t, L) {
-    const bed = noise(a, 'white', t, t + L); chain(bed, filter(a, 'bandpass', 1400, 0.6), env(a, [[t, 0], [t + 2, 0.03], [t + L - 2, 0.03], [t + L, 0]]), out);
-    for (let i = 0; i < Math.round(L * 2.2); i++) {
+    const bed = noise(a, 'white', t, t + L); chain(bed, filter(a, 'bandpass', 1400, 0.6), env(a, [[t, 0], [t + 3, 0.015], [t + L - 3, 0.015], [t + L, 0]]), out);
+    for (let i = 0; i < Math.round(L * 1.1); i++) {
       const s = t + 0.3 + Math.random() * (L - 2), len = rnd(0.6, 1.8), n = noise(a, 'white', s, s + len + 0.05);
       const f1 = filter(a, 'bandpass', rnd(450, 900), 5), f2 = filter(a, 'bandpass', rnd(1300, 2700), 7), hp = filter(a, 'highpass', 350), g = a.createGain(); g.gain.setValueAtTime(0, s);
-      let k = s; const peak = rnd(0.25, 0.7); while (k < s + len) { const syl = rnd(0.07, 0.19); g.gain.linearRampToValueAtTime(peak * rnd(0.4, 1), k + syl * 0.35); g.gain.linearRampToValueAtTime(peak * 0.08, k + syl); k += syl + rnd(0, 0.06); }
+      let k = s; const peak = rnd(0.12, 0.38); while (k < s + len) { const syl = rnd(0.07, 0.19); g.gain.linearRampToValueAtTime(peak * rnd(0.4, 1), k + syl * 0.35); g.gain.linearRampToValueAtTime(peak * 0.08, k + syl); k += syl + rnd(0, 0.06); }
       g.gain.linearRampToValueAtTime(0, s + len + 0.04);
       const p = pan(a, rnd(-0.9, 0.9)); n.connect(f1); n.connect(f2); f1.connect(hp); f2.connect(hp); chain(hp, g, p, out);
     }
@@ -150,7 +150,7 @@ const SOUNDS = {
 };
 
 /** Rough loudness matching between the effects. */
-const LEVEL = {whispers: 2.8, abyss: 0.6, ritual: 1.7, shadow: 1.6, blood: 1.3, rotschreck: 1.2};
+const LEVEL = {whispers: 1.6, abyss: 0.6, ritual: 1.7, shadow: 1.6, blood: 1.3, rotschreck: 1.2};
 /** Play an effect's sound (if it has one). */
 export function playSound(kind, seconds) {
   const f = SOUNDS[kind]; if (!f) return false;

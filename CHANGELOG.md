@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.14.1
+- **Шёпот is quieter and subtler**: fewer, softer voices.
+- **315 phrases** to draw from, every one addressing the player in the feminine. As before 1.14 it shows 7 phrases (your own lines among them), but the effect still lasts 18 seconds, so each phrase stays long enough to read.
+- **Чужой взгляд** says «Кто-то смотрит»; **Покров Бездны** has no text; **Голод** says «Ты так голодна.»
+
 ## 1.14.0
 - **The effects are in Russian**: names, descriptions, the words on screen (НАРУШЕНИЕ МАСКАРАДА, БЕШЕНСТВО, РЁТШРЕК), the default lines and the picker itself. Two Cyrillic fonts are bundled for them (Ruslan Display, Old Standard TT).
 - **Sounds of their own** for the Beast: Бешенство (a heart speeding up under a growl and a roar), Рётшрек (a whoosh of flame, roaring, crackling fire, a panicked heart), Голод (a slow heavy heart, a low ache, a long breath in). Synthesised in the browser, following Foundry's interface volume.

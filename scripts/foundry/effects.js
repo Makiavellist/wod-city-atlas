@@ -4,6 +4,7 @@
 import {MOD} from './journal-store.js';
 import {esc} from '../core/util.js';
 import {playSound} from './fx-sound.js';
+import {WHISPERS} from './whispers.js';
 
 const MASK_L = 'M100 18C70 18 38 30 26 58c-10 24-6 58 10 84 14 22 36 38 58 42l6-30-12-14 16-18-10-22 14-20-8-24 10-18z';
 const MASK_R = 'M100 18c30 0 62 12 74 40 10 24 6 58-10 84-14 22-36 38-58 42l-6-30 12-14-16-18 10-22-14-20 8-24-10-18z';
@@ -15,12 +16,6 @@ const MASK = `<svg class="brk-mask" viewBox="0 0 200 200" aria-hidden="true">
 const EYE = `<svg class="fx-eye" viewBox="0 0 200 100" aria-hidden="true"><defs><radialGradient id="fx-iris"><stop offset="0" stop-color="#000"/><stop offset=".28" stop-color="#000"/><stop offset=".32" stop-color="#7a1d14"/><stop offset=".8" stop-color="#3a0a08"/><stop offset="1" stop-color="#120303"/></radialGradient><clipPath id="fx-lid"><path d="M10 50Q100 -10 190 50Q100 110 10 50z"/></clipPath></defs>
   <g clip-path="url(#fx-lid)"><rect width="200" height="100" fill="#d9cfc0"/><path d="M10 50Q100 -10 190 50Q100 110 10 50z" fill="none" stroke="rgba(120,20,20,.35)" stroke-width="10"/><circle class="iris" cx="100" cy="50" r="26" fill="url(#fx-iris)"/></g>
   <path d="M10 50Q100 -10 190 50Q100 110 10 50z" fill="none" stroke="#120303" stroke-width="3"/></svg>`;
-const WHISPERS = ['часы на башне лгут', 'пересчитай двери ещё раз', 'она знает, что ты сделал', 'луна подслушивает', 'их всегда было семь',
-  'не пей с левой руки', 'сегодня они носят твоё лицо', 'рыбы всё помнят', 'за тобой — но вежливо', 'ты не выключил плиту в пятьдесят третьем',
-  'карты крапили ещё до твоего рождения', 'спроси у голубя', 'красный — это дверь', 'улыбайся, они считают', 'Князь не умер, Князь ждёт',
-  'сколько ступеней у лестницы, которой нет?', 'твоя тень пришла раньше тебя', 'не открывай третью дверь', 'озеро смотрит вверх',
-  'кто-то переставил звёзды', 'ты уже читал эту фразу', 'молоко помнит корову', 'в зеркале на одного больше', 'не оборачивайся на своё имя',
-  'они слышат, когда ты думаешь громко', 'город спит с открытыми глазами'];
 const SIGILS = ['☉', '☽', '☿', '♀', '♂', '♃', '♄', '♁', '✶', '⚹'];
 
 /** Every effect: what the Storyteller picks from. ms = how long it lasts; text = the default line under it. */
@@ -28,15 +23,15 @@ export const EFFECTS = {
   breach: {name: 'Нарушение Маскарада', icon: 'fa-solid fa-masks-theater', group: 'Тревога', ms: 9000, file: 'sounds/drums.wav', hint: 'Трескающаяся маска и красные буквы. Закрывается щелчком.', ph: 'В вечерних новостях показали запись.'},
   frenzy: {name: 'Бешенство', icon: 'fa-solid fa-heart-pulse', group: 'Зверь', ms: 8000, hint: 'Экран заливает красным, он трясётся под бешеный стук сердца и рык Зверя.', text: 'Зверь берёт верх.'},
   rotschreck: {name: 'Рётшрек', icon: 'fa-solid fa-fire', group: 'Зверь', ms: 8000, hint: 'Красный Страх: по экрану ползёт пламя, ревёт огонь.', text: 'Огонь. Беги.'},
-  hunger: {name: 'Голод', icon: 'fa-solid fa-droplet', group: 'Зверь', ms: 9000, hint: 'Медленная красная пульсация по краям, тяжёлое сердце, долгий вдох.', text: 'Ты так голоден.'},
+  hunger: {name: 'Голод', icon: 'fa-solid fa-droplet', group: 'Зверь', ms: 9000, hint: 'Медленная красная пульсация по краям, тяжёлое сердце, долгий вдох.', text: 'Ты так голодна.'},
   lapse: {name: 'Минутное помутнение', icon: 'fa-solid fa-cloud', group: 'Разум', ms: 6500, hint: 'Едва заметно: мир на миг расплывается.', text: ''},
   confusion: {name: 'Замешательство', icon: 'fa-solid fa-shuffle', group: 'Разум', ms: 7000, hint: 'Комната качается, цвета плывут, ничто не стоит на месте.', text: ''},
   foreboding: {name: 'Дурное предчувствие', icon: 'fa-solid fa-cloud-moon', group: 'Разум', ms: 10000, hint: 'С краёв наползает тьма, цвет уходит из мира.', text: 'Что-то не так.'},
-  watched: {name: 'Чужой взгляд', icon: 'fa-solid fa-eye', group: 'Разум', ms: 7500, hint: 'Во тьме открывается глаз, осматривается и закрывается.', text: ''},
-  whispers: {name: 'Шёпот', icon: 'fa-solid fa-comment-dots', group: 'Малкавиане', ms: 18000, hint: 'Обрывки фраз мелькают по экрану, шепчут голоса. Свои строки — через |, они смешаются со случайными.', ph: 'часы лгут | пересчитай двери'},
+  watched: {name: 'Чужой взгляд', icon: 'fa-solid fa-eye', group: 'Разум', ms: 7500, hint: 'Во тьме открывается глаз, осматривается и закрывается.', text: 'Кто-то смотрит'},
+  whispers: {name: 'Шёпот', icon: 'fa-solid fa-comment-dots', group: 'Малкавиане', ms: 18000, hint: 'Обрывки фраз мелькают по экрану, шепчут голоса. Свои строки — через |, они смешаются со случайными. Фраз немного, каждая держится долго — их успевают прочесть.', ph: 'часы лгут | пересчитай двери'},
   fracture: {name: 'Расколотое зрение', icon: 'fa-solid fa-bolt', group: 'Малкавиане', ms: 4200, hint: 'Картинка рассыпается на сдвинутые, перекрашенные полосы.', text: ''},
   mirror: {name: 'Зазеркалье', icon: 'fa-solid fa-left-right', group: 'Малкавиане', ms: 3800, hint: 'На несколько секунд весь экран становится зеркальным.', text: ''},
-  abyss: {name: 'Покров Бездны', icon: 'fa-solid fa-circle-half-stroke', group: 'Ласомбра', ms: 11000, hint: 'Живая тьма смыкается со всех сторон, оставляя лишь узкий круг; холодный гул снизу.', text: 'Свет гаснет.'},
+  abyss: {name: 'Покров Бездны', icon: 'fa-solid fa-circle-half-stroke', group: 'Ласомбра', ms: 11000, hint: 'Живая тьма смыкается со всех сторон, оставляя лишь узкий круг; холодный гул снизу.', text: ''},
   tentacles: {name: 'Руки Бездны', icon: 'fa-solid fa-hand', group: 'Ласомбра', ms: 9000, hint: 'Из краёв экрана тянутся извивающиеся щупальца тьмы.', text: ''},
   shadow: {name: 'Живая тень', icon: 'fa-solid fa-person', group: 'Ласомбра', ms: 8000, hint: 'Чья-то тень проходит по экрану сама по себе. Шаги, которых нет.', text: ''},
   ritual: {name: 'Ритуальный круг', icon: 'fa-solid fa-circle-notch', group: 'Тремер', ms: 10000, hint: 'Вычерчивается и вращается герметический круг с надписями; хор и колокола.', text: ''},
@@ -89,8 +84,8 @@ export function showEffect(kind, {text, sound = true} = {}) {
     watched: `<i class="fx-dark"></i>${EYE}${sub}`,
     whispers: (() => {
       // the Storyteller's own lines, mixed in among random ones
-      const own = line ? line.split('|').map(s => s.trim()).filter(Boolean) : [], n = Math.max(14, own.length + 6);
-      const list = shuffle([...own, ...shuffle(WHISPERS).slice(0, n - own.length)]), step = (ms - 4500) / list.length;
+      const own = line ? line.split('|').map(s => s.trim()).filter(Boolean) : [], n = Math.max(7, own.length);
+      const list = shuffle([...own, ...shuffle(WHISPERS).slice(0, n - own.length)]), step = (ms - 6500) / list.length;
       return list.map((w, i) => `<span class="fx-whisper" style="left:${R(6, 72).toFixed(0)}%;top:${R(8, 84).toFixed(0)}%;animation-delay:${(i * step + R(0, step * 0.5)).toFixed(0)}ms;transform:rotate(${R(-6, 6).toFixed(1)}deg)">${esc(w)}</span>`).join('');
     })(),
     fracture: Array.from({length: 9}, (_, i) => `<i class="fx-slice" style="top:${(i * 11 + Math.random() * 4).toFixed(1)}%;height:${(3 + Math.random() * 8).toFixed(1)}%;animation-delay:${(Math.random() * 600).toFixed(0)}ms"></i>`).join('') + sub,
