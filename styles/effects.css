@@ -100,13 +100,17 @@ body.wca-mirror { transform: scaleX(-1); transition: transform .35s ease; }
 @keyframes brk-flicker { 0%, 100% { opacity: 1; } 47% { opacity: 1; } 48% { opacity: .55; } 49% { opacity: 1; } 72% { opacity: .8; } 73% { opacity: 1; } }
 
 /* The Storyteller's picker */
+/* the picker scrolls inside the dialog so the Send / Try it on me buttons always stay on screen */
+.wca-fxpick { max-height: calc(100vh - 230px); overflow-y: auto; padding-right: 4px; }
+.application:has(.wca-fxpick) .window-content { overflow: hidden; display: flex; flex-direction: column; }
+.application:has(.wca-fxpick) .form-footer { flex: none; position: sticky; bottom: 0; }
 .wca-fxpick fieldset { border: 1px solid rgba(255, 255, 255, .14); border-radius: 3px; margin: 0 0 8px; padding: 6px 8px 8px; }
 .wca-fxpick legend { padding: 0 4px; font-weight: 600; opacity: .85; }
-.wca-fxpick .fxgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(176px, 1fr)); gap: 6px; }
-.wca-fxpick .fxcard { position: relative; display: grid; grid-template-columns: 22px 1fr; gap: 0 6px; align-items: start; padding: 6px 8px; border: 1px solid rgba(255, 255, 255, .12); border-radius: 3px; cursor: pointer; background: rgba(0, 0, 0, .18); }
+.wca-fxpick .fxgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(176px, 1fr)); gap: 5px; }
+.wca-fxpick .fxcard { position: relative; display: grid; grid-template-columns: 22px 1fr; gap: 0 6px; align-items: start; padding: 4px 7px; border: 1px solid rgba(255, 255, 255, .12); border-radius: 3px; cursor: pointer; background: rgba(0, 0, 0, .18); }
 .wca-fxpick .fxcard input { position: absolute; opacity: 0; pointer-events: none; }
 .wca-fxpick .fxcard i { grid-row: span 2; font-size: 17px; padding-top: 2px; color: #c9414a; text-align: center; }
-.wca-fxpick .fxcard small { opacity: .7; font-size: 11px; line-height: 1.25; }
+.wca-fxpick .fxcard small { opacity: .7; font-size: 10.5px; line-height: 1.2; }
 .wca-fxpick .fxcard:has(input:checked) { border-color: #c9414a; background: rgba(150, 10, 20, .28); box-shadow: 0 0 8px rgba(200, 30, 40, .4); }
 .wca-fxpick .fxwho { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; }
 .wca-fxpick .fxwho label, .wca-fxpick .fxself { display: inline-flex; align-items: center; gap: 4px; }

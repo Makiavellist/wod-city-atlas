@@ -76,10 +76,15 @@ export function planUpgrade(atlas, pre, {all = false} = {}) {
   if (n) parts.push(`the outline of ${n} ${n === 1 ? 'zone' : 'zones'}`);
   let f = 0;
   for (const [coll, keys] of Object.entries(fields)) for (const [id, p] of Object.entries(pre[coll] || {})) {
-    const it = atlas[coll] && atlas[coll][id]; if (!it || keys.every(k => same(it[k], p[k]))) continue;
-    const d = edit(coll, id); for (const k of keys) { if (p[k] === undefined) delete d[k]; else d[k] = clone(p[k]); } f++;
+    const it = atlas[coll] && atlas[coll][id]; if (!it) continue;
+    const plain = keys.filter(k => !k.includes('.')), lv = keys.filter(k => k.startsWith('levels.')).map(k => k.slice(7));
+    const lvSame = !lv.length || (it.levels || []).every(l => { const pl = (p.levels || []).find(q => q.id === l.id); return !pl || lv.every(k => same(l[k], pl[k])); });
+    if (plain.every(k => same(it[k], p[k])) && lvSame) continue;
+    const d = edit(coll, id); for (const k of plain) { if (p[k] === undefined) delete d[k]; else d[k] = clone(p[k]); }
+    for (const l of d.levels || []) { const pl = (p.levels || []).find(q => q.id === l.id); if (pl) for (const k of lv) { if (pl[k] === undefined) delete l[k]; else l[k] = clone(pl[k]); } }
+    f++;
   }
-  if (f) parts.push(`new texts for ${f} entries (${[...new Set(Object.values(fields).flat())].map(k => FIELD_NAMES[k] || k).join(', ')})`);
+  if (f) parts.push(`new texts for ${f} entries (${[...new Set(Object.values(fields).flat())].map(k => FIELD_NAMES[k] ?? k).filter(Boolean).join(', ')})`);
   return {items: plan.items, meta: plan.meta, parts};
 }
-const FIELD_NAMES = {brief: 'Basic descriptions', alias: 'names while unknown', aliasText: 'texts while unknown', nameTr: 'translated names', tag: 'short tags', falseKicker: 'false clans', sub: 'role lines'};
+const FIELD_NAMES = {brief: 'Basic descriptions', alias: 'names while unknown', aliasText: 'texts while unknown', nameTr: 'translated names', tag: 'short tags', falseKicker: 'false clans', sub: 'role lines', name: 'names with their Russian in brackets', nameTr: '', art: 'Dreaming pictures', roam: 'wandering chimera', ride: '', wander: '', period: '', date: 'header lines', terms: 'tab names', 'levels.date': ''};

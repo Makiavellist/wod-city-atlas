@@ -1,11 +1,102 @@
 /* Canvas renderer for an atlas view. Draws base geography, zones, glows, routes, effects and labels. */
-import {zw, withAlpha, glyphPath, inPoly, segDist, rng, bbOf} from './util.js';
+import {zw, withAlpha, glyphPath, inPoly, segDist, rng, bbOf, shortName} from './util.js';
 
 export const FONTS = {
   title: "'Pirata One', 'UnifrakturCook', Georgia, serif",
   head: "'IM Fell English', Georgia, 'Times New Roman', serif",
   sc: "'IM Fell English SC', 'IM Fell English', Georgia, serif",
   body: "'Alegreya Sans', 'Gill Sans', 'Trebuchet MS', system-ui, sans-serif"
+};
+
+/* ---------- Dreaming art: realms drawn as living pictures rather than outlines (zone.art) ----------
+ * ward: towers of unbuilt projects with twinkling windows · wolf: slowly turning rings · index: drifting books
+ * orchard: three glass fruits · seat: the black mountain on the starlit lake, bobbing, with its river of light. */
+const still = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+const TOWERS = new WeakMap();
+const ART = {
+  ward(zn, g, on) {
+    const x = this.ctx, T = still() ? 0 : this.v.T, s = this.s(), deep = zn.level === 'deep';
+    const [x0, y0] = this.ts([g.bb[0], g.bb[1]]), [x1, y1] = this.ts([g.bb[2], g.bb[3]]);
+    x.beginPath(); g.rings.forEach(r => this.path(r, true));
+    const gr = x.createLinearGradient(x0, y0, x1, y1); gr.addColorStop(0, 'rgba(255,190,120,.20)'); gr.addColorStop(1, 'rgba(90,150,255,.20)'); x.fillStyle = gr; x.fill('evenodd');
+    x.strokeStyle = on ? 'rgba(170,215,255,.95)' : 'rgba(150,200,255,.5)'; x.lineWidth = on ? 2.4 : 1.4; x.setLineDash([5, 5]); x.lineDashOffset = -T * 3; x.stroke(); x.setLineDash([]); x.lineDashOffset = 0;
+    if (this.cam.z < 12.2) return;
+    let tw = TOWERS.get(g);
+    if (!tw) {
+      const R = rng(1991 + zn.id.length * 7), [a, b, c, d] = g.bb, ring = g.rings[0]; tw = [];
+      for (let n = 0, tries = 0; n < (deep ? 26 : 70) && tries < 4000; tries++) { const pt = [a + R() * (c - a), b + R() * (d - b)]; if (!inPoly(pt, [ring])) continue; tw.push({w: pt, hgt: 1.6 + R() * 3.2, wid: 0.75 + R() * 0.6, win: Array.from({length: 6}, () => R()), ph: R() * 6.28}); n++; }
+      tw.sort((p, q) => p.w[1] - q.w[1]); TOWERS.set(g, tw);
+    }
+    const unit = Math.max(3, 70 / this.mpp());
+    for (const t of tw) {
+      const [px, py] = this.ts(t.w); if (px < -40 || py < -80 || px > this.cam.W + 40 || py > this.cam.H + 20) continue;
+      const w = unit * t.wid, h = unit * t.hgt * 1.6, sway = still() ? 0 : Math.sin(T * 0.3 + t.ph) * w * 0.04;
+      x.fillStyle = '#1c1738'; x.fillRect(px - w / 2 + sway, py - h, w, h); x.strokeStyle = 'rgba(160,200,255,.35)'; x.lineWidth = 0.8; x.strokeRect(px - w / 2 + sway, py - h, w, h);
+      x.fillStyle = 'rgba(60,110,70,.55)'; x.fillRect(px - w / 2 + sway, py - h * 0.45, w * 0.25, h * 0.45);
+      if (w > 5) t.win.forEach((v, i) => { if (v < 0.45) return; const lit = 0.6 + 0.4 * Math.sin(T * 0.9 + t.ph + i); x.fillStyle = `rgba(120,190,255,${0.55 * lit})`; x.fillRect(px - w / 2 + sway + w * 0.2 + (i % 2) * w * 0.42, py - h + h * 0.12 + Math.floor(i / 2) * h * 0.27, Math.max(1.2, w * 0.18), Math.max(1.2, h * 0.1)); });
+    }
+  },
+  wolf(zn, g, on) {
+    const x = this.ctx, T = still() ? 0 : this.v.T;
+    x.beginPath(); g.rings.forEach(r => this.path(r, true)); x.fillStyle = 'rgba(150,200,170,.10)'; x.fill('evenodd');
+    x.strokeStyle = on ? 'rgba(190,240,210,.9)' : 'rgba(170,220,190,.55)'; x.lineWidth = on ? 2.2 : 1.3; x.setLineDash([1, 5]); x.stroke(); x.setLineDash([]);
+    const [cx, cy] = this.ts([(g.bb[0] + g.bb[2]) / 2, (g.bb[1] + g.bb[3]) / 2]), R = Math.max(18, 380 / this.mpp());
+    for (let i = 0; i < 3; i++) { x.beginPath(); x.ellipse(cx, cy, R * (0.35 + i * 0.22), R * (0.2 + i * 0.13), T * 0.15 * (i % 2 ? 1 : -1) + i, 0, 6.283); x.strokeStyle = `rgba(190,235,205,${0.35 - i * 0.08})`; x.lineWidth = 1; x.setLineDash([3, 7]); x.lineDashOffset = -T * 6; x.stroke(); }
+    x.setLineDash([]); x.lineDashOffset = 0;
+    // the eye: it opens slowly, looks about, and half-closes again
+    const open = 0.55 + 0.45 * Math.sin(T * 0.21), look = Math.sin(T * 0.37) * R * 0.05;
+    x.beginPath(); x.ellipse(cx, cy, R * 0.16, R * 0.08 * open, 0, 0, 6.283); x.fillStyle = 'rgba(220,255,225,.18)'; x.fill();
+    x.beginPath(); x.arc(cx + look, cy, R * 0.035 * open + 0.6, 0, 6.283); x.fillStyle = 'rgba(230,255,235,.5)'; x.fill();
+  },
+  index(zn, g, on) {
+    const x = this.ctx, T = still() ? 0 : this.v.T;
+    const [cx, cy] = this.ts([(g.bb[0] + g.bb[2]) / 2, (g.bb[1] + g.bb[3]) / 2]), R = Math.max(16, (g.bb[2] - g.bb[0]) / 2 * this.s());
+    const gr = x.createRadialGradient(cx, cy, 0, cx, cy, R); gr.addColorStop(0, 'rgba(240,210,150,.22)'); gr.addColorStop(1, 'rgba(240,210,150,0)'); x.fillStyle = gr; x.beginPath(); x.arc(cx, cy, R, 0, 6.283); x.fill();
+    if (on) { x.strokeStyle = 'rgba(240,215,160,.7)'; x.lineWidth = 1.5; x.setLineDash([4, 4]); x.stroke(); x.setLineDash([]); }
+    for (let i = 0; i < 16; i++) {
+      const a = i * 0.393 + T * 0.05 * (i % 3 ? 1 : -1), rr = R * (0.3 + (i % 5) * 0.14), px = cx + Math.cos(a) * rr, py = cy + Math.sin(a) * rr * 0.6 + Math.sin(T * 0.8 + i) * 2, L = Math.max(6, R * 0.18);
+      x.save(); x.translate(px, py); x.rotate(a * 0.7 + i); x.fillStyle = 'rgba(60,40,30,.85)'; x.fillRect(-L / 2, -L * 0.18, L, L * 0.36);
+      x.strokeStyle = 'rgba(240,205,140,.75)'; x.lineWidth = 0.8; x.strokeRect(-L / 2, -L * 0.18, L, L * 0.36);
+      for (let k = 1; k < 5; k++) { x.beginPath(); x.moveTo(-L / 2 + k * L / 5, -L * 0.18); x.lineTo(-L / 2 + k * L / 5, L * 0.18); x.stroke(); }
+      x.restore();
+    }
+  },
+  orchard(zn, g, on) {
+    const x = this.ctx, T = still() ? 0 : this.v.T;
+    const [cx, cy] = this.ts([(g.bb[0] + g.bb[2]) / 2, (g.bb[1] + g.bb[3]) / 2]), R = Math.max(14, (g.bb[2] - g.bb[0]) / 2 * this.s());
+    [[-0.55, 0.15, '120,230,150'], [0.55, 0.15, '240,205,130'], [0, -0.45, '250,160,200']].forEach(([dx, dy, c], i) => {
+      const b = Math.sin(T * 0.6 + i * 2.1) * R * 0.03, fx = cx + dx * R, fy = cy + dy * R + b, rr = R * 0.48;
+      const gr = x.createRadialGradient(fx - rr * 0.3, fy - rr * 0.35, rr * 0.1, fx, fy, rr); gr.addColorStop(0, `rgba(${c},.55)`); gr.addColorStop(0.7, `rgba(${c},.18)`); gr.addColorStop(1, `rgba(${c},.05)`);
+      x.fillStyle = gr; x.beginPath(); x.arc(fx, fy, rr, 0, 6.283); x.fill(); x.strokeStyle = `rgba(${c},${on ? 0.95 : 0.6})`; x.lineWidth = 1.2; x.stroke();
+      x.beginPath(); x.arc(fx - rr * 0.35, fy - rr * 0.35, rr * 0.18, 0, 6.283); x.fillStyle = 'rgba(255,255,255,.25)'; x.fill();
+      // a season turning inside each fruit
+      const a = T * 0.4 + i * 2; x.beginPath(); x.arc(fx + Math.cos(a) * rr * 0.45, fy + Math.sin(a) * rr * 0.45, Math.max(1, rr * 0.07), 0, 6.283); x.fillStyle = `rgba(${c},.85)`; x.fill();
+    });
+  },
+  seat(zn, g, on) {
+    const x = this.ctx, T = still() ? 0 : this.v.T, mpp = this.mpp();
+    const home = zn.ref && this.m.atlas.places[zn.ref] && this.m.atlas.places[zn.ref].at;
+    const [sx, yb] = this.ts(home ? this.m.proj.toWorld(home) : [(g.bb[0] + g.bb[2]) / 2, (g.bb[1] + g.bb[3]) / 2]);
+    // the pale river of light across the lake
+    const [ex, ey] = this.ts(this.m.proj.toWorld([43.30, -87.40]));
+    x.lineCap = 'round';
+    [[90, 0.05], [44, 0.07], [14, 0.12], [3, 0.25]].forEach(([w, a]) => { x.beginPath(); x.moveTo(sx, yb); x.bezierCurveTo(sx + (ex - sx) * 0.35, yb - 40, sx + (ex - sx) * 0.7, ey + (yb - ey) * 0.3, ex, ey); x.strokeStyle = `rgba(214,222,255,${a * (0.85 + 0.15 * Math.sin(T * 0.5 + w))})`; x.lineWidth = w; x.stroke(); });
+    const y = yb + Math.sin(T * 0.4) * 2.5, H = Math.max(60, Math.min(330, 2600 / mpp)), Wd = H * 0.42;
+    if (sx < -Wd * 2 || sx > this.cam.W + Wd * 2 || y < -H * 2 || y > this.cam.H + H * 2) return;
+    const halo = x.createRadialGradient(sx, y - H * 0.5, 0, sx, y - H * 0.5, H * 1.1); halo.addColorStop(0, on ? 'rgba(170,180,255,.30)' : 'rgba(150,160,255,.18)'); halo.addColorStop(1, 'rgba(150,160,255,0)');
+    x.fillStyle = halo; x.fillRect(sx - H * 1.2, y - H * 1.6, H * 2.4, H * 2.4);
+    const blade = [[-0.5, 0], [-0.34, -0.22], [-0.28, -0.18], [-0.16, -0.55], [-0.06, -0.62], [0.02, -1], [0.09, -0.7], [0.2, -0.58], [0.27, -0.3], [0.36, -0.26], [0.5, 0]];
+    x.beginPath(); blade.forEach(([px, py], i) => { const X = sx + px * Wd * 2, Y = y - py * H * 0.85; i ? x.lineTo(X, Y) : x.moveTo(X, Y); }); x.closePath();
+    const rg = x.createLinearGradient(0, y, 0, y + H * 0.85); rg.addColorStop(0, 'rgba(60,70,140,.45)'); rg.addColorStop(1, 'rgba(60,70,140,0)'); x.fillStyle = rg; x.fill();
+    x.beginPath(); x.ellipse(sx, y - H * 0.5, Wd * 1.25, H * 0.05, 0, 0, 6.283); x.strokeStyle = 'rgba(190,200,255,.25)'; x.lineWidth = 1; x.setLineDash([2, 4]); x.lineDashOffset = -T * 4; x.stroke(); x.setLineDash([]); x.lineDashOffset = 0;
+    x.beginPath(); blade.forEach(([px, py], i) => { const X = sx + px * Wd * 2, Y = y + py * H; i ? x.lineTo(X, Y) : x.moveTo(X, Y); }); x.closePath();
+    const mg = x.createLinearGradient(sx - Wd, y - H, sx + Wd, y); mg.addColorStop(0, '#1a1830'); mg.addColorStop(1, '#05040b'); x.fillStyle = mg; x.fill();
+    x.strokeStyle = on ? 'rgba(200,210,255,.95)' : 'rgba(170,185,255,.7)'; x.lineWidth = 1.4; x.stroke();
+    [[-0.05, -0.18], [0.12, -0.34], [0.03, -0.52]].forEach(([px, py], i) => { const t = 0.7 + 0.3 * Math.sin(T * 1.7 + i * 2); x.fillStyle = `rgba(255,214,150,${0.8 * t})`; x.fillRect(sx + px * Wd * 2 - 1.5, y + py * H - 3, 3, 5); });
+    const ps = 0.75 + 0.25 * Math.sin(T * 2.3), tx = sx + 0.04 * Wd, ty = y - H - 4;
+    x.fillStyle = `rgba(255,248,220,${ps})`; x.beginPath(); x.arc(tx, ty, 2.4, 0, 6.283); x.fill();
+    x.strokeStyle = `rgba(255,248,220,${0.5 * ps})`; x.lineWidth = 1; x.beginPath(); x.moveTo(tx - 9, ty); x.lineTo(tx + 9, ty); x.moveTo(tx, ty - 9); x.lineTo(tx, ty + 9); x.stroke();
+  }
 };
 
 export class Renderer {
@@ -187,7 +278,7 @@ export class Renderer {
     return this.listOf('zones', () => Object.values(this.m.atlas.zones).filter(z => this.m.visible(z, 'zones', st) && !this.v.isHiddenItem(z.id)).sort((a, b) => (a.order ?? 10) - (b.order ?? 10)));
   }
   auraList() { const st = this.v.st; return this.listOf('auras', () => Object.values(this.m.atlas.auras).filter(a => a.at && this.m.visible(a, 'auras', st))); }
-  drawZones() { for (const z of this.zoneList()) if (!this.skip(this.m.moves(z.style))) this.drawZone(z); }
+  drawZones() { for (const z of this.zoneList()) if (!this.skip(this.m.moves(z.style) || !!z.art)) this.drawZone(z); }
   drawZone(zn, opts = {}) {
     const g = this.m.geo(zn, 'zones'); if (!g.rings || !g.rings.length || !this.vis(g.bb, 200)) return;
     const x = this.ctx, z = this.cam.z, on = !opts.echo && (this.v.sel === zn.id || this.v.hover === zn.id || this.v.sel === zn.ref || this.v.hover === zn.ref);
@@ -197,6 +288,7 @@ export class Renderer {
     const passes = opts.echo ? [opts.echo] : unknown ? [{stroke: 'rgba(200,200,210,.55)', width: 1.3, dash: [3, 5], fill: '#9a9aa4', fillAlpha: 0.05}] : this.m.passes(st0 || {stroke: col, width: 1.6, fill: col, fillAlpha: 0.12});
     const mk = () => { x.beginPath(); g.rings.forEach(r => this.path(r, true)); };
     const base = opts.alpha ?? 1;
+    if (zn.art && !opts.echo && !unknown && ART[zn.art]) { ART[zn.art].call(this, zn, g, on); x.globalAlpha = 1; if (on) this.hoverInside(mk, col); return; }
     for (const p of passes) {
       if (p.minZoom && z < p.minZoom || p.maxZoom && z > p.maxZoom) continue;
       mk();
@@ -207,17 +299,27 @@ export class Renderer {
         else x.fillStyle = (p.fill && p.fill !== 'auto') ? p.fill : col;
         if (x.globalAlpha > 0) x.fill('evenodd');
       }
-      if (p.pattern) { x.globalAlpha = base * (on ? 1 : 0.85); x.fillStyle = this.pattern(this.autoPat(p.pattern, col)); x.fill('evenodd'); }
+      if (p.pattern) { x.globalAlpha = base * 0.85; x.fillStyle = this.pattern(this.autoPat(p.pattern, col)); x.fill('evenodd'); }
       if (zn.fillImage && !opts.echo && p === passes[0]) this.zoneImage(zn, g);
-      if (p.glow) { mk(); x.globalAlpha = base * (p.glow.alpha ?? 0.15) * (on ? 2.4 : 1); x.strokeStyle = p.glow.color || col; x.lineWidth = (p.glow.width || 6) + (on ? 4 : 0); x.stroke(); }
+      if (p.glow) { mk(); x.globalAlpha = base * (p.glow.alpha ?? 0.15); x.strokeStyle = p.glow.color || col; x.lineWidth = p.glow.width || 6; x.stroke(); }
       if (p.casing) { x.globalAlpha = base; x.strokeStyle = p.casing.color; x.lineWidth = zw(p.width ?? 1.6, z) + (p.casing.width || 3); x.setLineDash([]); x.stroke(); }
       if (p.stroke !== null && (p.width ?? 1) > 0.02) {
         x.globalAlpha = base * (p.strokeAlpha ?? 1) * (on && p.strokeAlpha ? 1 / p.strokeAlpha : 1);
-        x.strokeStyle = p.stroke || col; x.lineWidth = zw(p.width ?? 1.6, z) + (on ? 2 : 0); x.setLineDash(p.dash || []); x.lineDashOffset = p.flow ? -this.v.T * 8 * p.flow : 0; x.stroke(); x.setLineDash([]); x.lineDashOffset = 0;
-      } else if (on && p.hoverStroke) { x.globalAlpha = base; x.strokeStyle = col; x.lineWidth = 2; x.setLineDash([3, 6]); x.stroke(); x.setLineDash([]); }
+        x.strokeStyle = p.stroke || col; x.lineWidth = zw(p.width ?? 1.6, z); x.setLineDash(p.dash || []); x.lineDashOffset = p.flow ? -this.v.T * 8 * p.flow : 0; x.stroke(); x.setLineDash([]); x.lineDashOffset = 0;
+      }
     }
+    if (on && !opts.echo) this.hoverInside(mk, col);
     if (this.v.sel === zn.id && !opts.echo) { mk(); x.globalAlpha = 1; x.strokeStyle = 'rgba(255,240,210,.35)'; x.lineWidth = 1; x.stroke(); }
     x.globalAlpha = 1;
+  }
+  /** Hover and selection light the inside of the zone (a soft wash and an inner glow along its edge), never the far side
+   *  of a border it shares with a neighbour. */
+  hoverInside(mk, col) {
+    const x = this.ctx; x.save(); mk(); x.clip('evenodd');
+    x.globalAlpha = 0.14; x.fillStyle = col; x.fill('evenodd');
+    mk(); x.globalAlpha = 0.55; x.strokeStyle = col; x.lineWidth = 7; x.setLineDash([]); x.stroke();
+    mk(); x.globalAlpha = 0.95; x.lineWidth = 2.4; x.stroke();
+    x.restore(); x.globalAlpha = 1;
   }
   zoneImage(zn, g) {
     const fi = zn.fillImage; if (fi.minZoom && this.cam.z < fi.minZoom) return; const im = this.image(fi.src); if (!im) return;
@@ -357,7 +459,8 @@ export class Renderer {
     const st = this.v.st;
     if (Object.values(this.m.atlas.auras).some(a => (a.pulse || a.flicker || a.mode === 'vortex') && this.m.inRealm(a, st) && this.m.inLevel(a, st))) return true;
     if (Object.values(this.m.atlas.routes).some(r => this.m.inRealm(r, st) && this.m.inLevel(r, st) && this.m.moves(r.style))) return true;
-    if (Object.values(this.m.atlas.zones).some(z => this.m.inRealm(z, st) && this.m.inLevel(z, st) && this.m.moves(z.style))) return true;
+    if (Object.values(this.m.atlas.zones).some(z => this.m.inRealm(z, st) && this.m.inLevel(z, st) && (z.art || this.m.moves(z.style)))) return true;
+    if (Object.values(this.m.atlas.places).some(p => (p.roam || p.ride || p.wander) && this.m.inRealm(p, st) && this.m.inLevel(p, st))) return true;
     if (Object.values(view.styles).some(s => this.m.passes(s).some(p => p && p.flow))) return true;
     return false;
   }
@@ -407,7 +510,7 @@ export class Renderer {
       let [x, y] = this.ts(g.c); if (L.top) y = this.ts([0, g.bb[1]])[1] + 22;
       if (x < -100 || y < -30 || x > W + 100 || y > H + 30) continue;
       const col = this.m.colorOf(zn, this.v.st), on = this.v.sel === zn.id || this.v.hover === zn.id, fs = L.size || (sz > 340 ? 14 : 12);
-      const text = (L.text || zn.name || '').toUpperCase(); if (!text) continue;
+      const text = (L.text || shortName(zn.name) || '').toUpperCase(); if (!text) continue;
       const opt = {font: `${L.italic ? 'italic ' : ''}${fs}px ${this.font(L.font || 'sc')}`, ls: L.ls ?? 3, color: L.color || col, halo: L.halo || 'rgba(8,8,10,.9)', hw: 4, avoid: true, h: fs + (L.sub ? 22 : 6), glow: on ? col : (L.glow || null)};
       let ok = false;
       for (const dy of [0, 24, -24, 48]) { if (this.text(text, x, y + dy, opt)) { ok = true; y += dy; break; } }

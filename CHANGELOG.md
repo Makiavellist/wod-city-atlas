@@ -1,11 +1,20 @@
 # Changelog
 
+## 1.13.0
+- **Storyteller effects: the Send and *Try it on me* buttons are always on screen.** The picker was taller than the window on smaller screens and pushed its buttons out of sight; it now scrolls inside the dialog instead.
+- **Translations live in the name.** No separate translation field any more: names read “Pabst Theater (Театр Пабст)”. Cards, lists, tooltips and search show the whole name; the map lettering leaves the bracketed Russian out to stay readable.
+- **No Chronicle tab and no date line** under the title in the Milwaukee preset (a realm can switch the tab off with `terms.pages: false`).
+- **Fix: hovering a zone seemed to light up its neighbour.** The highlight thickened the zone's outline, and where two zones share a border (the Blood Brothers and the Union) the neighbour looked lit. Hover and selection now light the inside of the zone only.
+- **The Storyteller sees the Basic description** in the dossier, above the full text. Players see the same as before.
+- **The whimsical Dreaming is back**, as in the original map: the Crownless Ward's towers with windows twinkling, the Unfinished Index's books drifting, the Wolf's Eye turning and opening, the Glass Orchard's three fruits with their seasons turning inside, the Far Guest's Seat bobbing on the starlit lake with its river of light. Chimera move about: Miss Tuesday trots between the Third Shift, the West Foundry and the Last Hearth, the Rent Collector makes his rounds, the Coat rides the last bus down Wisconsin Avenue, the swifts, the copper whale, the Encore and Mrs. Quire drift. All of it respects *reduce motion*.
+- Atlases made from the preset are offered these changes once (names, the Dreaming pictures and wanderers, the header and tabs).
+
 ## 1.12.0
 - **Generations are never shown to players**, wherever the clan line appears (cards, lists, tooltips, search).
 - **True and false clans.** The clan is a piece of its own in *What players see*: true clan (✓), the false clan (🎭) or nothing (✗), for all or per player. Set *False clan* in the edit form; someone with a false clan keeps their true allegiance hidden by default too. Roles no longer name the clan (“Council (Ventrue)” → “Council”), and Maximus and Jesselin pass as Tremere.
 - **Russian texts for the preset.** The Basic descriptions and the Existence-tier names and lines (“Церковь — Здесь церковь.”) are now in Russian, with World of Darkness terms as in the official translations (Сородичи, Князь, старейшины, анархи, каитиффы, люпины, Шабаш…). Every place, zone, route and glow has its Russian name in brackets, real places as they are called in Russian. The English Basic descriptions are gone. Atlases made from the preset are offered the new texts once; they replace the old short texts (full descriptions, positions and visibility are not touched).
 - **Hide everything.** *Edit → Player visibility* has a button that hides every place, zone, route, glow and person from every player, resets every fact, secret, relation and connection to its default, and makes new entries start hidden.
-- The edit form gained *Name in translation*, *False clan*, and *Text while unknown* for routes and glows.
+- The edit form gained *False clan*, and *Text while unknown* for routes and glows.
 
 ## 1.11.0
 - **Every fact, figure and connection can be shown to each player separately.** The *What players see* panel at the bottom of a dossier now lists the entry's pieces one by one, with a setting for All and for each player (follow the tier, shown or hidden): every fact and callout, the allegiance, every figure seen at a place, every owner of a domain, and on a character every relation, every place they can be found and every domain they hold. A piece you show is visible even when the player only knows the entry at Basic. Hiding an allegiance hides the faction's name and colour everywhere (the person is listed under *Allegiance unknown*). The edit form gained *Who knows it* for each fact.

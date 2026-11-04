@@ -285,7 +285,6 @@ export class AtlasEditor {
       color: {k: 'color', t: 'color', label: 'Colour', help: 'overrides faction/category'},
       icon: {k: 'icon', t: 'icon', label: 'Icon'},
       gm: {k: 'reveal', t: 'reveal', label: 'What players see', help: '0 hidden · 1 existence · 2 basic · 3 full · 4+ secrets', wide: true, defLabel: `default (${self.m.tierName(self.m.defaultTier(coll))})`},
-      nameTr: {k: 'nameTr', t: 'text', label: 'Name in translation', help: 'shown in brackets after the name', ph: 'Театр Пабст'},
       alias: {k: 'alias', t: 'text', label: 'Name while unknown', help: 'shown at tier 1 (existence only)', ph: coll === 'people' ? 'A stranger in a long coat' : 'A house nobody visits'},
       aliasText: {k: 'aliasText', t: 'text', label: 'Text while unknown', wide: true, ph: 'You know something is here, but nothing more.'},
       html: {k: 'html', t: 'html', label: 'Description', wide: true},
@@ -342,11 +341,11 @@ export class AtlasEditor {
   fields(coll) {
     const C = this.common(coll), self = this, posLabel = this.proj.kind === 'mercator' ? 'Position [lat, lng]' : 'Position [x, y]';
     switch (coll) {
-      case 'places': return [{k: 'name', t: 'text', label: 'Name', wide: true}, C.nameTr, C.sub, C.realm, C.level, {k: 'cat', t: 'select', label: 'Category', opts: d => self.catOpts(d.realm)}, C.faction, C.layer,
+      case 'places': return [{k: 'name', t: 'text', label: 'Name', wide: true}, C.sub, C.realm, C.level, {k: 'cat', t: 'select', label: 'Category', opts: d => self.catOpts(d.realm)}, C.faction, C.layer,
         {k: 'precision', t: 'select', label: 'Placement', opts: () => self.precOpts(), show: () => self.precOpts().length}, C.color, C.icon, {k: 'pin.shape', t: 'select', label: 'Pin shape', opts: SHAPE_OPTS, none: 'As its category'}, {k: 'pin.photo', t: 'check', label: 'Use the picture as the pin', help: 'its own, its linked Actor’s, or a person’s there'}, C.gm, C.alias, C.aliasText, {k: 'hidden', t: 'check', label: 'No map pin', help: 'listed but not drawn'},
         C.brief, C.html, C.img, C.notes, C.people, {k: 'zone', t: 'ref', label: 'Inside zone', wide: true, refs: () => self.refList(['zones'])}, C.anchor, C.links, C.facts, C.tags, C.uuid,
         {k: 'at', t: 'coords', label: posLabel}, {k: 'zoom', t: 'number', label: 'Focus zoom'}, C.kicker, C.order, C.src];
-      case 'zones': return [{k: 'name', t: 'text', label: 'Name', wide: true}, C.nameTr, C.sub, C.realm, C.level, C.layer, C.faction, C.color, ...this.styleFields(), C.gm, C.alias, C.aliasText,
+      case 'zones': return [{k: 'name', t: 'text', label: 'Name', wide: true}, C.sub, C.realm, C.level, C.layer, C.faction, C.color, ...this.styleFields(), C.gm, C.alias, C.aliasText,
         {k: 'domainStatus', t: 'select', label: 'Domain status', opts: () => Object.entries(self.m.domainStatuses()).map(([k, v]) => [k, v.name]), show: d => d.layer && d.layer === self.m.domainLayer()},
         {k: 'container', t: 'check', label: 'Lists places inside it', help: '“Lies within”'}, {k: 'noLabel', t: 'check', label: 'No name on the map'},
         {k: 'label.text', t: 'text', label: 'Map label text'}, {k: 'label.sub', t: 'text', label: 'Map label second line'}, {k: 'label.minZoom', t: 'number', label: 'Label min zoom'},
@@ -354,12 +353,12 @@ export class AtlasEditor {
         {k: 'owners', t: 'refs', label: 'Claimed by (domain owners)', wide: true, refs: () => self.refList(['people'])}, C.people,
         {k: 'rating.label', t: 'text', label: 'Rating name', ph: 'Danger'}, {k: 'rating.value', t: 'number', label: 'Rating'}, {k: 'rating.max', t: 'number', label: 'Rating max', ph: '5'}, {k: 'rating.text', t: 'text', label: 'Rating words'},
         {k: 'ref', t: 'ref', label: 'Clicking opens', help: 'show another entry instead', wide: true, refs: () => self.refList(['places'])}, C.anchor, C.links, C.facts, C.tags, C.uuid, C.kicker, {k: 'order', t: 'number', label: 'Draw order', help: 'higher is on top'}, C.src];
-      case 'routes': return [{k: 'name', t: 'text', label: 'Name', wide: true}, C.nameTr, C.sub, C.realm, C.level, C.layer, C.faction, C.color, ...this.styleFields(), {k: 'curve', t: 'number', label: 'Curve', help: '0.2 bends each segment'}, C.gm, C.alias,
+      case 'routes': return [{k: 'name', t: 'text', label: 'Name', wide: true}, C.sub, C.realm, C.level, C.layer, C.faction, C.color, ...this.styleFields(), {k: 'curve', t: 'number', label: 'Curve', help: '0.2 bends each segment'}, C.gm, C.alias,
         C.brief, C.html, C.notes, {k: 'ends', t: 'refs', label: 'Ends at', wide: true, refs: () => self.refList(['places', 'zones'])}, C.people, C.links, C.facts, C.tags, C.uuid, C.kicker, C.order, C.src];
       case 'labels': return [{k: 'text', t: 'text', label: 'Text', wide: true}, C.realm, C.level, C.layer, {k: 'size', t: 'number', label: 'Size (px)'}, {k: 'font', t: 'select', label: 'Font', opts: [['sc', 'Small caps'], ['head', 'Book serif'], ['body', 'Sans'], ['title', 'Blackletter']], none: 'Default'},
         {k: 'italic', t: 'check', label: 'Italic'}, {k: 'ls', t: 'number', label: 'Letter spacing'}, {k: 'color', t: 'color', label: 'Colour'}, {k: 'halo', t: 'color', label: 'Halo'}, {k: 'glow', t: 'color', label: 'Glow'},
         {k: 'angle', t: 'number', label: 'Angle (°)'}, {k: 'minZoom', t: 'number', label: 'Min zoom'}, {k: 'maxZoom', t: 'number', label: 'Max zoom'}, {k: 'noAvoid', t: 'check', label: 'Always draw (ignore collisions)'}, C.gm, {k: 'at', t: 'coords', label: posLabel}];
-      case 'auras': return [{k: 'name', t: 'text', label: 'Name (tooltip)', wide: true}, C.nameTr, C.realm, C.level, C.layer, {k: 'mode', t: 'select', label: 'Kind', opts: [['glow', 'Glow'], ['dark', 'Shadow'], ['desat', 'Grey-out (Banality)'], ['vortex', 'Vortex'], ['moon', 'Moon']], none: false},
+      case 'auras': return [{k: 'name', t: 'text', label: 'Name (tooltip)', wide: true}, C.realm, C.level, C.layer, {k: 'mode', t: 'select', label: 'Kind', opts: [['glow', 'Glow'], ['dark', 'Shadow'], ['desat', 'Grey-out (Banality)'], ['vortex', 'Vortex'], ['moon', 'Moon']], none: false},
         {k: 'color', t: 'color', label: 'Colour'}, {k: 'radius', t: 'number', label: this.proj.kind === 'mercator' ? 'Radius (m)' : 'Radius (map units)'}, {k: 'px', t: 'number', label: 'Minimum radius (px)'}, {k: 'pulse', t: 'check', label: 'Pulse'}, {k: 'flicker', t: 'check', label: 'Flicker'},
         {k: 'rating.label', t: 'text', label: 'Value name', ph: 'Glamour, Banality, Shroud, Gauntlet…'}, {k: 'rating.value', t: 'number', label: 'Value'}, {k: 'rating.max', t: 'number', label: 'Scale max', ph: '10'}, {k: 'rating.text', t: 'text', label: 'Value words', ph: 'a deep well'},
         {k: 'decor', t: 'check', label: 'Decoration only', help: 'not clickable, not listed'}, C.gm, C.alias, C.aliasText, C.brief, C.html, C.notes, C.facts, {k: 'at', t: 'coords', label: posLabel}];

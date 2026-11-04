@@ -90,7 +90,7 @@ export async function effectsDialog(preset) {
     <fieldset><legend>Who feels it</legend><div class="fxwho"><label><input type="radio" name="to" value="all" checked> Everyone</label><label><input type="radio" name="to" value="some"> Only:</label>
       ${players.map(u => `<label class="fxu${u.active ? '' : ' off'}"><input type="checkbox" name="u" value="${u.id}"> <span style="color:${esc(u.color?.css ?? String(u.color || ''))}">${esc(u.name)}</span>${u.active ? '' : ' <small>(away)</small>'}</label>`).join('') || '<small>No players yet.</small>'}</div></fieldset>
     <fieldset><legend>A line of text (optional)</legend><input type="text" name="text" placeholder="Leave empty for the default"><label class="fxself"><input type="checkbox" name="self"> Show it on my screen too</label></fieldset></div>`;
-  const res = await foundry.applications.api.DialogV2.wait({window: {title: 'Storyteller effects', icon: 'fa-solid fa-ghost'}, position: {width: 620}, content, rejectClose: false, modal: false,
+  const res = await foundry.applications.api.DialogV2.wait({window: {title: 'Storyteller effects', icon: 'fa-solid fa-ghost', resizable: true}, position: {width: 640, height: 'auto'}, classes: ['wca-fxdialog'], content, rejectClose: false, modal: false,
     render: (ev, dlg) => { const root = dlg?.element ?? dlg; if (!root?.querySelectorAll) return;
       root.querySelectorAll('input[name=u]').forEach(c => c.addEventListener('change', () => { if (c.checked) root.querySelector('input[name=to][value=some]').checked = true; }));
       const ph = () => { const E = EFFECTS[root.querySelector('input[name=kind]:checked')?.value] || {}; root.querySelector('input[name=text]').placeholder = E.ph || (E.text ? `Default: “${E.text}”` : 'Leave empty for none'); };

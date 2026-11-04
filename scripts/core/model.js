@@ -361,7 +361,7 @@ export class AtlasModel {
     for (const c of ['places', 'zones', 'routes', 'people']) for (const it of Object.values(this.atlas[c])) {
       if (it.decor || it.hidden) continue;
       const cat = c === 'places' ? this.atlas.categories[it.cat] : null;
-      out.push({id: it.id, coll: c, it, name: it.name || '', text: [it.name, it.nameTr, it.sub, c === 'people' ? '' : it.kicker, cat && cat.name, stripHtml(it.html)].filter(Boolean).join(' ').toLowerCase(), brief: [it.name, it.nameTr, it.sub, c === 'people' ? '' : it.kicker, stripHtml(it.brief)].filter(Boolean).join(' ').toLowerCase()});
+      out.push({id: it.id, coll: c, it, name: it.name || '', text: [it.name, it.sub, c === 'people' ? '' : it.kicker, cat && cat.name, stripHtml(it.html)].filter(Boolean).join(' ').toLowerCase(), brief: [it.name, it.sub, c === 'people' ? '' : it.kicker, stripHtml(it.brief)].filter(Boolean).join(' ').toLowerCase()});
     }
     return (this._searchIdx = out);
   }

@@ -96,3 +96,8 @@ export function arcPts(a, b, k, n = 24) {
 
 /* ---------- seeded random ---------- */
 export function rng(seed = 1991) { let s = seed % 2147483647; if (s <= 0) s += 2147483646; return () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; }; }
+
+/** "Pabst Theater (Театр Пабст)" → "Pabst Theater": a trailing translation in brackets (Cyrillic) left out, for the map lettering. */
+export function shortName(n) { return String(n || '').replace(/\s*\([^()]*[\u0400-\u04FF][^()]*\)\s*$/, ''); }
+/** The same name as HTML for a heading, with the bracketed translation set a little smaller. */
+export function nameHtml(n) { const s = String(n || ''), sh = shortName(s); return sh === s ? esc(s) : `${esc(sh)} <span class="tr">${esc(s.slice(sh.length).trim())}</span>`; }

@@ -1,5 +1,5 @@
 /* AtlasView: the interactive map, its chrome and the dossier panel. Framework-free; Foundry glue lives elsewhere. */
-import {esc, svg, clamp, sortBy, stripHtml, debounce, withAlpha} from './util.js';
+import {esc, svg, clamp, sortBy, stripHtml, debounce, withAlpha, shortName, nameHtml} from './util.js';
 import {AtlasModel, TYPE_NAMES, TIER, stripGeneration} from './model.js';
 import {Renderer} from './renderer.js';
 
@@ -198,9 +198,10 @@ export class AtlasView {
     m.querySelector('.kg').innerHTML = svg(v.icon || 'ankh', 1.4);
     m.querySelector('.kt').textContent = v.kicker || v.name || '';
     m.querySelector('.ttl').innerHTML = a.titleHtml || esc(a.title);
-    m.querySelector('.date').textContent = v.date || '';
+    { const d = m.querySelector('.date'); d.textContent = v.date || ''; d.hidden = !v.date; }
     const bn = m.querySelector('.banner'); bn.hidden = !v.banner; bn.querySelector('span').textContent = v.banner || '';
-    this.root.querySelectorAll('.wca-tabs button').forEach(b => { b.textContent = ({map: 'Map', notes: 'Notes'})[b.dataset.tab] || v.terms[b.dataset.tab] || b.dataset.tab; b.setAttribute('aria-selected', String(b.dataset.tab === this.tab)); b.hidden = b.dataset.tab === 'notes' && !this.adapter.notes; });
+    this.root.querySelectorAll('.wca-tabs button').forEach(b => { b.textContent = ({map: 'Map', notes: 'Notes'})[b.dataset.tab] || v.terms[b.dataset.tab] || b.dataset.tab; b.setAttribute('aria-selected', String(b.dataset.tab === this.tab)); b.hidden = (b.dataset.tab === 'notes' && !this.adapter.notes) || (b.dataset.tab === 'pages' && v.terms.pages === false); });
+    if (this.tab === 'pages' && v.terms.pages === false) { this.tab = 'places'; this.detailId = null; }
     // realm & level switches
     const rl = this.st.storyteller ? this.model.realmList : this.model.visibleRealms(this.st);
     const locked = !this.isGM && !!this.sc?.locked?.();
@@ -322,8 +323,8 @@ export class AtlasView {
   /* ----- what the current viewer may know ----- */
   tierOf(it, coll) { return this.model.tier(it, coll || this.model.collOf(it.id), this.st); }
   canSee(id) { const r = this.model.get(id); return !!r && this.model.known(r.item, r.coll, this.st); }
-  /** The name with its translation in brackets, for cards, lists and tooltips (map lettering keeps the short name). */
-  fullName(it, coll) { coll ||= this.model.collOf(it.id); const n = this.nameOf(it, coll); return it.nameTr && this.tierOf(it, coll) >= TIER.BASIC ? `${n} (${it.nameTr})` : n; }
+  /** The name as written; on the map itself a trailing translation in brackets is left out to keep the lettering short. */
+  fullName(it, coll) { return this.nameOf(it, coll); }
   /** A person's clan line and short tag as this viewer may see them (never the generation). */
   clanOf(p) { return this.model.clanOf(p, this.st); }
   nameOf(it, coll) { coll ||= this.model.collOf(it.id); if (this.tierOf(it, coll) >= TIER.BASIC) return it.name || it.title || it.text || ''; return it.alias || ({places: 'Unknown place', zones: 'Unknown area', routes: 'Unknown way', people: 'Unknown figure', auras: 'Something strange'}[coll] || 'Unknown'); }
@@ -531,7 +532,35 @@ export class AtlasView {
 
   /* ================= drawing loop ================= */
   dirty() { if (this.sc) { this.needs = true; return; } if (!this.needs && !this.dead) { this.needs = true; this.raf = requestAnimationFrame(() => this.frame()); } }
-  frame() { this.needs = false; if (!this.cam.W || this.dead) return; this.markersIfMoved(); this.renderer.draw(); }
+  frame() { this.needs = false; if (!this.cam.W || this.dead) return; this.markersIfMoved(); this.moveRoamers(); this.renderer.draw(); }
+  /** Dreaming whimsy: places that wander (roam: between other places, ride: along a road, wander: around their spot). */
+  roamAt(p, T) {
+    const pl = this.model.atlas.places, ease = f => { const e = f < 0.25 ? 0 : f > 0.75 ? 1 : (f - 0.25) * 2; return e * e * (3 - 2 * e); };
+    if (p.roam) {
+      const pts = [p.at, ...p.roam.map(id => pl[id] && pl[id].at)].filter(Boolean); if (pts.length < 2) return p.at;
+      const u = ((T / (p.period || 13 * pts.length)) % 1) * pts.length, i = Math.floor(u), e = ease(u - i), a = pts[i], b = pts[(i + 1) % pts.length];
+      return [a[0] + (b[0] - a[0]) * e, a[1] + (b[1] - a[1]) * e];
+    }
+    if (p.ride) {
+      const pts = p.ride, L = []; let tot = 0; for (let i = 1; i < pts.length; i++) { tot += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); L.push(tot); }
+      let d = ((T / (p.period || 70)) % 1) * tot, i = 0; while (i < L.length - 1 && d > L[i]) i++;
+      const s0 = i ? L[i - 1] : 0, f = (d - s0) / ((L[i] - s0) || 1), a = pts[i], b = pts[i + 1];
+      return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f];
+    }
+    if (p.wander) { const r = p.wander / 111320, h = p.id.length * 1.7; return [p.at[0] + r * Math.sin(T * 0.31 + h) * Math.cos(T * 0.13), p.at[1] + r * 1.37 * Math.sin(T * 0.23 + h * 2)]; }
+    return p.at;
+  }
+  moveRoamers() {
+    if (!this.markers || reduceMotion() || this.opts.animate === false) return;
+    const W = this.cam.W, H = this.cam.H;
+    for (const m of this.markers) {
+      if (!m.roam || m.drag || this.editor) continue;
+      m.w = this.model.proj.toWorld(this.roamAt(m.roam, this.T));
+      const [sx, sy] = this.renderer.ts(m.w); m.sx = sx; m.sy = sy;
+      const on = sx > -30 && sy > -30 && sx < W + 30 && sy < H + 30; m.vis = on; m.el.hidden = !on;
+      if (on) m.el.style.transform = `translate(${sx.toFixed(1)}px,${sy.toFixed(1)}px)`;
+    }
+  }
   /** Pins and the scale bar only need placing when the camera or the selection changed, not on every animation tick. */
   markersIfMoved() {
     const c = this.cam, k = [c.cx, c.cy, c.z, c.W, c.H, this.sel, this.tab, this.q, this.stateRev].join('|');
@@ -544,7 +573,7 @@ export class AtlasView {
     const moved = c.cx !== this.cam.cx || c.cy !== this.cam.cy || c.z !== this.cam.z;
     if (!moved && !this.needs && !force) return false;
     if (moved) { this.cam.cx = c.cx; this.cam.cy = c.cy; this.cam.z = c.z; this.hideTip(); }
-    this.needs = false; this.markersIfMoved(); this.renderer.draw();
+    this.needs = false; this.markersIfMoved(); this.moveRoamers(); this.renderer.draw();
     this.sceneOK = true; this.sceneDraws = (this.sceneDraws || 0) + 1;
     return true;
   }
@@ -577,18 +606,18 @@ export class AtlasView {
       el.style.setProperty('--c', color);
       if (pin.glow) el.style.setProperty('--g', pin.glow === true ? color : pin.glow);
       const border = pin.border || (prec && prec.border) || 'solid';
-      const nm = this.nameOf(p, 'places');
+      const nm = this.nameOf(p, 'places'), short = shortName(nm);
       const photo = known && pin.photo ? this.pictureOf(p, 'places') : null;
       const shape = photo ? 'circle' : (known ? pin.shape : 'circle') || 'circle';
       el.classList.add('s-' + shape);
-      el.innerHTML = `<span class="pin${pin.glow ? ' glow' : ''}${photo ? ' photo' : ''}">${pinBody(shape, border, pin.width, pin.bg)}${photo ? `<img class="pphoto" src="${esc(this.resolveUrl(photo))}" alt="">` : svg(known ? this.model.iconOf(p, 'places') : 'unknown', 1.7)}</span><span class="lbl">${esc(nm)}</span>`;
+      el.innerHTML = `<span class="pin${pin.glow ? ' glow' : ''}${photo ? ' photo' : ''}">${pinBody(shape, border, pin.width, pin.bg)}${photo ? `<img class="pphoto" src="${esc(this.resolveUrl(photo))}" alt="">` : svg(known ? this.model.iconOf(p, 'places') : 'unknown', 1.7)}</span><span class="lbl">${esc(short)}</span>`;
       el.setAttribute('aria-label', `${nm}, ${cat.name || ''}`); el.dataset.id = p.id;
       el.addEventListener('click', e => { e.stopPropagation(); if (this.editor && this.editor.markerClick(p.id, e)) return; this.open(p.id, {fromMap: true}); });
       el.addEventListener('pointerdown', e => { e.stopPropagation(); if (this.editor) this.editor.markerDown(p.id, e); });
       el.addEventListener('pointerenter', () => { this.showTip(this.tipHtml(p, 'places'), el); });
       el.addEventListener('pointerleave', () => this.hideTip());
       O.appendChild(el);
-      this.markers.push({p, el, nm, w: this.model.proj.toWorld(p.at), sx: 0, sy: 0, vis: false, canon: !p.precision || p.precision === 'canon'});
+      this.markers.push({p, el, nm: short, w: this.model.proj.toWorld(p.at), roam: p.roam || p.ride || p.wander ? p : null, sx: 0, sy: 0, vis: false, canon: !p.precision || p.precision === 'canon'});
     }
     for (const c of this.partyList()) {
       if (!c.at || c.realm !== st.realm || (c.level && c.level !== st.level)) continue;
@@ -644,7 +673,7 @@ export class AtlasView {
     if (!q) return true; const t = this.tierOf(it), f = this.factionOf(it);
     if (t < TIER.BASIC) return this.nameOf(it).toLowerCase().includes(q);
     const cat = this.model.category(it.cat), coll = this.model.collOf(it.id), cl = coll === 'people' ? this.clanOf(it) : {kicker: it.kicker, tag: ''};
-    return [it.name, it.nameTr, it.sub, cl.kicker, cl.tag, cat && cat.name, f && f.name, stripHtml(t >= TIER.FULL ? it.html : it.brief), ...this.figuresAt(it, coll).map(p => p.name)].filter(Boolean).join(' ').toLowerCase().includes(q);
+    return [it.name, it.sub, cl.kicker, cl.tag, cat && cat.name, f && f.name, stripHtml(t >= TIER.FULL ? it.html : it.brief), ...this.figuresAt(it, coll).map(p => p.name)].filter(Boolean).join(' ').toLowerCase().includes(q);
   }
   /* ----- what this viewer may know of an entry's pieces ----- */
   colorOf(it) { return this.model.colorOf(it, this.st); }
@@ -999,7 +1028,7 @@ export class AtlasView {
       const levelName = lvl && lvl.length > 1 && it.level && it.level !== lvl[0].id ? (lvl.find(l => l.id === it.level) || {}).name : '';
       const kick = coll === 'people' ? this.clanOf(it).kicker || TYPE_NAMES.people : [it.kicker || (coll === 'places' && cat ? cat.name : coll === 'auras' ? (it.rating && it.rating.label) || 'Phenomenon' : TYPE_NAMES[coll]), it.kicker ? '' : levelName].filter(Boolean).join(' · ');
       if (coll === 'people' && it.falseKicker && this.st.storyteller) pills.push(`<span class="pill st" title="What others believe; choose per player under What players see">Passes as: ${esc(it.falseKicker)}</span>`);
-      H.push(`<div class="dsub">${esc(kick)}</div><h2>${esc(it.name || '')}${it.nameTr ? ` <span class="tr">(${esc(it.nameTr)})</span>` : ''}</h2>${it.sub ? `<div class="dsub">${esc(it.sub)}</div>` : ''}`);
+      H.push(`<div class="dsub">${esc(kick)}</div><h2>${nameHtml(it.name || '')}</h2>${it.sub ? `<div class="dsub">${esc(it.sub)}</div>` : ''}`);
       H.push(`<div class="meta">${pills.join('')}</div>`);
       const pic = it.img || (coll === 'people' ? this.docInfo(it.uuid)?.img : null);
       if (pic) H.push(`<figure class="portrait${coll === 'people' ? '' : ' wide'}"><img src="${esc(this.resolveUrl(pic))}" alt="${esc(it.name)}" loading="lazy"></figure>`);
@@ -1012,6 +1041,7 @@ export class AtlasView {
       const section = (title, ids) => { const rows = [...new Set(ids)].map(i => this.refRow(i)).filter(Boolean); return rows.length ? `<h3>${esc(title)}${rows.length > 3 ? ` · ${rows.length}` : ''}</h3>${rows.join('')}` : ''; };
       if (facts.length && coll === 'people') H.push(`<div class="mien">${facts.map(f2 => `<div><b>${esc(f2.k)}</b>${f2.v || ''}${f2.secret ? `<span class="tiertag">${esc(tierTag(f2))}</span>` : ''}</div>`).join('')}</div>`);
       notes.filter(n => n.kind === 'law').forEach(n => H.push(this.noteHtml(n, tierTag(n))));
+      if (full && it.brief && st.storyteller && it.html) H.push(`<div class="scene basicdesc"><b>${svg('eye')} Basic description: what players at Basic read</b><div class="enrich">${it.brief}</div></div>`);
       if (full && (it.html || it.brief)) H.push(`<div class="body enrich">${it.html || it.brief}</div>`);
       else if (!full) H.push(it.brief ? `<div class="body brief enrich">${it.brief}</div>` : `<p class="lead unknown-note">Nothing more is known yet.</p>`);
       if (facts.length && coll !== 'people') { const fs = facts.filter(f2 => !(it.tags || []).some(tg => tg.text === `${f2.k} ${stripHtml(f2.v)}`)); if (fs.length) H.push(`<dl class="facts">${fs.map(f2 => `<dt>${esc(f2.k)}</dt><dd>${f2.v || ''}${f2.secret ? `<span class="tiertag">${esc(tierTag(f2))}</span>` : ''}</dd>`).join('')}</dl>`); }

@@ -31,7 +31,7 @@ export async function renderSnapshot(view, o = {}) {
     const w = m.proj.toWorld(p.at); const x = (w[0] - bb[0]) * k, y = (w[1] - bb[1]) * k;
     if (x < 0 || y < 0 || x > W || y > H) continue;
     const t = m.tier(p, 'places', st), known = t >= TIER.BASIC;
-    places.push({id: p.id, x, y, tier: t, name: known ? p.name : (p.alias || 'Unknown place'), color: known ? m.colorOf(p, st) : '#9a9aa4', icon: known ? m.iconOf(p, 'places') : 'unknown'});
+    places.push({id: p.id, x, y, tier: t, name: known ? shortName(p.name) : (p.alias || 'Unknown place'), color: known ? m.colorOf(p, st) : '#9a9aa4', icon: known ? m.iconOf(p, 'places') : 'unknown'});
   }
   const r = new Renderer(fake);
   // make sure pictures are loaded before drawing
